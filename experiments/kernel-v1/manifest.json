@@ -1,0 +1,20 @@
+{
+  "id": "egx-kernel-v1",
+  "version": "1.0.0-experimental",
+  "status": "experimental",
+  "payload_path": "experiments/kernel-v1/KERNEL.md",
+  "encoding": "UTF-8",
+  "line_endings": "LF",
+  "final_line_ending": false,
+  "bytes": 1013,
+  "characters": 1013,
+  "words": 129,
+  "word_count_method": "non-empty segments split on one or more whitespace characters (\\s+)",
+  "token_estimation_method": "ceil(characters / 4)",
+  "estimated_tokens": 254,
+  "always_on_payload_token_ceiling": 300,
+  "sha256": "a70b983003abcb59bcb53b3dba5637c6105d85fe3fc47fa5546d668b5d4d1431",
+  "created": "2026-07-20",
+  "source_synthesis_commit": "f3b955c22cc0cff46315ae3851709a308a6e31b1",
+  "activation": false
+}

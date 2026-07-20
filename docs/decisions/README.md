@@ -14,3 +14,9 @@ and revision criteria over ceremony.
 
 Keep facts, interpretations, and project choices visibly distinct. Link evidence
 directly and record observed versions or commits when relevant.
+
+## Records
+
+- [0001 — Bootstrap entrypoints](0001-bootstrap-entrypoints.md) — provisional
+- [0002 — Architecture du kernel LLM-agnostique](0002-llm-agnostic-kernel-architecture.md)
+  — accepted architecture, no behavioral activation

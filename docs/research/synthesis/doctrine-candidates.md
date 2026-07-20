@@ -2,9 +2,13 @@
 
 ## Statut
 
-Ce document dérive trois traitements expérimentaux originaux. Aucun n'est
-adopté ni installé. Les formulations ont été écrites pour EGX_Terminal ; elles
-ne copient ni persona, ni slogan, ni tournure distinctive des dépôts audités.
+Ce document conserve les trois traitements de recherche originaux produits par
+la synthèse. La [décision 0002](../../decisions/0002-llm-agnostic-kernel-architecture.md)
+a ensuite autorisé une reformulation distincte comme traitement expérimental
+autoritatif dans [`experiments/kernel-v1/`](../../../experiments/kernel-v1/README.md).
+Aucun texte n'est adopté comme doctrine ni installé. Les formulations ont été
+écrites pour EGX_Terminal ; elles ne copient ni persona, ni slogan, ni tournure
+distinctive des dépôts audités.
 
 ## Dix axes évalués
 
@@ -187,14 +191,19 @@ ni de Claude, ni de Qwen. Le tableau sera vérifié mécaniquement avant commit.
 
 Mesures vérifiées sur le texte exact des trois fences avant commit.
 
-## Recommandation
+## Décision postérieure et recommandation
 
-Recommander la variante **équilibrée comme traitement expérimental**, sans
-l'installer. Le micro-kernel risque de faire interpréter « causal scope » et
-« cost of error » trop librement ; l'explicite fournit un bon contrôle mais
-paie une taxe permanente et peut concurrencer la tâche chez les petits modèles.
-La variante équilibrée rend correction, causalité, budget et limites observables
-sans imposer de workflow, de persona ou de forme de réponse.
+La décision 0002 retient le profil **équilibré** comme direction, mais son
+traitement autoritatif n'est pas la fence « Variante B » ci-dessus. Il s'agit du
+payload exact de [`KERNEL.md`](../../../experiments/kernel-v1/KERNEL.md), mesuré
+à 1 013 octets/caractères ASCII, 129 mots et 254 tokens estimés par
+`ceil(caractères/4)`. Il reste expérimental et non installé.
+
+Le micro-kernel risque de faire interpréter « causal scope » et « cost of error »
+trop librement ; l'explicite fournit un bon contrôle mais paie une taxe permanente
+et peut concurrencer la tâche chez les petits modèles. Le candidat v1 vise le
+milieu : correction, causalité, budget et limites observables sans workflow,
+persona ou forme de réponse imposée.
 
 La promotion éventuelle exige les seuils de
 [validation-plan.md](validation-plan.md), en particulier absence de régression

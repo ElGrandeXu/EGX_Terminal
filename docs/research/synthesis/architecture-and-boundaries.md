@@ -2,9 +2,11 @@
 
 ## Statut
 
-Cette architecture organise les décisions futures ; elle n'est ni adoptée ni
-implémentée. Elle sépare des objets que les dépôts audités mêlent fréquemment :
-instruction, workflow, état, capacité, compatibilité et données persistantes.
+Cette architecture a servi de proposition à la
+[décision 0002](../../decisions/0002-llm-agnostic-kernel-architecture.md). Celle-ci
+adopte six couches fonctionnelles et une gouvernance externe, sans implémenter ni
+activer le kernel expérimental. Le présent document conserve les détails de
+frontière issus de la synthèse ; la décision 0002 fait autorité.
 
 ## Taxonomie à couche principale unique
 
@@ -16,7 +18,15 @@ instruction, workflow, état, capacité, compatibilité et données persistantes
 | 4. Capacités optionnelles | skills, outils, évaluateurs, hooks, compresseurs, routing | mécanismes activables avec propriétaire, version, test et retrait | ne deviennent ni doctrine ni compatibilité par leur seule existence |
 | 5. Adaptateurs | `AGENTS.md`, `CLAUDE.md`, entrée OpenCode, événements, includes, manifests | traduit la source neutre vers une surface de harness | ne doit pas créer de sens propre ; sinon il devient une capacité ou du drift |
 | 6. Infrastructure mémoire | capture, consolidation, retrieval, provenance, correction, oubli, export | service de données durable, avec permissions et budgets propres | trop sensible et coûteux pour kernel/état ; indépendante des événements d'un host |
-| 7. Rejets/quarantaines | personas permanentes, claims fixes, compression non fidèle, injection invisible, artefacts juridiquement incertains | éléments non nécessaires, dangereux ou non démontrés | aucune autre couche ne doit servir de parking à une adoption implicite |
+
+### Périmètre de gouvernance externe
+
+Rejets, quarantaines, limitations, critères de promotion et critères de retrait
+contrôlent toutes les couches. Ils ne produisent pas une fonction runtime et ne
+constituent donc pas une septième couche. Personas permanentes, claims fixes,
+compression non fidèle, injection invisible et artefacts juridiquement
+incertains restent rejetés ou en quarantaine sans être rangés dans une couche
+fonctionnelle.
 
 Cette attribution reprend les distinctions instruction/enforcement/packaging de
 [Caveman](../repositories/01-caveman/behavior-and-delivery.md#what-is-instruction-enforcement-measurement-packaging-or-product),
@@ -168,7 +178,7 @@ harness. Aucune base de données n'est choisie.
 | Codex | excellente si `AGENTS.md` canon | excellente via adapter `AGENTS.md` généré ou canon lu | excellente | possible, mais nouveau runtime |
 | Claude Code | include simple si canon est `AGENTS.md` | excellente si `CLAUDE.md` importe le canon | excellente | possible via hook/bootstrap |
 | OpenCode | dépend de son support de règle/import | adapter/copie requise selon version | bonne avec fichier découvert | plugin nécessaire |
-| Petit Qwen local | dépend du host, sémantique neutre | bon si texte matérialisé dans son host | bon, contenu statique inspectable | risque protocole/template/runtime |
+| Modèle Qwen local via OpenCode ou autre runtime | dépend du host, sémantique neutre | bon si texte matérialisé dans son host | bon, contenu statique inspectable | risque protocole/template/runtime ; Qwen n'est pas un harness |
 | Chargement automatique | bon pour provider canon, indirect ailleurs | bon lorsque include existe | bon partout avec fichier reconnu | bon seulement si bootstrap actif |
 | Duplication | faible disque, canon provider-shaped | faible avec include ; copies fallback | élevée mais mécanique | faible disque |
 | Drift | pointeurs simples, mais canon sémantiquement biaisé | faible si génération/parité | faible si hash bloquant | code/runtime peut dériver |
@@ -187,9 +197,9 @@ nom de provider comme canon
 PON et AKS montrent qu'une fédération de copies manuelles dérive ; leurs fixes
 multi-harness justifient une vérification de parité, pas un runtime universel.
 
-### Architecture préférée
+### Architecture décidée
 
-Préférer **B avec fallback C** :
+La décision 0002 retient **B avec fallback C** :
 
 1. un fichier canonique sémantiquement neutre, chemin à décider ;
 2. un adapter mince par harness qui inclut le canon lorsque le host le permet ;
@@ -201,9 +211,11 @@ Préférer **B avec fallback C** :
    capacité automatique n'est revendiquée : dégradation propre par absence,
    sans bootstrap caché.
 
-Ne pas choisir encore les chemins ou scripts. L'option D est différée : elle
-ajoute exécution, permissions, lifecycle et supply chain pour livrer un texte
-court. L'option A reste le bootstrap actuel, pas la cible neutre préférée.
+Le futur chemin canonique recommandé est `doctrine/KERNEL.md`, sans le créer
+avant promotion. Aucun script ni adaptateur n'est créé à ce stade. L'option D
+reste différée : elle ajoute exécution, permissions, lifecycle et supply chain
+pour livrer un texte court. L'option A reste le bootstrap actuel, pas la cible
+neutre décidée.
 
 ## Politique des skills, hooks et capacités
 
@@ -235,8 +247,9 @@ provider-specific et peuvent échouer silencieusement
 
 ### Budget et promotion
 
-- Budget always-on initial proposé : le kernel seul, cible ≤300 tokens estimés ;
-  tout dépassement exige une ablation montrant un gain net.
+- Plafond strict du payload always-on : 300 tokens estimés par
+  `ceil(caractères/4)`, avec une cible souhaitée d'environ 250 ; métadonnées,
+  wrappers et adaptateurs sont comptabilisés séparément.
 - Métadonnées de capacités : budget agrégé mesuré par harness ; supprimer ou
   raccourcir les descriptions non sélectionnantes.
 - Une nouvelle capacité commence **expérimentale, désactivée par défaut**.
@@ -277,13 +290,14 @@ provider-specific et peuvent échouer silencieusement
 - Base vectorielle ou TencentDB comme prérequis : rejeté ; aucun backend choisi.
 - Mermaid comme représentation mémoire canonique : rejeté comme universel.
 
-## Décisions nécessitant validation utilisateur
+## Décisions formalisées et travail restant
 
-1. Accepter ou modifier la taxonomie à sept couches.
-2. Autoriser la variante équilibrée comme traitement d'évaluation.
-3. Valider la formulation de proportionnalité et du seuil matériel.
-4. Valider le contrat d'état récupérable et son statut temporaire.
-5. Choisir B+C comme direction de distribution, sans encore choisir les chemins.
-6. Valider le budget always-on ≤300 tokens et la fiche de promotion.
-7. Maintenir mémoire, hooks, skills, routing et compression hors adoption jusqu'à
-   expérience et décision séparées.
+La décision 0002 formalise les six couches, la gouvernance externe, le traitement
+expérimental, la proportionnalité, le contrat séparé d'état récupérable, B avec
+fallback C, le budget et les capacités différées. Elle ne valide pas l'efficacité
+du candidat.
+
+Le travail suivant consiste à construire et tester les adaptateurs dans un
+périmètre expérimental : versions fixées, portée, précédence, chargement unique,
+hash, comportement sans adaptateur et contexte réellement injecté. Aucune
+promotion ne découle automatiquement de ces tests.

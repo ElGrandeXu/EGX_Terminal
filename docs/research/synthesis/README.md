@@ -2,10 +2,12 @@
 
 ## Statut et portée
 
-Cette synthèse confronte les cinq audits terminés au 20 juillet 2026. Elle
-prépare une décision : elle ne promeut aucune doctrine, n'installe aucune
-capacité et n'implémente aucune architecture. Les propositions ci-dessous sont
-donc des verdicts de recherche, non des comportements actifs.
+Cette synthèse confronte les cinq audits terminés au 20 juillet 2026. Elle a
+préparé la [décision 0002](../../decisions/0002-llm-agnostic-kernel-architecture.md),
+qui formalise six couches fonctionnelles et une gouvernance externe. Cette
+décision n'a promu aucune doctrine et n'a activé aucune capacité. Les preuves et
+variantes ci-dessous restent des résultats de recherche ; lorsqu'une proposition
+de ce document diffère de la décision 0002, cette dernière fait autorité.
 
 Sources auditées :
 
@@ -43,12 +45,11 @@ démontre une architecture et des risques, pas ses claims de benchmark
 [andrej-karpathy-skills — efficacité](../repositories/04-andrej-karpathy-skills/evidence-ledger.md#comportement-et-efficacité),
 [TencentDB E-BENCH](../repositories/05-tencentdb-agent-memory/evidence-ledger.md#E-BENCH)).
 
-La recommandation principale est d'expérimenter le **kernel équilibré** de
-[doctrine-candidates.md](doctrine-candidates.md), estimé à environ 200–300
-tokens, face à la baseline, au micro-kernel et au kernel explicite. Il est assez
-court pour rester toujours chargé, mais porte les garde-fous qui empêchent
-densité artificielle, sous-ingénierie, scope minimaliste et boucle sans fin. Il
-ne doit pas être installé avant la campagne décrite dans
+La recommandation de recherche était d'expérimenter un kernel équilibré face à
+la baseline, au micro-kernel et au kernel explicite. La décision 0002 en a retenu
+une reformulation originale comme traitement expérimental, isolée dans
+[`experiments/kernel-v1/`](../../../experiments/kernel-v1/README.md). Elle reste
+non active et ne doit pas être installée avant la campagne décrite dans
 [validation-plan.md](validation-plan.md).
 
 ## Conclusions transversales
@@ -114,7 +115,7 @@ Le raisonnement détaillé et les contre-exemples figurent dans
 [doctrine-candidates.md](doctrine-candidates.md#arbitrages-contradictoires) et
 [architecture-and-boundaries.md](architecture-and-boundaries.md).
 
-## Architecture en sept couches proposée
+## Architecture décidée : six couches et gouvernance externe
 
 Chaque concept reçoit une couche principale unique ; les dépendances entre
 couches ne changent pas cette propriété.
@@ -127,7 +128,10 @@ couches ne changent pas cette propriété.
 | 4. Capacités optionnelles | Skill, outil, évaluateur, hook ou compresseur justifié | pas d'activation universelle implicite |
 | 5. Adaptateurs | Découverte, inclusion, événements et formats du harness | aucune sémantique doctrinale propre |
 | 6. Infrastructure mémoire | Capture, dérivation, recherche, provenance, correction, oubli, export | jamais injectée dans le kernel |
-| 7. Rejets/quarantaines | Éléments dangereux, non licenciés, trompeurs ou prématurés | aucune promotion sans nouvelle preuve/décision |
+
+Les rejets, quarantaines, limitations et critères de promotion/retrait ne sont
+pas une septième couche fonctionnelle. Ils forment le périmètre de gouvernance
+externe qui contrôle les six couches.
 
 Cette séparation évite trois confusions observées : instruction contre
 enforcement, état de mission contre mémoire utilisateur, et neutralité
@@ -135,32 +139,29 @@ conceptuelle contre compatibilité de harness
 ([Caveman — modèle système](../repositories/01-caveman/behavior-and-delivery.md#system-model),
 [TencentDB — service neutre](../repositories/05-tencentdb-agent-memory/behavior-and-delivery.md#service-neutre-et-épaisseur-minimale)).
 
-## Décisions proposées pour la revue
+## Décisions formalisées
 
-Ce sont les décisions que la prochaine mission devrait accepter, modifier ou
-refuser explicitement :
+La [décision 0002](../../decisions/0002-llm-agnostic-kernel-architecture.md) a :
 
-- retenir la taxonomie à sept couches comme cadre de décision ;
-- choisir le kernel équilibré comme **traitement expérimental recommandé**, non
-  comme doctrine active ;
-- retenir la méta-règle de proportionnalité dans le kernel sous une formulation
-  courte, puis détailler ses seuils dans les protocoles de mission ;
-- définir le scope comme périmètre causal nécessaire ;
-- traiter l'état récupérable comme artefact de mission portable, distinct d'une
-  mémoire ;
-- préférer une source canonique neutre, des adaptateurs minces et, lorsque
-  l'include manque, des copies générées vérifiées ;
-- exiger une fiche de promotion et un budget avant toute skill, hook, outil ou
-  mémoire ;
-- maintenir toute mémoire automatique en expérimentation isolée jusqu'à preuve
-  de scope, provenance, oubli et valeur nette.
+- retenu six couches fonctionnelles et placé rejets/quarantaines dans une
+  gouvernance externe ;
+- isolé un traitement expérimental, sans le promouvoir ni l'activer ;
+- retenu la proportionnalité au coût d'erreur et à la difficulté d'annulation ;
+- accepté l'état récupérable comme mécanisme séparé, conditionnel et non encore
+  implémenté ;
+- retenu B avec fallback C pour une future distribution vérifiable ;
+- fixé le plafond du payload always-on à 300 tokens estimés par
+  `ceil(caractères/4)` ;
+- maintenu mémoire, hooks, skills comportementales, routing, personas,
+  compression et runtime hors adoption.
 
 ## Décisions différées
 
-- formulation finale et installation éventuelle du kernel ;
+- promotion et installation éventuelle du kernel expérimental ;
 - nom, chemin et format exacts de la source canonique ;
 - mécanisme de génération/hash des adaptateurs ;
-- support et versions minimales de Codex, Claude Code, OpenCode et Qwen ;
+- versions minimales de Codex, Claude Code et OpenCode, puis paramètres précis du
+  modèle Qwen et du runtime qui le sert ;
 - création du contrat d'état récupérable et emplacement concret ;
 - tout hook d'enforcement ;
 - toute skill ou politique de routing ;
@@ -199,8 +200,8 @@ refuser explicitement :
 
 ## Prochaine étape recommandée
 
-Tenir une revue utilisateur de décision sur les sept propositions ci-dessus,
-figer les formulations candidates et le protocole, puis lancer une campagne
-pilote reproductible sans modifier la doctrine active. La promotion ne devrait
-être envisagée qu'après résultats par tâche et par harness, analyse des
-régressions et validation explicite de l'architecture.
+Construire et tester les adaptateurs dans un périmètre expérimental, sans
+modifier la doctrine active. Vérifier découverte, portée, précédence, chargement
+unique et fallback absent avant la campagne pilote. La promotion ne devrait être
+envisagée qu'après résultats par tâche et par harness, analyse des régressions et
+décision explicite séparée.
