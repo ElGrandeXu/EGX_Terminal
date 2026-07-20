@@ -40,7 +40,7 @@ LICENSE_MEDIA_TYPE = "application/vnd.ollama.image.license"
 PROFILE_PATH = Path(__file__).resolve().parent.parent / "model-profiles.json"
 DEFAULT_PROFILE_ID = "qwen3.6-35b-q4km"
 REQUIRED_PROFILE_IDS = {"qwen3.6-35b-q4km", "qwen3.6-27b-q4km"}
-REQUIRED_PROFILE_FIELDS = {
+COMMON_PROFILE_FIELDS = {
     "ollama_model",
     "digest",
     "manifest_digest",
@@ -56,6 +56,16 @@ REQUIRED_PROFILE_FIELDS = {
     "license",
     "status",
 }
+ALLOCATION_POLICY_FIELDS = {
+    "gpu_overhead_bytes",
+    "gpu_overhead_gib",
+    "minimum_free_vram_mib",
+    "context_length",
+    "num_parallel",
+}
+GPU_OVERHEAD_PROFILE_ID = "qwen3.6-27b-q4km"
+MAX_REASONABLE_GPU_OVERHEAD_BYTES = 64 * 1024**3
+MAX_REASONABLE_FREE_VRAM_MIB = 64 * 1024
 
 
 class ProbeError(Exception):
@@ -74,7 +84,10 @@ def load_model_profiles(path: Path | None = None) -> dict[str, dict[str, Any]]:
     if not isinstance(profiles, dict) or set(profiles) != REQUIRED_PROFILE_IDS:
         raise ProbeError("model profile registry must contain exactly the two fixed profiles")
     for profile_id, profile in profiles.items():
-        if not isinstance(profile, dict) or set(profile) != REQUIRED_PROFILE_FIELDS:
+        expected_fields = COMMON_PROFILE_FIELDS | (
+            ALLOCATION_POLICY_FIELDS if profile_id == GPU_OVERHEAD_PROFILE_ID else set()
+        )
+        if not isinstance(profile, dict) or set(profile) != expected_fields:
             raise ProbeError(f"model profile {profile_id} has incomplete or unknown fields")
         if profile["endpoint"] != BASE_URL:
             raise ProbeError(f"model profile {profile_id} is not locked to loopback")
@@ -99,11 +112,28 @@ def load_model_profiles(path: Path | None = None) -> dict[str, dict[str, Any]]:
             raise ProbeError(f"model profile {profile_id} must declare active parameters")
         if dense == ("moe" in str(profile["architecture"]).lower()):
             raise ProbeError(f"model profile {profile_id} has inconsistent architecture metadata")
+        if profile_id == GPU_OVERHEAD_PROFILE_ID:
+            policy_values = {key: profile[key] for key in ALLOCATION_POLICY_FIELDS}
+            if any(isinstance(value, bool) or not isinstance(value, int) for value in policy_values.values()):
+                raise ProbeError(f"model profile {profile_id} allocation policy must use integers")
+            overhead = profile["gpu_overhead_bytes"]
+            if overhead < 0 or overhead > MAX_REASONABLE_GPU_OVERHEAD_BYTES:
+                raise ProbeError(f"model profile {profile_id} has an unreasonable GPU overhead")
+            if profile["gpu_overhead_gib"] < 0 or overhead != profile["gpu_overhead_gib"] * 1024**3:
+                raise ProbeError(f"model profile {profile_id} has inconsistent GPU overhead units")
+            minimum_vram = profile["minimum_free_vram_mib"]
+            if minimum_vram < 0 or minimum_vram > MAX_REASONABLE_FREE_VRAM_MIB:
+                raise ProbeError(f"model profile {profile_id} has an unreasonable free VRAM minimum")
+            if profile["context_length"] != profile["test_context_tokens"]:
+                raise ProbeError(f"model profile {profile_id} has inconsistent context policy")
+            if profile["num_parallel"] != 1:
+                raise ProbeError(f"model profile {profile_id} must keep parallelism at one")
     return profiles
 
 
 def activate_profile(profile_id: str = DEFAULT_PROFILE_ID) -> dict[str, Any]:
     global ACTIVE_PROFILE_ID, ACTIVE_PROFILE, MODEL, EXPECTED_DIGEST, CONTEXT_TOKENS
+    global GPU_OVERHEAD_BYTES, MINIMUM_FREE_VRAM_MIB, NUM_PARALLEL
     profiles = load_model_profiles()
     if profile_id not in profiles:
         raise ProbeError(f"unknown fixed model profile: {profile_id}")
@@ -111,7 +141,10 @@ def activate_profile(profile_id: str = DEFAULT_PROFILE_ID) -> dict[str, Any]:
     ACTIVE_PROFILE = dict(profiles[profile_id])
     MODEL = str(ACTIVE_PROFILE["ollama_model"])
     EXPECTED_DIGEST = str(ACTIVE_PROFILE["digest"])
-    CONTEXT_TOKENS = int(ACTIVE_PROFILE["test_context_tokens"])
+    CONTEXT_TOKENS = int(ACTIVE_PROFILE.get("context_length", ACTIVE_PROFILE["test_context_tokens"]))
+    GPU_OVERHEAD_BYTES = ACTIVE_PROFILE.get("gpu_overhead_bytes")
+    MINIMUM_FREE_VRAM_MIB = ACTIVE_PROFILE.get("minimum_free_vram_mib")
+    NUM_PARALLEL = int(ACTIVE_PROFILE.get("num_parallel", 1))
     return ACTIVE_PROFILE
 
 
@@ -120,7 +153,22 @@ ACTIVE_PROFILE: dict[str, Any] = {}
 MODEL = ""
 EXPECTED_DIGEST = ""
 CONTEXT_TOKENS = 0
+GPU_OVERHEAD_BYTES: int | None = None
+MINIMUM_FREE_VRAM_MIB: int | None = None
+NUM_PARALLEL = 1
 activate_profile()
+
+
+def allocation_policy() -> dict[str, int] | None:
+    if GPU_OVERHEAD_BYTES is None:
+        return None
+    return {
+        "gpu_overhead_bytes": int(GPU_OVERHEAD_BYTES),
+        "gpu_overhead_gib": int(ACTIVE_PROFILE["gpu_overhead_gib"]),
+        "minimum_free_vram_mib": int(MINIMUM_FREE_VRAM_MIB),
+        "context_length": CONTEXT_TOKENS,
+        "num_parallel": NUM_PARALLEL,
+    }
 
 
 class InferenceBudget:
@@ -633,6 +681,8 @@ def require_no_loaded_model(data: dict[str, Any]) -> None:
 
 
 def require_context(running: list[dict[str, Any]]) -> dict[str, Any]:
+    if len(running) != 1:
+        raise ProbeError("the active model must be the only loaded model")
     matches = [item for item in running if item["name"] == MODEL]
     if len(matches) != 1:
         raise ProbeError("the exact model is not uniquely loaded")
@@ -695,12 +745,14 @@ def _server_environment(root: Path) -> dict[str, str]:
             "OLLAMA_CONTEXT_LENGTH": str(CONTEXT_TOKENS),
             "OLLAMA_KEEP_ALIVE": KEEP_ALIVE,
             "OLLAMA_MAX_LOADED_MODELS": "1",
-            "OLLAMA_NUM_PARALLEL": "1",
+            "OLLAMA_NUM_PARALLEL": str(NUM_PARALLEL),
             "OLLAMA_NOPRUNE": "1",
             "OLLAMA_MODELS": str(root),
             "NO_PROXY": "127.0.0.1,localhost",
         }
     )
+    if GPU_OVERHEAD_BYTES is not None:
+        env["OLLAMA_GPU_OVERHEAD"] = str(GPU_OVERHEAD_BYTES)
     return env
 
 
@@ -714,6 +766,7 @@ class ServerSession:
         self.stdout_handle: Any = None
         self.stderr_handle: Any = None
         self.server_starts = 0
+        self.environment = _server_environment(root)
 
     def start(self) -> None:
         if _loopback_responds() or not _port_is_free() or ollama_processes():
@@ -726,7 +779,7 @@ class ServerSession:
             stdin=subprocess.DEVNULL,
             stdout=self.stdout_handle,
             stderr=self.stderr_handle,
-            env=_server_environment(self.root),
+            env=self.environment,
             creationflags=flags,
         )
         self.server_starts += 1
@@ -865,6 +918,7 @@ def _plan() -> dict[str, Any]:
         "profile": ACTIVE_PROFILE_ID,
         "model_digest": EXPECTED_DIGEST,
         "endpoint": BASE_URL,
+        "allocation_policy": allocation_policy(),
     }
 
 
@@ -891,6 +945,7 @@ def _run() -> dict[str, Any]:
         "inference_calls": 0,
         "inference_retries": 0,
         "resources_before_load": before,
+        "allocation_policy": allocation_policy(),
         "status": "BLOCKED",
     }
     cleanup: dict[str, Any] = {}

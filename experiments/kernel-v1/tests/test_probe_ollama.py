@@ -160,6 +160,69 @@ class ProbeOllamaTests(unittest.TestCase):
         self.assertEqual("3.0B", profiles[PROBE.DEFAULT_PROFILE_ID]["parameters_active"])
         self.assertEqual("qwen3.6:27b", profiles["qwen3.6-27b-q4km"]["ollama_model"])
         self.assertEqual("dense", profiles["qwen3.6-27b-q4km"]["architecture_type"])
+        self.assertEqual(4_294_967_296, profiles["qwen3.6-27b-q4km"]["gpu_overhead_bytes"])
+
+    def test_27b_allocation_policy_is_read_exactly(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            self.assertEqual(
+                {
+                    "gpu_overhead_bytes": 4_294_967_296,
+                    "gpu_overhead_gib": 4,
+                    "minimum_free_vram_mib": 4_096,
+                    "context_length": 16_384,
+                    "num_parallel": 1,
+                },
+                PROBE.allocation_policy(),
+            )
+        finally:
+            PROBE.activate_profile()
+
+    def test_invalid_gpu_overhead_values_are_rejected(self) -> None:
+        registry = json.loads(PROBE.PROFILE_PATH.read_text(encoding="utf-8"))
+        invalid = (-1, "4294967296", PROBE.MAX_REASONABLE_GPU_OVERHEAD_BYTES + 1)
+        for value in invalid:
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as name:
+                candidate = json.loads(json.dumps(registry))
+                candidate["profiles"][PROBE.GPU_OVERHEAD_PROFILE_ID]["gpu_overhead_bytes"] = value
+                path = Path(name) / "profiles.json"
+                path.write_text(json.dumps(candidate), encoding="utf-8")
+                with self.assertRaises(PROBE.ProbeError):
+                    PROBE.load_model_profiles(path)
+
+    def test_historical_35b_profile_is_byte_for_byte_semantically_unchanged(self) -> None:
+        profile = PROBE.load_model_profiles()[PROBE.DEFAULT_PROFILE_ID]
+        canonical = json.dumps(profile, sort_keys=True, separators=(",", ":")).encode()
+        self.assertEqual(
+            "d237648b45051b9552e0427173ad91b213bb5a3fbeb4f4296cfb6fd61a84c657",
+            hashlib.sha256(canonical).hexdigest(),
+        )
+        self.assertTrue(PROBE.ALLOCATION_POLICY_FIELDS.isdisjoint(profile))
+
+    def test_gpu_overhead_is_scoped_to_child_server_environment(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            with tempfile.TemporaryDirectory() as name, mock.patch.dict(
+                PROBE.os.environ,
+                {"PATH": "safe", "OLLAMA_GPU_OVERHEAD": "parent-value"},
+                clear=True,
+            ):
+                parent_before = dict(PROBE.os.environ)
+                session = PROBE.ServerSession("ollama", Path(name), Path(name))
+                self.assertEqual("4294967296", session.environment["OLLAMA_GPU_OVERHEAD"])
+                self.assertEqual(parent_before, dict(PROBE.os.environ))
+        finally:
+            PROBE.activate_profile()
+
+    def test_35b_server_does_not_inherit_global_gpu_overhead(self) -> None:
+        PROBE.activate_profile()
+        with tempfile.TemporaryDirectory() as name, mock.patch.dict(
+            PROBE.os.environ,
+            {"PATH": "safe", "OLLAMA_GPU_OVERHEAD": "parent-value"},
+            clear=True,
+        ):
+            env = PROBE._server_environment(Path(name))
+        self.assertNotIn("OLLAMA_GPU_OVERHEAD", env)
 
     def test_profile_selection_preserves_historical_default(self) -> None:
         try:
@@ -170,6 +233,15 @@ class ProbeOllamaTests(unittest.TestCase):
         finally:
             PROBE.activate_profile()
         self.assertEqual("qwen3.6:35b", PROBE.MODEL)
+
+    def test_plan_exposes_effective_allocation_policy(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            policy = PROBE._plan()["allocation_policy"]
+            self.assertEqual(4_294_967_296, policy["gpu_overhead_bytes"])
+            self.assertEqual(4_096, policy["minimum_free_vram_mib"])
+        finally:
+            PROBE.activate_profile()
 
     def test_only_one_inference_and_no_retry(self) -> None:
         budget = PROBE.InferenceBudget()

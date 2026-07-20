@@ -6,15 +6,20 @@
       "declared_size_bytes": 17420420832,
       "digest": "sha256:83c54730a5fea8a0958598c01617c1419c431e93b33bacf980b49a420c798926",
       "endpoint": "http://127.0.0.1:11434",
+      "gpu_overhead_bytes": 4294967296,
+      "gpu_overhead_gib": 4,
       "license": "Apache-2.0",
       "manifest_digest": "sha256:a50eda8ed977ab48a12431878896b27ffd5cef552c17af3317d9623b939a7f1e",
+      "minimum_free_vram_mib": 4096,
       "native_context_tokens": 262144,
+      "num_parallel": 1,
       "ollama_model": "qwen3.6:27b",
       "parameters_active": "27.8B",
       "parameters_total": "27.8B",
       "quantization": "Q4_K_M",
       "status": "experimental",
-      "test_context_tokens": 16384
+      "test_context_tokens": 16384,
+      "context_length": 16384
     },
     "qwen3.6-35b-q4km": {
       "architecture": "qwen35moe",

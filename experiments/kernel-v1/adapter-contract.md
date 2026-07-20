@@ -133,6 +133,14 @@ explicite par `--profile`. L'identité locale et les blobs sont vérifiés avant
 tout démarrage. Le [rapport 27B](validation/opencode-qwen3.6-27b-smoke-1.17.9.md)
 consigne le premier usage du registre et son arrêt matériel avant inférence.
 
+Le seul profil 27B porte désormais une politique d'allocation expérimentale
+explicite : contexte 16 384, parallélisme 1, réserve de 4 Gio par GPU et gate de
+4 096 MiB de VRAM réellement libre. La réserve est injectée uniquement dans
+l'environnement du serveur Ollama enfant ; elle n'est ni un réglage global, ni
+une règle d'adaptateur comportemental. Le
+[rapport d'offload](validation/opencode-qwen3.6-27b-offload-smoke-1.17.9.md)
+consigne son résultat `BLOCKED` avant OpenCode.
+
 ## Risque de double chargement
 
 Le cas le plus net est OpenCode : sa documentation dit que `instructions` est

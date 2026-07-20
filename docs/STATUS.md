@@ -20,10 +20,14 @@
   now installed alongside the unchanged 35B, and the probes use a two-profile
   experimental registry. A single 27B load at 16 384 tokens left only 549 MiB
   VRAM, so the 3 GiB gate blocked before OpenCode: zero Qwen requests and complete
-  cleanup. This validates profile selection, loading and the safety gate, not the
-  real OpenCode + Qwen path. The active root bootstrap is unchanged and no
-  promotion has occurred.
-- **Next step:** decide, without inference, between a smaller official local
-  candidate and an explicitly authorized CPU/GPU allocation policy at 16 384
-  tokens; do not rerun the unchanged 27B smoke, start behavioral evaluation or
-  promote the kernel.
+  cleanup. A separate authorized run then reserved 4 GiB per GPU through the
+  owned child server only. The resulting 55/65 GPU-layer split left 3 683 MiB
+  VRAM, 413 MiB below the strict 4 GiB gate, so it also blocked before OpenCode:
+  zero Qwen requests, no retry and complete cleanup. This validates profile
+  selection, loading, child-only allocation and the safety gate, not the real
+  OpenCode + Qwen path. The active root bootstrap is unchanged and no promotion
+  has occurred.
+- **Next step:** decide, without loading a model, between a smaller official
+  local candidate and a separately authorized CPU/GPU policy; do not rerun the
+  4 GiB reservation, adjust automatically to 5 or 6 GiB, start behavioral
+  evaluation or promote the kernel.

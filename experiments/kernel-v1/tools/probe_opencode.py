@@ -55,8 +55,7 @@ MISSION11_BASELINE_VRAM_MIB = 1_076
 MISSION11_MODEL_DELTA_VRAM_MIB = 21_748
 MAX_BASELINE_DRIFT_MIB = 256
 MIN_PROJECTED_VRAM_MIB = 512
-MIN_ABSOLUTE_VRAM_MARGIN_MIB = 3 * 1024
-TARGET_VRAM_MARGIN_MIB = 4 * 1024
+MIN_OPENCODE_AVAILABLE_RAM_BYTES = 16 * 1024**3
 
 PROMPT = (
     "Do not use tools or read files. Based only on project instructions already "
@@ -153,7 +152,7 @@ def activate_profile(profile_id: str = DEFAULT_PROFILE_ID) -> dict[str, Any]:
     ACTIVE_PROFILE = dict(profile)
     MODEL = str(profile["ollama_model"])
     EXPECTED_DIGEST = str(profile["digest"])
-    CONTEXT_TOKENS = int(profile["test_context_tokens"])
+    CONTEXT_TOKENS = int(profile.get("context_length", profile["test_context_tokens"]))
     return ACTIVE_PROFILE
 
 
@@ -259,6 +258,14 @@ def opencode_processes(rows: list[dict[str, Any]] | None = None) -> list[dict[st
 
 def guard_initial_resources(snapshot: dict[str, Any]) -> dict[str, int]:
     OLLAMA.guard_ram(snapshot)
+    available_ram = int(snapshot["ram"]["available_bytes"])
+    minimum_ram = (
+        MIN_OPENCODE_AVAILABLE_RAM_BYTES
+        if OLLAMA.allocation_policy() is not None
+        else OLLAMA.MIN_AVAILABLE_RAM
+    )
+    if available_ram < minimum_ram:
+        raise ProbeError("available RAM is below the active OpenCode profile gate")
     gpu = snapshot["gpu"]
     used = int(gpu["used_mib"])
     free = int(gpu["available_mib"])
@@ -275,19 +282,31 @@ def guard_initial_resources(snapshot: dict[str, Any]) -> dict[str, int]:
     return {"baseline_delta_mib": used - MISSION11_BASELINE_VRAM_MIB, "projected_free_mib": projected}
 
 
-def guard_loaded_resources(snapshot: dict[str, Any]) -> dict[str, Any]:
+def loaded_resource_gate(snapshot: dict[str, Any]) -> dict[str, Any]:
     OLLAMA.guard_ram(snapshot)
     free = int(snapshot["gpu"]["available_mib"])
-    if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km" and free < MIN_ABSOLUTE_VRAM_MARGIN_MIB:
-        raise ProbeError("loaded VRAM margin is below the fixed 3 GiB absolute gate")
+    policy = OLLAMA.allocation_policy()
+    minimum_vram = int(policy["minimum_free_vram_mib"]) if policy is not None else 0
+    minimum_ram = MIN_OPENCODE_AVAILABLE_RAM_BYTES if policy is not None else OLLAMA.MIN_AVAILABLE_RAM
+    available_ram = int(snapshot["ram"]["available_bytes"])
     return {
-        "available_vram_mib": free,
-        "absolute_minimum_mib": MIN_ABSOLUTE_VRAM_MARGIN_MIB,
-        "comfort_target_mib": TARGET_VRAM_MARGIN_MIB,
-        "comfort": "target-met" if free >= TARGET_VRAM_MARGIN_MIB else "limited",
-        "available_ram_bytes": int(snapshot["ram"]["available_bytes"]),
-        "minimum_available_ram_bytes": OLLAMA.MIN_AVAILABLE_RAM,
+        "requested_gpu_overhead_bytes": policy["gpu_overhead_bytes"] if policy is not None else None,
+        "observed_available_vram_mib": free,
+        "minimum_free_vram_mib": minimum_vram,
+        "vram_margin_above_minimum_mib": free - minimum_vram,
+        "observed_available_ram_bytes": available_ram,
+        "minimum_available_ram_bytes": minimum_ram,
+        "passed": free >= minimum_vram and available_ram >= minimum_ram,
     }
+
+
+def guard_loaded_resources(snapshot: dict[str, Any]) -> dict[str, Any]:
+    gate = loaded_resource_gate(snapshot)
+    if gate["observed_available_vram_mib"] < gate["minimum_free_vram_mib"]:
+        raise ProbeError("observed loaded VRAM is below the active profile minimum")
+    if gate["observed_available_ram_bytes"] < gate["minimum_available_ram_bytes"]:
+        raise ProbeError("observed loaded RAM is below the active profile minimum")
+    return gate
 
 
 def active_cuda_compute_processes() -> list[dict[str, Any]]:
@@ -1182,6 +1201,21 @@ def _read_ollama_log(session: Any) -> str:
     return "\n".join(parts)
 
 
+def parse_offload_layers(log_text: str) -> dict[str, Any]:
+    matches = re.findall(r"offloaded\s+(\d+)\s*/\s*(\d+)\s+layers?\s+to\s+GPU", log_text, re.I)
+    if not matches:
+        return {"exposed": False, "gpu_layers": None, "cpu_layers": None, "total_layers": None}
+    gpu_layers, total_layers = (int(value) for value in matches[-1])
+    if gpu_layers > total_layers:
+        raise ProbeError("Ollama log exposed an invalid layer split")
+    return {
+        "exposed": True,
+        "gpu_layers": gpu_layers,
+        "cpu_layers": total_layers - gpu_layers,
+        "total_layers": total_layers,
+    }
+
+
 def _repository_snapshot() -> dict[str, tuple[str, str]]:
     return snapshot_tree(REPOSITORY_ROOT, exclude_git=True)
 
@@ -1223,11 +1257,12 @@ def _plan() -> dict[str, Any]:
         "provider": PROVIDER,
         "endpoint": OPENAI_BASE_URL,
         "context_tokens": CONTEXT_TOKENS,
+        "allocation_policy": OLLAMA.allocation_policy(),
         "expected_output": EXPECTED_OUTPUT,
         "protocol": [
             "refuse pre-existing Ollama or OpenCode processes and occupied port 11434",
             (
-                "require at least 3 GiB measured residual VRAM after loading, with a 4 GiB comfort target"
+                "reserve 4 GiB per GPU in the child server and require 4096 MiB free VRAM plus 16 GiB available RAM"
                 if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km"
                 else "require Mission 11 GPU baseline and at least 512 MiB projected residual VRAM"
             ),
@@ -1290,6 +1325,7 @@ def _run() -> dict[str, Any]:
         "inference_retries": 0,
         "resources_before_load": preflight["resources"],
         "gpu_guard": preflight["gpu_guard"],
+        "allocation_policy": OLLAMA.allocation_policy(),
     }
     failure: BaseException | None = None
     temporary_name = ""
@@ -1312,6 +1348,12 @@ def _run() -> dict[str, Any]:
         server_monitor: OwnedServerConnectionMonitor | None = None
         try:
             session.start()
+            summary["server_controls"] = {
+                "ollama_gpu_overhead": session.environment.get("OLLAMA_GPU_OVERHEAD"),
+                "ollama_context_length": session.environment["OLLAMA_CONTEXT_LENGTH"],
+                "ollama_num_parallel": session.environment["OLLAMA_NUM_PARALLEL"],
+                "scope": "owned_child_server_only",
+            }
             server_monitor = OwnedServerConnectionMonitor(session)
             server_monitor.start()
             summary["server_starts"] = session.server_starts
@@ -1345,7 +1387,15 @@ def _run() -> dict[str, Any]:
             summary["loaded_model"] = loaded
             summary["model_seen_by_ollama"] = loaded["name"]
             summary["resources_after_load"] = OLLAMA.resource_snapshot()
-            summary["comfort_gate"] = guard_loaded_resources(summary["resources_after_load"])
+            summary["offload_layers"] = parse_offload_layers(_read_ollama_log(session))
+            summary["comfort_gate"] = loaded_resource_gate(summary["resources_after_load"])
+            if not summary["comfort_gate"]["passed"]:
+                if (
+                    summary["comfort_gate"]["observed_available_vram_mib"]
+                    < summary["comfort_gate"]["minimum_free_vram_mib"]
+                ):
+                    raise ProbeError("observed loaded VRAM is below the active profile minimum")
+                raise ProbeError("observed loaded RAM is below the active profile minimum")
             server_monitor.checkpoint()
 
             call = invoke_opencode(binary, workspace, env, budget)
@@ -1413,6 +1463,7 @@ def _run() -> dict[str, Any]:
             summary["opencode_inference_processes"] = budget.processes
             try:
                 observed_log = _read_ollama_log(session)
+                summary.setdefault("offload_layers", parse_offload_layers(observed_log))
                 observed_requests = count_model_requests(observed_log)
                 summary["model_requests"] = observed_requests
                 summary.setdefault(

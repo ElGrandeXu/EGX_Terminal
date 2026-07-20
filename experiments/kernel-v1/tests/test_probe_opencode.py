@@ -517,20 +517,62 @@ class ProbeOpenCodeTests(unittest.TestCase):
         finally:
             PROBE.activate_profile()
 
-    def test_51_27b_loaded_resource_gate_requires_three_gib(self) -> None:
+    def test_51_27b_loaded_resource_gate_uses_observed_four_gib(self) -> None:
         try:
             PROBE.activate_profile("qwen3.6-27b-q4km")
             snapshot = {
-                "ram": {"available_bytes": PROBE.OLLAMA.MIN_AVAILABLE_RAM},
-                "gpu": {"available_mib": PROBE.MIN_ABSOLUTE_VRAM_MARGIN_MIB},
+                "ram": {"available_bytes": PROBE.MIN_OPENCODE_AVAILABLE_RAM_BYTES},
+                "gpu": {"available_mib": 4_096},
             }
             gate = PROBE.guard_loaded_resources(snapshot)
-            self.assertEqual("limited", gate["comfort"])
+            self.assertEqual(4_294_967_296, gate["requested_gpu_overhead_bytes"])
+            self.assertEqual(4_096, gate["observed_available_vram_mib"])
+            self.assertEqual(0, gate["vram_margin_above_minimum_mib"])
+            self.assertTrue(gate["passed"])
             snapshot["gpu"]["available_mib"] -= 1
+            failed_gate = PROBE.loaded_resource_gate(snapshot)
+            self.assertFalse(failed_gate["passed"])
+            self.assertEqual(4_095, failed_gate["observed_available_vram_mib"])
+            with self.assertRaises(PROBE.ProbeError):
+                PROBE.guard_loaded_resources(snapshot)
+            snapshot["gpu"]["available_mib"] = 4_096
+            snapshot["ram"]["available_bytes"] -= 1
             with self.assertRaises(PROBE.ProbeError):
                 PROBE.guard_loaded_resources(snapshot)
         finally:
             PROBE.activate_profile()
+
+    def test_52_opencode_child_does_not_receive_ollama_gpu_overhead(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            with tempfile.TemporaryDirectory() as name, mock.patch.dict(
+                PROBE.os.environ,
+                {"PATH": "safe", "OLLAMA_GPU_OVERHEAD": "parent-value"},
+                clear=True,
+            ):
+                parent_before = dict(PROBE.os.environ)
+                env = PROBE.isolated_environment(Path(name))
+                self.assertNotIn("OLLAMA_GPU_OVERHEAD", env)
+                self.assertEqual(parent_before, dict(PROBE.os.environ))
+        finally:
+            PROBE.activate_profile()
+
+    def test_53_plan_exposes_reserved_vram_policy(self) -> None:
+        static = {"kernel_sha256": "a", "opencode": {}, "model": "qwen3.6:27b"}
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            with mock.patch.object(PROBE, "_static_plan_checks", return_value=static):
+                plan = PROBE._plan()
+            self.assertEqual(4_294_967_296, plan["allocation_policy"]["gpu_overhead_bytes"])
+            self.assertEqual(16_384, plan["allocation_policy"]["context_length"])
+        finally:
+            PROBE.activate_profile()
+
+    def test_54_offload_layer_split_is_parsed_when_exposed(self) -> None:
+        parsed = PROBE.parse_offload_layers('msg="offloaded 58/65 layers to GPU"')
+        self.assertEqual(58, parsed["gpu_layers"])
+        self.assertEqual(7, parsed["cpu_layers"])
+        self.assertTrue(parsed["exposed"])
 
 
 if __name__ == "__main__":

@@ -104,6 +104,18 @@ le lancement d'OpenCode : zéro requête Qwen et zéro retry. Le résultat est
 **BLOCKED**, avec nettoyage complet. Détails :
 [rapport OpenCode/Qwen 27B](validation/opencode-qwen3.6-27b-smoke-1.17.9.md).
 
+## Réservation VRAM 27B
+
+Une mission séparée a ajouté au seul profil 27B une politique expérimentale de
+réservation de 4 Gio par GPU, transmise uniquement au serveur Ollama enfant par
+`OLLAMA_GPU_OVERHEAD=4294967296`. Les 122 tests et le diagnostic mock passent.
+
+Le chargement réel unique à 16 384 tokens a déplacé 10 couches sur 65 vers CPU,
+mais n'a laissé que 3 683 MiB de VRAM libre. Le gate strict de 4 096 MiB a donc
+classé le run **BLOCKED** avant OpenCode : zéro processus OpenCode, zéro requête
+Qwen et nettoyage complet. Détails :
+[rapport de réservation/offload](validation/opencode-qwen3.6-27b-offload-smoke-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -142,9 +154,9 @@ maintient le payload en LF lors des checkouts Git.
   kernel sont validés sans inférence ; le premier smoke Qwen reste un **FAIL** et
   n'a pas été retenté.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
-  VRAM observée est faible pour le 35B comme pour le 27B ; le gate 27B a bloqué
-  avant inférence et le chemin OpenAI-compatible réel reste à tester via
-  OpenCode.
+  VRAM observée est faible pour le 35B comme pour le 27B ; même la réserve 27B
+  de 4 Gio n'a laissé que 3 683 MiB libres. Les deux gates 27B ont bloqué avant
+  inférence et le chemin OpenAI-compatible réel reste à tester via OpenCode.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
 - Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.

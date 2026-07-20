@@ -1,5 +1,11 @@
 # Smoke OpenCode 1.17.9 + Ollama 0.20.2 + Qwen 3.6 27B
 
+> **Note de suivi — 2026-07-21 :** une mission séparée a testé la politique
+> autorisée `OLLAMA_GPU_OVERHEAD=4294967296`. Le chargement unique a laissé
+> 3 683 MiB de VRAM libre, sous le nouveau gate de 4 096 MiB ; OpenCode n'a pas
+> été lancé. Voir le
+> [rapport d'offload](opencode-qwen3.6-27b-offload-smoke-1.17.9.md).
+
 ## Statut et portée
 
 - **Date :** 2026-07-20
