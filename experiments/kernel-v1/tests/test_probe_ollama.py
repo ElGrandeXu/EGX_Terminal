@@ -169,7 +169,7 @@ class ProbeOllamaTests(unittest.TestCase):
                 {
                     "gpu_overhead_bytes": 4_294_967_296,
                     "gpu_overhead_gib": 4,
-                    "minimum_free_vram_mib": 4_096,
+                    "minimum_free_vram_mib": 3_072,
                     "context_length": 16_384,
                     "num_parallel": 1,
                 },
@@ -239,7 +239,7 @@ class ProbeOllamaTests(unittest.TestCase):
             PROBE.activate_profile("qwen3.6-27b-q4km")
             policy = PROBE._plan()["allocation_policy"]
             self.assertEqual(4_294_967_296, policy["gpu_overhead_bytes"])
-            self.assertEqual(4_096, policy["minimum_free_vram_mib"])
+            self.assertEqual(3_072, policy["minimum_free_vram_mib"])
         finally:
             PROBE.activate_profile()
 

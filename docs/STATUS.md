@@ -23,11 +23,14 @@
   cleanup. A separate authorized run then reserved 4 GiB per GPU through the
   owned child server only. The resulting 55/65 GPU-layer split left 3 683 MiB
   VRAM, 413 MiB below the strict 4 GiB gate, so it also blocked before OpenCode:
-  zero Qwen requests, no retry and complete cleanup. This validates profile
-  selection, loading, child-only allocation and the safety gate, not the real
-  OpenCode + Qwen path. The active root bootstrap is unchanged and no promotion
-  has occurred.
-- **Next step:** decide, without loading a model, between a smaller official
-  local candidate and a separately authorized CPU/GPU policy; do not rerun the
-  4 GiB reservation, adjust automatically to 5 or 6 GiB, start behavioral
-  evaluation or promote the kernel.
+  zero Qwen requests, no retry and complete cleanup. The measured decision now
+  keeps the 4 GiB requested reservation but uses a 3 GiB hard gate, with 4 GiB
+  retained as the comfort target. The unique final run passed that gate at
+  3 550 MiB free with the same 55/65 GPU-layer split, then failed because
+  OpenCode emitted invalid JSONL before any Qwen request. There was no retry and
+  cleanup was complete. This validates the machine-specific material margin,
+  not the real OpenCode + Qwen path. The active root bootstrap is unchanged and
+  no promotion has occurred.
+- **Next step:** do not rerun inference or promote the kernel. A separately
+  authorized mission would first need to explain the pre-provider OpenCode JSONL
+  failure without assuming the measured 3 GiB gate generalizes to other hosts.

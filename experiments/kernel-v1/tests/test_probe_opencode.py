@@ -517,25 +517,25 @@ class ProbeOpenCodeTests(unittest.TestCase):
         finally:
             PROBE.activate_profile()
 
-    def test_51_27b_loaded_resource_gate_uses_observed_four_gib(self) -> None:
+    def test_51_27b_loaded_resource_gate_uses_measured_three_gib(self) -> None:
         try:
             PROBE.activate_profile("qwen3.6-27b-q4km")
             snapshot = {
                 "ram": {"available_bytes": PROBE.MIN_OPENCODE_AVAILABLE_RAM_BYTES},
-                "gpu": {"available_mib": 4_096},
+                "gpu": {"available_mib": 3_072},
             }
             gate = PROBE.guard_loaded_resources(snapshot)
             self.assertEqual(4_294_967_296, gate["requested_gpu_overhead_bytes"])
-            self.assertEqual(4_096, gate["observed_available_vram_mib"])
+            self.assertEqual(3_072, gate["observed_available_vram_mib"])
             self.assertEqual(0, gate["vram_margin_above_minimum_mib"])
             self.assertTrue(gate["passed"])
             snapshot["gpu"]["available_mib"] -= 1
             failed_gate = PROBE.loaded_resource_gate(snapshot)
             self.assertFalse(failed_gate["passed"])
-            self.assertEqual(4_095, failed_gate["observed_available_vram_mib"])
+            self.assertEqual(3_071, failed_gate["observed_available_vram_mib"])
             with self.assertRaises(PROBE.ProbeError):
                 PROBE.guard_loaded_resources(snapshot)
-            snapshot["gpu"]["available_mib"] = 4_096
+            snapshot["gpu"]["available_mib"] = 3_072
             snapshot["ram"]["available_bytes"] -= 1
             with self.assertRaises(PROBE.ProbeError):
                 PROBE.guard_loaded_resources(snapshot)
@@ -564,6 +564,7 @@ class ProbeOpenCodeTests(unittest.TestCase):
             with mock.patch.object(PROBE, "_static_plan_checks", return_value=static):
                 plan = PROBE._plan()
             self.assertEqual(4_294_967_296, plan["allocation_policy"]["gpu_overhead_bytes"])
+            self.assertEqual(3_072, plan["allocation_policy"]["minimum_free_vram_mib"])
             self.assertEqual(16_384, plan["allocation_policy"]["context_length"])
         finally:
             PROBE.activate_profile()

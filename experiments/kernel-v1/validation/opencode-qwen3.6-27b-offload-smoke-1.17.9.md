@@ -231,3 +231,10 @@ Ne pas rejouer ce protocole inchangé et ne pas augmenter automatiquement la
 réserve. Une mission séparée, sans chargement initial, devrait décider entre un
 modèle officiel plus petit et une nouvelle politique CPU/GPU explicitement
 autorisée. Le chemin OpenCode + Qwen réel reste non validé.
+
+## 20. Suivi
+
+La décision ultérieure conserve la réservation demandée de 4 Gio mais abaisse
+le hard gate mesuré à 3 Gio. Son run unique est consigné séparément dans le
+[rapport final OpenCode/Qwen 27B](opencode-qwen3.6-27b-final-smoke-1.17.9.md),
+sans modifier le résultat `BLOCKED` du présent rapport.

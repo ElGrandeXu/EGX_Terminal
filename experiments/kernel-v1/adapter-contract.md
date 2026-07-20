@@ -134,12 +134,16 @@ tout démarrage. Le [rapport 27B](validation/opencode-qwen3.6-27b-smoke-1.17.9.m
 consigne le premier usage du registre et son arrêt matériel avant inférence.
 
 Le seul profil 27B porte désormais une politique d'allocation expérimentale
-explicite : contexte 16 384, parallélisme 1, réserve de 4 Gio par GPU et gate de
-4 096 MiB de VRAM réellement libre. La réserve est injectée uniquement dans
-l'environnement du serveur Ollama enfant ; elle n'est ni un réglage global, ni
-une règle d'adaptateur comportemental. Le
-[rapport d'offload](validation/opencode-qwen3.6-27b-offload-smoke-1.17.9.md)
-consigne son résultat `BLOCKED` avant OpenCode.
+explicite : contexte 16 384, parallélisme 1, réserve demandée de 4 Gio par GPU et
+hard gate mesuré de 3 072 MiB de VRAM réellement libre. La cible de confort
+reste 4 Gio ; une marge entre 3 et 4 Gio est « acceptable, confort limité ».
+Cette classification est propre à la machine mesurée et n'est pas une promesse
+générale. La réserve est injectée uniquement dans l'environnement du serveur
+Ollama enfant ; elle n'est ni un réglage global, ni une règle d'adaptateur
+comportemental. Le [rapport d'offload](validation/opencode-qwen3.6-27b-offload-smoke-1.17.9.md)
+consigne l'ancienne limite, et le
+[smoke final](validation/opencode-qwen3.6-27b-final-smoke-1.17.9.md) le run au
+gate mesuré.
 
 ## Risque de double chargement
 

@@ -10,7 +10,7 @@
       "gpu_overhead_gib": 4,
       "license": "Apache-2.0",
       "manifest_digest": "sha256:a50eda8ed977ab48a12431878896b27ffd5cef552c17af3317d9623b939a7f1e",
-      "minimum_free_vram_mib": 4096,
+      "minimum_free_vram_mib": 3072,
       "native_context_tokens": 262144,
       "num_parallel": 1,
       "ollama_model": "qwen3.6:27b",

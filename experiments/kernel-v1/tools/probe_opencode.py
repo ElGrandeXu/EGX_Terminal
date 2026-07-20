@@ -1262,7 +1262,7 @@ def _plan() -> dict[str, Any]:
         "protocol": [
             "refuse pre-existing Ollama or OpenCode processes and occupied port 11434",
             (
-                "reserve 4 GiB per GPU in the child server and require 4096 MiB free VRAM plus 16 GiB available RAM"
+                "reserve 4 GiB per GPU in the child server and require 3072 MiB free VRAM plus 16 GiB available RAM"
                 if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km"
                 else "require Mission 11 GPU baseline and at least 512 MiB projected residual VRAM"
             ),

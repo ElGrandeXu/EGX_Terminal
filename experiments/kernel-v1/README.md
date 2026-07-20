@@ -116,6 +116,18 @@ classé le run **BLOCKED** avant OpenCode : zéro processus OpenCode, zéro requ
 Qwen et nettoyage complet. Détails :
 [rapport de réservation/offload](validation/opencode-qwen3.6-27b-offload-smoke-1.17.9.md).
 
+## Smoke final 27B avec gate mesuré
+
+La mesure précédente a autorisé un hard gate de 3 072 MiB pour le seul profil
+27B. La réservation demandée reste 4 Gio et la cible de confort reste 4 Gio ;
+une marge entre 3 et 4 Gio est « acceptable, confort limité ». Cette politique
+mesurée ne promet rien pour d'autres machines.
+
+Le run unique a franchi le gate avec 3 550 MiB libres et 55/65 couches GPU, mais
+OpenCode a émis une première ligne non JSONL avant toute requête Qwen. Le résultat
+est donc **FAIL**, sans retry, puis avec nettoyage complet. Détails :
+[rapport final OpenCode/Qwen 27B](validation/opencode-qwen3.6-27b-final-smoke-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
