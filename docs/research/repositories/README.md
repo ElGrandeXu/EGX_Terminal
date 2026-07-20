@@ -13,3 +13,5 @@ audits are complete. Cross-repository synthesis begins only after that boundary.
    `0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0`.
 2. [ayghri/i-have-adhd](02-i-have-adhd/README.md) — audited at
    `72c33eee81ea439cf01991e93729adfce2ffc99e`.
+3. [DietrichGebert/ponytail](03-ponytail/README.md) — audited at
+   `16f29800fd2681bdf24f3eb4ccffe38be3baec6b`.
