@@ -17,3 +17,5 @@ audits are complete. Cross-repository synthesis begins only after that boundary.
    `16f29800fd2681bdf24f3eb4ccffe38be3baec6b`.
 4. [multica-ai/andrej-karpathy-skills](04-andrej-karpathy-skills/README.md) —
    audited at `2c606141936f1eeef17fa3043a72095b4765b9c2`.
+5. [TencentCloud/TencentDB-Agent-Memory](05-tencentdb-agent-memory/README.md) —
+   audited at `45e6e80ae2e63b65fad0d89f5e13171229c8f295`.
