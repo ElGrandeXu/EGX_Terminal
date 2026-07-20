@@ -3,3 +3,5 @@ model-profiles.json text eol=lf
 tools/*.py text eol=lf
 tests/*.py text eol=lf
 validation/*.md text eol=lf
+behavioral/*.md text eol=lf
+behavioral/*/*.md text eol=lf

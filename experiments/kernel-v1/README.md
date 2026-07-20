@@ -155,9 +155,24 @@ démarrages Ollama autorisés, avec deux requêtes Qwen et nettoyage complet.
 La résolution classificatoire finale ne traite plus cette non-conformité comme
 un blocage d'intégration : OpenCode → Ollama → Qwen est **PASS** pour le transport
 runtime, tandis que l'adhérence formelle exacte au canari est **FAIL** et
-l'efficacité comportementale **NOT TESTED**. Le projet est non bloqué pour
+l'efficacité comportementale était encore **NOT TESTED** à cette étape. Le projet est non bloqué pour
 poursuivre vers des tâches réelles, sans nouveau canari ni promotion. Détails :
 [synthèse de compatibilité runtime](validation/runtime-compatibility-summary.md).
+
+## Premier pilote comportemental OpenCode/Qwen
+
+Le [pilote comportemental v1](behavioral/pilot-v1/results.md) a pré-enregistré
+puis exécuté quatre cellules : deux tâches Python, chacune sans instruction
+projet puis avec le kernel généré par `sync_adapters.py`. Les quatre cellules ont
+obtenu `PASS`, avec correction causale d'une ligne, tests et acceptance réussis,
+aucun changement hors scope, travail utilisateur préservé et vérification réelle.
+
+Le pilote totalise quatre runs, 22 requêtes Qwen et zéro retry comportemental.
+Le kernel n'a produit aucun delta de réussite sur ces tâches ; son agrégat compte
+2,61 % de tokens totaux en plus et 7,54 % de latence en moins. Une seule
+observation par cellule et deux tâches simples ne permettent aucune généralisation
+statistique. Ce résultat valide l'infrastructure de mesure, pas l'efficacité
+générale, et ne promeut ni ne rejette le kernel.
 
 ## Origine conceptuelle
 
@@ -190,13 +205,16 @@ maintient le payload en LF lors des checkouts Git.
 
 ## Limites
 
-- Aucun effet comportemental n'a été validé ; ce niveau reste **NOT TESTED**.
+- Le premier pilote comportemental est exécuté, mais ses quatre observations
+  toutes réussies ne montrent aucun effet différentiel et ne valident pas une
+  efficacité générale.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
 - L'initialisation OpenCode, le transport mock, la découverte racine unique du
   kernel et le transport provider réel vers le 27B sont validés. La sortie Qwen
   sans thinking n'est pas exacte : **FAIL** d'adhérence formelle, sans invalider
-  le **PASS** de transport. L'efficacité comportementale reste **NOT TESTED**.
+  le **PASS** de transport. L'efficacité comportementale reste inconclusive après
+  le pilote v1 non répété.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible pour le 35B comme pour le 27B ; même la réserve 27B
   de 4 Gio n'a laissé que 3 683 MiB libres lors d'une campagne antérieure. La

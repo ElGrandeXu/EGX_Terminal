@@ -44,12 +44,20 @@
   OpenCode 1.17.9 distribution/discovery against the mock is **PASS**; and the
   real OpenCode → Ollama → `qwen3.6:27b` path is **PASS** for runtime transport.
   Exact canary adherence is **FAIL**, while behavioral effectiveness is
-  **NOT TESTED**. Runtime portability is validated experimentally and OpenCode +
-  Qwen is no longer **BLOCKED**. Overall compatibility is **SUPPORTED —
-  EXPERIMENTAL** and the project is not blocked from proceeding. The active root
-  bootstrap is unchanged and no kernel promotion has occurred. See the
-  [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md).
-- **Next step:** behavioral evaluation on real tasks, beginning with a
-  pre-registered pilot that compares the baseline and candidate kernel. Do not
-  rerun exact-canary inference or promote the kernel as part of that transition.
-  The measured 3 GiB gate remains host-specific.
+  no longer wholly untested: a first pre-registered OpenCode/Qwen pilot ran four
+  unique cells on two Python tasks. All four passed functional, scope,
+  preservation and verification checks, with zero false completion. Baseline and
+  kernel each used 11 requests; the kernel aggregate used 2.61% more total tokens
+  and 7.54% less latency. This is an infrastructure-validating null result with
+  one observation per cell, not evidence for promotion or rejection. Runtime
+  portability remains validated experimentally and OpenCode + Qwen is no longer
+  **BLOCKED**. Overall compatibility is **SUPPORTED — EXPERIMENTAL** and the
+  project is not blocked from proceeding. The active root bootstrap is unchanged
+  and no kernel promotion has occurred. See the
+  [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md)
+  and the [behavioral pilot](../experiments/kernel-v1/behavioral/pilot-v1/results.md).
+- **Next step:** decide whether to authorize a replicated, counterbalanced
+  behavioral pilot with several fixtures per task category and improved
+  availability tracking for token/tool fields. Do not rerun the four completed
+  cells, rerun exact-canary inference, or promote the kernel as part of that
+  transition. The measured 3 GiB gate remains host-specific.
