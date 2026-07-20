@@ -48,6 +48,17 @@ retry ni mutation. Le protocole, les tokens, les limites et la recommandation
 restreinte à Codex CLI 0.144.6 sont consignés dans le
 [rapport runtime](validation/codex-runtime-0.144.6.md).
 
+## Readiness OpenCode 1.17.9
+
+Une mission strictement sans inférence a identifié le binaire OpenCode 1.17.9,
+sa surface non interactive, ses mécanismes d'isolation connus et les runtimes
+locaux disponibles. Un modèle Ollama `qwen3.6:35b` est présent sur disque, mais
+aucun serveur local n'était actif et plusieurs propriétés de confinement restent
+à valider. La campagne runtime OpenCode est donc **BLOCKED**, sans création de
+probe. Les faits, divergences entre documentation actuelle et version installée,
+gates réseau et proposition de configuration jetable sont consignés dans le
+[rapport de readiness](validation/opencode-readiness-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -82,6 +93,8 @@ maintient le payload en LF lors des checkouts Git.
 - Aucun effet comportemental n'a été validé.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
+- La readiness OpenCode est documentée, mais aucune inférence OpenCode, session
+  runtime ou découverte par canari n'a été exécutée.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
 - Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.
