@@ -1,11 +1,11 @@
 # Status
 
-- **Phase:** isolated external repository audits; 1/5 complete.
-- **Completed:** `JuliusBrussee/caveman` at
-  `0d95a81d35a9f2d123a5e9430d1cfc43d55f1bb0`.
-- **Audit:** `docs/research/repositories/01-caveman/`.
-- **Decision:** no Caveman mechanism or doctrine adopted; audit conclusions remain
+- **Phase:** isolated external repository audits; 2/5 complete.
+- **Latest completed:** `ayghri/i-have-adhd` at
+  `72c33eee81ea439cf01991e93729adfce2ffc99e`.
+- **Audit:** `docs/research/repositories/02-i-have-adhd/`.
+- **Decision:** no mechanism or doctrine adopted; all audit conclusions remain
   isolated and provisional.
-- **Next authorized step:** audit external repository no. 2 individually.
+- **Next authorized step:** audit external repository no. 3 individually.
 
 Do not begin synthesis until all five repository audits are complete.
