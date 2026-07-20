@@ -11,6 +11,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import socket
 import subprocess
@@ -23,13 +24,10 @@ from urllib import parse as urlparse
 from urllib import request as urlrequest
 
 
-MODEL = "qwen3.6:35b"
-EXPECTED_DIGEST = "sha256:f5ee307a2982106a6eb82b62b2c00b575c9072145a759ae4660378acda8dcf2d"
 EXPECTED_OLLAMA_VERSION = "0.20.2"
 HOST = "127.0.0.1"
 PORT = 11434
 BASE_URL = f"http://{HOST}:{PORT}"
-CONTEXT_TOKENS = 16_384
 MAX_OUTPUT_TOKENS = 16
 MIN_AVAILABLE_RAM = 4 * 1024**3
 SERVER_TIMEOUT_SECONDS = 45
@@ -38,10 +36,91 @@ KEEP_ALIVE = "2m"
 PROMPT = "Reply with exactly: QWEN_LOCAL_OK"
 EXPECTED_OUTPUT = "QWEN_LOCAL_OK"
 MODEL_MEDIA_TYPE = "application/vnd.ollama.image.model"
+LICENSE_MEDIA_TYPE = "application/vnd.ollama.image.license"
+PROFILE_PATH = Path(__file__).resolve().parent.parent / "model-profiles.json"
+DEFAULT_PROFILE_ID = "qwen3.6-35b-q4km"
+REQUIRED_PROFILE_IDS = {"qwen3.6-35b-q4km", "qwen3.6-27b-q4km"}
+REQUIRED_PROFILE_FIELDS = {
+    "ollama_model",
+    "digest",
+    "manifest_digest",
+    "architecture",
+    "architecture_type",
+    "parameters_total",
+    "parameters_active",
+    "quantization",
+    "declared_size_bytes",
+    "native_context_tokens",
+    "test_context_tokens",
+    "endpoint",
+    "license",
+    "status",
+}
 
 
 class ProbeError(Exception):
     """A safety, identity, resource, or runtime condition failed."""
+
+
+def load_model_profiles(path: Path | None = None) -> dict[str, dict[str, Any]]:
+    path = path or PROFILE_PATH
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ProbeError("model profile registry is unreadable") from exc
+    if not isinstance(document, dict) or document.get("schema_version") != 1:
+        raise ProbeError("model profile registry has an unsupported schema")
+    profiles = document.get("profiles")
+    if not isinstance(profiles, dict) or set(profiles) != REQUIRED_PROFILE_IDS:
+        raise ProbeError("model profile registry must contain exactly the two fixed profiles")
+    for profile_id, profile in profiles.items():
+        if not isinstance(profile, dict) or set(profile) != REQUIRED_PROFILE_FIELDS:
+            raise ProbeError(f"model profile {profile_id} has incomplete or unknown fields")
+        if profile["endpoint"] != BASE_URL:
+            raise ProbeError(f"model profile {profile_id} is not locked to loopback")
+        if profile["test_context_tokens"] != 16_384:
+            raise ProbeError(f"model profile {profile_id} has an unexpected test context")
+        if profile["native_context_tokens"] < profile["test_context_tokens"]:
+            raise ProbeError(f"model profile {profile_id} has an invalid native context")
+        if profile["quantization"] != "Q4_K_M" or profile["status"] != "experimental":
+            raise ProbeError(f"model profile {profile_id} has unexpected fixed metadata")
+        if profile["license"] != "Apache-2.0":
+            raise ProbeError(f"model profile {profile_id} has an unexpected license")
+        for key in ("digest", "manifest_digest"):
+            value = profile[key]
+            if not isinstance(value, str) or not re.fullmatch(r"sha256:[0-9a-f]{64}", value):
+                raise ProbeError(f"model profile {profile_id} has an invalid {key}")
+        if not isinstance(profile["declared_size_bytes"], int) or profile["declared_size_bytes"] <= 0:
+            raise ProbeError(f"model profile {profile_id} has an invalid declared size")
+        dense = profile["architecture_type"] == "dense"
+        if dense and profile["parameters_active"] != profile["parameters_total"]:
+            raise ProbeError(f"dense model profile {profile_id} must activate all parameters")
+        if not isinstance(profile["parameters_active"], str) or not profile["parameters_active"]:
+            raise ProbeError(f"model profile {profile_id} must declare active parameters")
+        if dense == ("moe" in str(profile["architecture"]).lower()):
+            raise ProbeError(f"model profile {profile_id} has inconsistent architecture metadata")
+    return profiles
+
+
+def activate_profile(profile_id: str = DEFAULT_PROFILE_ID) -> dict[str, Any]:
+    global ACTIVE_PROFILE_ID, ACTIVE_PROFILE, MODEL, EXPECTED_DIGEST, CONTEXT_TOKENS
+    profiles = load_model_profiles()
+    if profile_id not in profiles:
+        raise ProbeError(f"unknown fixed model profile: {profile_id}")
+    ACTIVE_PROFILE_ID = profile_id
+    ACTIVE_PROFILE = dict(profiles[profile_id])
+    MODEL = str(ACTIVE_PROFILE["ollama_model"])
+    EXPECTED_DIGEST = str(ACTIVE_PROFILE["digest"])
+    CONTEXT_TOKENS = int(ACTIVE_PROFILE["test_context_tokens"])
+    return ACTIVE_PROFILE
+
+
+ACTIVE_PROFILE_ID = ""
+ACTIVE_PROFILE: dict[str, Any] = {}
+MODEL = ""
+EXPECTED_DIGEST = ""
+CONTEXT_TOKENS = 0
+activate_profile()
 
 
 class InferenceBudget:
@@ -116,9 +195,20 @@ def _blob_path(root: Path, digest: str) -> Path:
     return root / "blobs" / ("sha256-" + digest.removeprefix("sha256:"))
 
 
+def _manifest_path(root: Path, model: str | None = None) -> Path:
+    model = model or MODEL
+    try:
+        name, tag = model.split(":", 1)
+    except ValueError as exc:
+        raise ProbeError("model profile contains an invalid Ollama identifier") from exc
+    if name != "qwen3.6" or not tag or any(part in tag for part in ("/", "\\", "..")):
+        raise ProbeError("model profile contains an unexpected Ollama identifier")
+    return root / "manifests" / "registry.ollama.ai" / "library" / name / tag
+
+
 def validate_local_model(root: Path | None = None) -> dict[str, Any]:
     root = root or model_root()
-    manifest_path = root / "manifests" / "registry.ollama.ai" / "library" / "qwen3.6" / "35b"
+    manifest_path = _manifest_path(root)
     try:
         manifest_raw = manifest_path.read_bytes()
         manifest = json.loads(manifest_raw.decode("utf-8"))
@@ -137,6 +227,8 @@ def validate_local_model(root: Path | None = None) -> dict[str, Any]:
         raise ProbeError(
             f"model digest divergence: declared {declared_digest or '<missing>'}"
         )
+    if int(model_entries[0].get("size", -1)) != int(ACTIVE_PROFILE["declared_size_bytes"]):
+        raise ProbeError("model layer size differs from the active profile")
     blobs: list[dict[str, Any]] = []
     for entry in entries:
         digest = str(entry.get("digest", ""))
@@ -159,16 +251,42 @@ def validate_local_model(root: Path | None = None) -> dict[str, Any]:
         config = json.loads(_blob_path(root, str(config_entry["digest"])).read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, KeyError) as exc:
         raise ProbeError("local model configuration blob is unreadable") from exc
+    manifest_digest = "sha256:" + hashlib.sha256(manifest_raw).hexdigest()
+    if manifest_digest != ACTIVE_PROFILE["manifest_digest"]:
+        raise ProbeError("model manifest digest differs from the active profile")
+    expected_config = {
+        "model_format": "gguf",
+        "model_family": ACTIVE_PROFILE["architecture"],
+        "model_type": ACTIVE_PROFILE["parameters_total"],
+        "file_type": ACTIVE_PROFILE["quantization"],
+    }
+    if any(config.get(key) != value for key, value in expected_config.items()):
+        raise ProbeError("model configuration metadata differs from the active profile")
+    license_entries = [entry for entry in entries if entry.get("mediaType") == LICENSE_MEDIA_TYPE]
+    if len(license_entries) != 1:
+        raise ProbeError("the exact local model manifest has no unique license layer")
+    try:
+        license_text = _blob_path(root, str(license_entries[0]["digest"])).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError, KeyError) as exc:
+        raise ProbeError("local model license blob is unreadable") from exc
+    if not re.search(r"Apache License\s+Version 2\.0", license_text):
+        raise ProbeError("local model license is not Apache 2.0")
     return {
+        "profile": ACTIVE_PROFILE_ID,
         "model": MODEL,
         "declared_digest": declared_digest,
-        "manifest_digest": "sha256:" + hashlib.sha256(manifest_raw).hexdigest(),
+        "manifest_digest": manifest_digest,
         "model_size_bytes": int(model_entries[0]["size"]),
         "format": config.get("model_format"),
         "family": config.get("model_family"),
         "families": config.get("model_families", []),
         "parameter_size": config.get("model_type"),
         "quantization": config.get("file_type"),
+        "architecture_type": ACTIVE_PROFILE["architecture_type"],
+        "parameters_active": ACTIVE_PROFILE["parameters_active"],
+        "native_context_tokens": ACTIVE_PROFILE["native_context_tokens"],
+        "license": ACTIVE_PROFILE["license"],
+        "license_verified": True,
         "required_blobs": blobs,
         "all_required_blobs_present": True,
         "digest_recalculated": False,
@@ -178,7 +296,7 @@ def validate_local_model(root: Path | None = None) -> dict[str, Any]:
 def model_store_snapshot(root: Path | None = None) -> dict[str, tuple[int, int, str | None]]:
     """Snapshot only the fixed model manifest and blobs, without hashing the 23.9 GB layer."""
     root = root or model_root()
-    manifest_path = root / "manifests" / "registry.ollama.ai" / "library" / "qwen3.6" / "35b"
+    manifest_path = _manifest_path(root)
     try:
         raw = manifest_path.read_bytes()
         manifest = json.loads(raw.decode("utf-8"))
@@ -196,6 +314,20 @@ def model_store_snapshot(root: Path | None = None) -> dict[str, tuple[int, int, 
         digest = hashlib.sha256(path.read_bytes()).hexdigest() if index == 0 else None
         snapshot[str(index)] = (stat.st_size, stat.st_mtime_ns, digest)
     return snapshot
+
+
+def all_profile_store_snapshot(root: Path | None = None) -> dict[str, tuple[int, int, str | None]]:
+    root = root or model_root()
+    active = ACTIVE_PROFILE_ID
+    combined: dict[str, tuple[int, int, str | None]] = {}
+    try:
+        for profile_id in sorted(load_model_profiles()):
+            activate_profile(profile_id)
+            for key, value in model_store_snapshot(root).items():
+                combined[f"{profile_id}:{key}"] = value
+    finally:
+        activate_profile(active)
+    return combined
 
 
 def _port_is_free() -> bool:
@@ -457,6 +589,19 @@ def parse_show(data: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_show_for_active_profile(shown: dict[str, Any]) -> None:
+    expected = {
+        "format": "gguf",
+        "family": ACTIVE_PROFILE["architecture"],
+        "parameter_size": ACTIVE_PROFILE["parameters_total"],
+        "quantization": ACTIVE_PROFILE["quantization"],
+    }
+    if any(shown.get(key) != value for key, value in expected.items()):
+        raise ProbeError("/api/show identity differs from the active profile")
+    if shown.get("maximum_context_tokens") != ACTIVE_PROFILE["native_context_tokens"]:
+        raise ProbeError("/api/show native context differs from the active profile")
+
+
 def parse_running_models(data: dict[str, Any]) -> list[dict[str, Any]]:
     raw_models = data.get("models")
     if not isinstance(raw_models, list):
@@ -702,7 +847,7 @@ def _plan() -> dict[str, Any]:
             "validate the fixed local manifest, expected digest, and every required blob",
             "start Ollama 0.20.2 on 127.0.0.1:11434 with cloud disabled",
             "inspect /api/show and require an announced context of at least 16384",
-            "preload qwen3.6:35b without a message at exactly num_ctx=16384",
+            f"preload {MODEL} without a message at exactly num_ctx={CONTEXT_TOKENS}",
             "require /api/ps to report exactly context_length=16384 and at least 4 GiB RAM free",
             "make one non-streaming /api/chat call with think=false and num_predict=16",
             "unload explicitly, stop only owned processes, release the port, and delete temporary logs",
@@ -717,6 +862,8 @@ def _plan() -> dict[str, Any]:
             "minimum_available_ram_bytes": MIN_AVAILABLE_RAM,
         },
         "model": MODEL,
+        "profile": ACTIVE_PROFILE_ID,
+        "model_digest": EXPECTED_DIGEST,
         "endpoint": BASE_URL,
     }
 
@@ -727,12 +874,13 @@ def _run() -> dict[str, Any]:
         raise ProbeError("pre-existing Ollama server, process, or occupied port detected")
     local_identity = validate_local_model()
     root = model_root()
-    store_before = model_store_snapshot(root)
+    store_before = all_profile_store_snapshot(root)
     before = resource_snapshot()
     guard_ram(before)
     budget = InferenceBudget()
     summary: dict[str, Any] = {
         "mode": "run",
+        "profile": ACTIVE_PROFILE_ID,
         "ollama_version": EXPECTED_OLLAMA_VERSION,
         "endpoint": BASE_URL,
         "model_identity": local_identity,
@@ -757,6 +905,7 @@ def _run() -> dict[str, Any]:
             require_no_loaded_model(_api_request("/api/ps"))
             shown = parse_show(_api_request("/api/show", {"model": MODEL}, timeout=30))
             summary["api_identity"] = shown
+            validate_show_for_active_profile(shown)
             if shown["maximum_context_tokens"] is None or shown["maximum_context_tokens"] < CONTEXT_TOKENS:
                 raise ProbeError("model metadata does not announce support for 16384 tokens")
             load_started = time.monotonic()
@@ -840,7 +989,7 @@ def _run() -> dict[str, Any]:
             summary["resources_after_cleanup"] = resource_snapshot()
     temp_cleaned = not Path(temporary_name).exists()
     summary["cleanup"]["temporary_logs_removed"] = temp_cleaned
-    summary["cleanup"]["model_store_unchanged"] = store_before == model_store_snapshot(root)
+    summary["cleanup"]["model_store_unchanged"] = store_before == all_profile_store_snapshot(root)
     summary["cleanup"]["success"] = bool(summary["cleanup"].get("success") and temp_cleaned)
     summary["cleanup"]["success"] = bool(
         summary["cleanup"]["success"] and summary["cleanup"]["model_store_unchanged"]
@@ -871,8 +1020,10 @@ def sanitize_summary(value: Any) -> Any:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Validate fixed local Ollama Qwen runtime.")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("plan", help="print the fixed zero-process protocol")
+    plan = subparsers.add_parser("plan", help="print the fixed zero-process protocol")
+    plan.add_argument("--profile", choices=sorted(REQUIRED_PROFILE_IDS), default=DEFAULT_PROFILE_ID)
     run = subparsers.add_parser("run", help="perform the authorized fixed runtime probe")
+    run.add_argument("--profile", choices=sorted(REQUIRED_PROFILE_IDS), default=DEFAULT_PROFILE_ID)
     run.add_argument("--acknowledge-model-load", action="store_true")
     return parser
 
@@ -883,6 +1034,7 @@ def main(argv: list[str] | None = None) -> int:
         print("REFUSED: run requires --acknowledge-model-load", file=sys.stderr)
         return 2
     try:
+        activate_profile(args.profile)
         summary = _plan() if args.command == "plan" else _run()
     except (ProbeError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         print(f"BLOCKED: {exc}", file=sys.stderr)

@@ -32,16 +32,11 @@ EXPECTED_OPENCODE_BINARY_SHA256 = (
 )
 EXPECTED_OPENCODE_BINARY_BYTES = 165_154_696
 EXPECTED_OLLAMA_VERSION = "0.20.2"
-MODEL = "qwen3.6:35b"
-EXPECTED_DIGEST = (
-    "sha256:f5ee307a2982106a6eb82b62b2c00b575c9072145a759ae4660378acda8dcf2d"
-)
 PROVIDER = "local-ollama"
 HOST = "127.0.0.1"
 PORT = 11434
 BASE_URL = f"http://{HOST}:{PORT}"
 OPENAI_BASE_URL = BASE_URL + "/v1"
-CONTEXT_TOKENS = 16_384
 MAX_OUTPUT_TOKENS = 64
 KEEP_ALIVE = "2m"
 MODEL_LOAD_TIMEOUT_SECONDS = 600
@@ -60,6 +55,8 @@ MISSION11_BASELINE_VRAM_MIB = 1_076
 MISSION11_MODEL_DELTA_VRAM_MIB = 21_748
 MAX_BASELINE_DRIFT_MIB = 256
 MIN_PROJECTED_VRAM_MIB = 512
+MIN_ABSOLUTE_VRAM_MARGIN_MIB = 3 * 1024
+TARGET_VRAM_MARGIN_MIB = 4 * 1024
 
 PROMPT = (
     "Do not use tools or read files. Based only on project instructions already "
@@ -139,6 +136,28 @@ def _load_module(name: str) -> Any:
 
 SYNC = _load_module("sync_adapters.py")
 OLLAMA = _load_module("probe_ollama.py")
+
+DEFAULT_PROFILE_ID = OLLAMA.DEFAULT_PROFILE_ID
+REQUIRED_PROFILE_IDS = OLLAMA.REQUIRED_PROFILE_IDS
+ACTIVE_PROFILE_ID = ""
+ACTIVE_PROFILE: dict[str, Any] = {}
+MODEL = ""
+EXPECTED_DIGEST = ""
+CONTEXT_TOKENS = 0
+
+
+def activate_profile(profile_id: str = DEFAULT_PROFILE_ID) -> dict[str, Any]:
+    global ACTIVE_PROFILE_ID, ACTIVE_PROFILE, MODEL, EXPECTED_DIGEST, CONTEXT_TOKENS
+    profile = OLLAMA.activate_profile(profile_id)
+    ACTIVE_PROFILE_ID = profile_id
+    ACTIVE_PROFILE = dict(profile)
+    MODEL = str(profile["ollama_model"])
+    EXPECTED_DIGEST = str(profile["digest"])
+    CONTEXT_TOKENS = int(profile["test_context_tokens"])
+    return ACTIVE_PROFILE
+
+
+activate_profile()
 
 
 def sha256_file(path: Path) -> str:
@@ -243,12 +262,32 @@ def guard_initial_resources(snapshot: dict[str, Any]) -> dict[str, int]:
     gpu = snapshot["gpu"]
     used = int(gpu["used_mib"])
     free = int(gpu["available_mib"])
+    if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km":
+        return {
+            "baseline_delta_mib": used - MISSION11_BASELINE_VRAM_MIB,
+            "available_before_load_mib": free,
+        }
     if used > MISSION11_BASELINE_VRAM_MIB + MAX_BASELINE_DRIFT_MIB:
         raise ProbeError("initial VRAM use is materially above the Mission 11 baseline")
     projected = free - MISSION11_MODEL_DELTA_VRAM_MIB
     if projected < MIN_PROJECTED_VRAM_MIB:
         raise ProbeError("projected residual VRAM is below the fixed 512 MiB guard")
     return {"baseline_delta_mib": used - MISSION11_BASELINE_VRAM_MIB, "projected_free_mib": projected}
+
+
+def guard_loaded_resources(snapshot: dict[str, Any]) -> dict[str, Any]:
+    OLLAMA.guard_ram(snapshot)
+    free = int(snapshot["gpu"]["available_mib"])
+    if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km" and free < MIN_ABSOLUTE_VRAM_MARGIN_MIB:
+        raise ProbeError("loaded VRAM margin is below the fixed 3 GiB absolute gate")
+    return {
+        "available_vram_mib": free,
+        "absolute_minimum_mib": MIN_ABSOLUTE_VRAM_MARGIN_MIB,
+        "comfort_target_mib": TARGET_VRAM_MARGIN_MIB,
+        "comfort": "target-met" if free >= TARGET_VRAM_MARGIN_MIB else "limited",
+        "available_ram_bytes": int(snapshot["ram"]["available_bytes"]),
+        "minimum_available_ram_bytes": OLLAMA.MIN_AVAILABLE_RAM,
+    }
 
 
 def active_cuda_compute_processes() -> list[dict[str, Any]]:
@@ -296,7 +335,7 @@ def build_config(endpoint: str = OPENAI_BASE_URL, provider: str = PROVIDER) -> d
                 "options": {"baseURL": endpoint},
                 "models": {
                     MODEL: {
-                        "name": "Qwen3.6 35B Q4_K_M local",
+                        "name": f"{MODEL} Q4_K_M local",
                         "limit": {"context": CONTEXT_TOKENS, "output": MAX_OUTPUT_TOKENS},
                         "options": {"temperature": 0, "think": False},
                     }
@@ -949,6 +988,50 @@ def _owned_tcp_connections(owned_pids: set[int]) -> list[dict[str, Any]]:
     ]
 
 
+class OwnedServerConnectionMonitor:
+    """Continuously sample connections owned by the local Ollama server tree."""
+
+    def __init__(self, session: Any) -> None:
+        self.session = session
+        self.records: list[dict[str, Any]] = []
+        self.failure: BaseException | None = None
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self._run, name="egx-ollama-net-monitor", daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def _run(self) -> None:
+        try:
+            last_refresh = 0.0
+            while not self.stop_event.is_set():
+                now = time.monotonic()
+                if now - last_refresh >= 0.5:
+                    self.session.refresh_owned_children()
+                    last_refresh = now
+                self.records.extend(_owned_tcp_connections(self.session.owned_pids))
+                if evaluate_connections(self.records)["non_loopback_detected"]:
+                    self.failure = ProbeError("a non-loopback Ollama connection was observed")
+                    return
+                self.stop_event.wait(0.25)
+        except BaseException as exc:
+            self.failure = exc
+
+    def checkpoint(self) -> dict[str, Any]:
+        if self.failure is not None:
+            if isinstance(self.failure, ProbeError):
+                raise self.failure
+            raise ProbeError(f"Ollama connection monitor failed: {type(self.failure).__name__}")
+        return evaluate_connections(self.records)
+
+    def stop(self) -> dict[str, Any]:
+        self.stop_event.set()
+        self.thread.join(timeout=15)
+        if self.thread.is_alive():
+            raise ProbeError("Ollama connection monitor did not stop")
+        return self.checkpoint()
+
+
 class ConnectionMonitor:
     def __init__(self, process: subprocess.Popen[str]) -> None:
         self.process = process
@@ -1118,6 +1201,7 @@ def _static_plan_checks() -> dict[str, Any]:
     return {
         "kernel_sha256": manifest["sha256"],
         "opencode": install,
+        "profile": ACTIVE_PROFILE_ID,
         "model": MODEL,
         "model_digest": EXPECTED_DIGEST,
         "manifest_digest": identity["manifest_digest"],
@@ -1142,10 +1226,14 @@ def _plan() -> dict[str, Any]:
         "expected_output": EXPECTED_OUTPUT,
         "protocol": [
             "refuse pre-existing Ollama or OpenCode processes and occupied port 11434",
-            "require Mission 11 GPU baseline and at least 512 MiB projected residual VRAM",
+            (
+                "require at least 3 GiB measured residual VRAM after loading, with a 4 GiB comfort target"
+                if ACTIVE_PROFILE_ID == "qwen3.6-27b-q4km"
+                else "require Mission 11 GPU baseline and at least 512 MiB projected residual VRAM"
+            ),
             "generate and check the exact disposable adapter workspace",
             "start one owned loopback-only Ollama 0.20.2 server",
-            "load only qwen3.6:35b at exactly 16384 tokens",
+            f"load only {MODEL} at exactly {CONTEXT_TOKENS} tokens",
             "launch one direct OpenCode 1.17.9 inference process with no retry",
             "require exactly one /v1/chat/completions request and no tools or permissions",
             "discard raw JSONL and logs, unload, stop owned processes, and remove all temporary roots",
@@ -1163,7 +1251,7 @@ def _runtime_preflight() -> dict[str, Any]:
     resources = OLLAMA.resource_snapshot()
     gpu_guard = guard_initial_resources(resources)
     active_compute = active_cuda_compute_processes()
-    if active_compute:
+    if active_compute and ACTIVE_PROFILE_ID != "qwen3.6-27b-q4km":
         raise ProbeError("another process has active CUDA/GPU compute utilization")
     return {
         "static": static,
@@ -1179,11 +1267,12 @@ def _run() -> dict[str, Any]:
     preflight = _runtime_preflight()
     binary = _opencode_binary()
     model_root = OLLAMA.model_root()
-    store_before = OLLAMA.model_store_snapshot(model_root)
+    store_before = OLLAMA.all_profile_store_snapshot(model_root)
     repository_before = _repository_snapshot()
     budget = InferenceBudget()
     summary: dict[str, Any] = {
         "mode": "run",
+        "profile": ACTIVE_PROFILE_ID,
         "status": "BLOCKED",
         "versions": {
             "python": ".".join(str(item) for item in EXPECTED_PYTHON_VERSION),
@@ -1220,11 +1309,15 @@ def _run() -> dict[str, Any]:
         env = isolated_environment(temporary)
         validate_isolated_environment(env, temporary)
         session = OLLAMA.ServerSession(preflight["ollama_executable"], model_root, temporary)
+        server_monitor: OwnedServerConnectionMonitor | None = None
         try:
             session.start()
+            server_monitor = OwnedServerConnectionMonitor(session)
+            server_monitor.start()
             summary["server_starts"] = session.server_starts
             OLLAMA.require_no_loaded_model(OLLAMA._api_request("/api/ps"))
             shown = OLLAMA.parse_show(OLLAMA._api_request("/api/show", {"model": MODEL}, timeout=30))
+            OLLAMA.validate_show_for_active_profile(shown)
             if shown["maximum_context_tokens"] is None or shown["maximum_context_tokens"] < CONTEXT_TOKENS:
                 raise ProbeError("model metadata does not support the fixed 16384-token context")
             load_started = time.monotonic()
@@ -1252,9 +1345,11 @@ def _run() -> dict[str, Any]:
             summary["loaded_model"] = loaded
             summary["model_seen_by_ollama"] = loaded["name"]
             summary["resources_after_load"] = OLLAMA.resource_snapshot()
-            OLLAMA.guard_ram(summary["resources_after_load"])
+            summary["comfort_gate"] = guard_loaded_resources(summary["resources_after_load"])
+            server_monitor.checkpoint()
 
             call = invoke_opencode(binary, workspace, env, budget)
+            server_monitor.checkpoint()
             summary["opencode_inference_processes"] = budget.processes
             summary["opencode"] = {
                 "command": normalized_command(),
@@ -1331,6 +1426,17 @@ def _run() -> dict[str, Any]:
             except (OSError, ProbeError):
                 pass
         finally:
+            if server_monitor is not None:
+                try:
+                    summary["ollama_connections"] = server_monitor.stop()
+                except BaseException as exc:
+                    summary["ollama_connections"] = {
+                        "non_loopback_detected": True,
+                        "monitor_error": type(exc).__name__,
+                    }
+                    if failure is None:
+                        failure = exc
+                        summary["error"] = str(exc)
             if summary["workspace"]["unchanged_during_call"] is None:
                 summary["workspace"]["unchanged_during_call"] = workspace_before == snapshot_tree(workspace)
             if summary["workspace"]["static_check_after"] is None:
@@ -1349,7 +1455,7 @@ def _run() -> dict[str, Any]:
             summary["temporary_file_count"] = len(summary["temporary_files"])
     temporary_removed = not Path(temporary_name).exists()
     summary["cleanup"]["temporary_root_removed"] = temporary_removed
-    summary["cleanup"]["model_store_unchanged"] = store_before == OLLAMA.model_store_snapshot(model_root)
+    summary["cleanup"]["model_store_unchanged"] = store_before == OLLAMA.all_profile_store_snapshot(model_root)
     summary["cleanup"]["repository_unchanged"] = repository_before == _repository_snapshot()
     summary["cleanup"]["success"] = bool(
         summary["cleanup"].get("success")
@@ -1560,9 +1666,11 @@ def sanitize_summary(value: Any) -> Any:
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Diagnose or smoke-test isolated OpenCode 1.17.9.")
     subparsers = parser.add_subparsers(dest="command", required=True)
-    subparsers.add_parser("plan", help="validate the fixed zero-process protocol")
+    plan = subparsers.add_parser("plan", help="validate the fixed zero-process protocol")
+    plan.add_argument("--profile", choices=sorted(REQUIRED_PROFILE_IDS), default=DEFAULT_PROFILE_ID)
     subparsers.add_parser("diagnose", help="validate OpenCode initialization against a loopback mock")
     run = subparsers.add_parser("run", help="perform the authorized single local inference")
+    run.add_argument("--profile", choices=sorted(REQUIRED_PROFILE_IDS), default=DEFAULT_PROFILE_ID)
     run.add_argument("--acknowledge-local-inference", action="store_true")
     return parser
 
@@ -1573,6 +1681,8 @@ def main(argv: list[str] | None = None) -> int:
         print("REFUSED: run requires --acknowledge-local-inference", file=sys.stderr)
         return 2
     try:
+        if args.command in {"plan", "run"}:
+            activate_profile(args.profile)
         if args.command == "plan":
             summary = _plan()
         elif args.command == "diagnose":

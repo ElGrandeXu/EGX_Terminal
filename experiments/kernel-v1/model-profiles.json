@@ -1,0 +1,37 @@
+{
+  "profiles": {
+    "qwen3.6-27b-q4km": {
+      "architecture": "qwen35",
+      "architecture_type": "dense",
+      "declared_size_bytes": 17420420832,
+      "digest": "sha256:83c54730a5fea8a0958598c01617c1419c431e93b33bacf980b49a420c798926",
+      "endpoint": "http://127.0.0.1:11434",
+      "license": "Apache-2.0",
+      "manifest_digest": "sha256:a50eda8ed977ab48a12431878896b27ffd5cef552c17af3317d9623b939a7f1e",
+      "native_context_tokens": 262144,
+      "ollama_model": "qwen3.6:27b",
+      "parameters_active": "27.8B",
+      "parameters_total": "27.8B",
+      "quantization": "Q4_K_M",
+      "status": "experimental",
+      "test_context_tokens": 16384
+    },
+    "qwen3.6-35b-q4km": {
+      "architecture": "qwen35moe",
+      "architecture_type": "mixture-of-experts",
+      "declared_size_bytes": 23938321664,
+      "digest": "sha256:f5ee307a2982106a6eb82b62b2c00b575c9072145a759ae4660378acda8dcf2d",
+      "endpoint": "http://127.0.0.1:11434",
+      "license": "Apache-2.0",
+      "manifest_digest": "sha256:07d35212591fc27746f0a317c975a6d68754fb38e9053d82e25f06057af28522",
+      "native_context_tokens": 262144,
+      "ollama_model": "qwen3.6:35b",
+      "parameters_active": "3.0B",
+      "parameters_total": "36.0B",
+      "quantization": "Q4_K_M",
+      "status": "experimental",
+      "test_context_tokens": 16384
+    }
+  },
+  "schema_version": 1
+}

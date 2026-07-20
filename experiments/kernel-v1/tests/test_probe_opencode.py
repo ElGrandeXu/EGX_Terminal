@@ -500,6 +500,38 @@ class ProbeOpenCodeTests(unittest.TestCase):
             result = PROBE._diagnostic_preflight()
         self.assertTrue(result["port_11434_free"])
 
+    def test_50_27b_profile_builds_exact_local_configuration(self) -> None:
+        try:
+            profile = PROBE.activate_profile("qwen3.6-27b-q4km")
+            config = PROBE.build_config()
+            self.assertEqual("qwen3.6:27b", PROBE.MODEL)
+            self.assertEqual(
+                "local-ollama/qwen3.6:27b",
+                config["model"],
+            )
+            self.assertEqual(
+                16_384,
+                config["provider"][PROBE.PROVIDER]["models"][PROBE.MODEL]["limit"]["context"],
+            )
+            self.assertEqual("dense", profile["architecture_type"])
+        finally:
+            PROBE.activate_profile()
+
+    def test_51_27b_loaded_resource_gate_requires_three_gib(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            snapshot = {
+                "ram": {"available_bytes": PROBE.OLLAMA.MIN_AVAILABLE_RAM},
+                "gpu": {"available_mib": PROBE.MIN_ABSOLUTE_VRAM_MARGIN_MIB},
+            }
+            gate = PROBE.guard_loaded_resources(snapshot)
+            self.assertEqual("limited", gate["comfort"])
+            snapshot["gpu"]["available_mib"] -= 1
+            with self.assertRaises(PROBE.ProbeError):
+                PROBE.guard_loaded_resources(snapshot)
+        finally:
+            PROBE.activate_profile()
+
 
 if __name__ == "__main__":
     unittest.main()

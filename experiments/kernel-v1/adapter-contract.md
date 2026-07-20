@@ -119,6 +119,20 @@ consigne six cas jetables réussis. Il confirme la stratégie de copie pour cett
 version seulement, sans capturer le contexte système complet ni autoriser une
 promotion.
 
+## Profils runtime expérimentaux
+
+[`model-profiles.json`](model-profiles.json) sépare désormais l'identité du
+modèle des probes Ollama et OpenCode. Il contient uniquement les deux profils
+mesurés `qwen3.6-35b-q4km` et `qwen3.6-27b-q4km`, avec digests, architecture,
+paramètres, quantification, taille, contextes et endpoint loopback. Cette couche
+est une donnée de test expérimentale : elle n'ajoute aucun provider, routage,
+modèle actif ou règle comportementale au repository.
+
+Les probes gardent le 35B comme défaut historique et acceptent une sélection
+explicite par `--profile`. L'identité locale et les blobs sont vérifiés avant
+tout démarrage. Le [rapport 27B](validation/opencode-qwen3.6-27b-smoke-1.17.9.md)
+consigne le premier usage du registre et son arrêt matériel avant inférence.
+
 ## Risque de double chargement
 
 Le cas le plus net est OpenCode : sa documentation dit que `instructions` est

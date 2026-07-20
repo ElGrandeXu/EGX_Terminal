@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import importlib.util
 import io
 import json
@@ -26,7 +27,7 @@ def load_probe():
 PROBE = load_probe()
 
 
-def make_model_store(root: Path, digest: str = PROBE.EXPECTED_DIGEST) -> None:
+def make_model_store(root: Path, digest: str = PROBE.EXPECTED_DIGEST) -> str:
     config = {
         "model_format": "gguf",
         "model_family": "qwen35moe",
@@ -38,6 +39,7 @@ def make_model_store(root: Path, digest: str = PROBE.EXPECTED_DIGEST) -> None:
     config_digest = "sha256:" + "a" * 64
     model_raw = b"model"
     params_raw = b"params"
+    license_raw = b"Apache License\nVersion 2.0, January 2004\n"
     entries = [
         {
             "mediaType": "application/vnd.docker.container.image.v1+json",
@@ -54,6 +56,11 @@ def make_model_store(root: Path, digest: str = PROBE.EXPECTED_DIGEST) -> None:
             "digest": "sha256:" + "b" * 64,
             "size": len(params_raw),
         },
+        {
+            "mediaType": PROBE.LICENSE_MEDIA_TYPE,
+            "digest": "sha256:" + "c" * 64,
+            "size": len(license_raw),
+        },
     ]
     manifest = {"schemaVersion": 2, "config": entries[0], "layers": entries[1:]}
     manifest_path = root / "manifests" / "registry.ollama.ai" / "library" / "qwen3.6" / "35b"
@@ -64,6 +71,8 @@ def make_model_store(root: Path, digest: str = PROBE.EXPECTED_DIGEST) -> None:
     (blobs / ("sha256-" + "a" * 64)).write_bytes(config_raw)
     (blobs / ("sha256-" + digest.removeprefix("sha256:"))).write_bytes(model_raw)
     (blobs / ("sha256-" + "b" * 64)).write_bytes(params_raw)
+    (blobs / ("sha256-" + "c" * 64)).write_bytes(license_raw)
+    return "sha256:" + hashlib.sha256(manifest_path.read_bytes()).hexdigest()
 
 
 class ProbeOllamaTests(unittest.TestCase):
@@ -127,8 +136,12 @@ class ProbeOllamaTests(unittest.TestCase):
     def test_digest_and_all_blobs_are_validated(self) -> None:
         with tempfile.TemporaryDirectory() as name:
             root = Path(name)
-            make_model_store(root)
-            identity = PROBE.validate_local_model(root)
+            manifest_digest = make_model_store(root)
+            with mock.patch.dict(
+                PROBE.ACTIVE_PROFILE,
+                {"declared_size_bytes": len(b"model"), "manifest_digest": manifest_digest},
+            ):
+                identity = PROBE.validate_local_model(root)
             self.assertEqual(PROBE.EXPECTED_DIGEST, identity["declared_digest"])
             self.assertTrue(identity["manifest_digest"].startswith("sha256:"))
             self.assertTrue(identity["all_required_blobs_present"])
@@ -138,6 +151,25 @@ class ProbeOllamaTests(unittest.TestCase):
             make_model_store(root, "sha256:" + "c" * 64)
             with self.assertRaises(PROBE.ProbeError):
                 PROBE.validate_local_model(root)
+
+    def test_profile_registry_contains_exact_historical_and_new_profiles(self) -> None:
+        profiles = PROBE.load_model_profiles()
+        self.assertEqual(PROBE.REQUIRED_PROFILE_IDS, set(profiles))
+        self.assertEqual("qwen3.6:35b", profiles[PROBE.DEFAULT_PROFILE_ID]["ollama_model"])
+        self.assertEqual("qwen35moe", profiles[PROBE.DEFAULT_PROFILE_ID]["architecture"])
+        self.assertEqual("3.0B", profiles[PROBE.DEFAULT_PROFILE_ID]["parameters_active"])
+        self.assertEqual("qwen3.6:27b", profiles["qwen3.6-27b-q4km"]["ollama_model"])
+        self.assertEqual("dense", profiles["qwen3.6-27b-q4km"]["architecture_type"])
+
+    def test_profile_selection_preserves_historical_default(self) -> None:
+        try:
+            selected = PROBE.activate_profile("qwen3.6-27b-q4km")
+            self.assertEqual("qwen3.6:27b", PROBE.MODEL)
+            self.assertEqual(16_384, PROBE.CONTEXT_TOKENS)
+            self.assertEqual(selected["parameters_total"], selected["parameters_active"])
+        finally:
+            PROBE.activate_profile()
+        self.assertEqual("qwen3.6:35b", PROBE.MODEL)
 
     def test_only_one_inference_and_no_retry(self) -> None:
         budget = PROBE.InferenceBudget()

@@ -91,6 +91,19 @@ aucun outil et un JSONL final `MOCK_OK`, avec nettoyage complet. Cela valide
 l'initialisation et le transport OpenCode, pas Qwen. Détails et limites :
 [rapport diagnostique](validation/opencode-preflight-diagnostic-1.17.9.md).
 
+## Pivot Qwen 3.6 27B et reprise OpenCode
+
+Le modèle officiel Ollama `qwen3.6:27b` Q4_K_M est désormais installé sans
+remplacer le 35B. Un registre expérimental à deux profils permet aux probes de
+sélectionner explicitement l'un ou l'autre modèle tout en conservant le 35B par
+défaut. Les 113 tests et le diagnostic mock passent.
+
+Le chargement réel unique du 27B à 16 384 tokens a toutefois laissé seulement
+549 MiB de VRAM. Le nouveau gate absolu de 3 Gio a donc arrêté le protocole avant
+le lancement d'OpenCode : zéro requête Qwen et zéro retry. Le résultat est
+**BLOCKED**, avec nettoyage complet. Détails :
+[rapport OpenCode/Qwen 27B](validation/opencode-qwen3.6-27b-smoke-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -129,7 +142,8 @@ maintient le payload en LF lors des checkouts Git.
   kernel sont validés sans inférence ; le premier smoke Qwen reste un **FAIL** et
   n'a pas été retenté.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
-  VRAM observée est faible et le chemin OpenAI-compatible reste à tester via
+  VRAM observée est faible pour le 35B comme pour le 27B ; le gate 27B a bloqué
+  avant inférence et le chemin OpenAI-compatible réel reste à tester via
   OpenCode.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
