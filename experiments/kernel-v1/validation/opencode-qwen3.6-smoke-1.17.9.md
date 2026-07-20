@@ -111,7 +111,8 @@ construit par allowlist et fixait dans cette racine :
 
 Aucune authentification ni configuration globale n'a été copiée. La
 configuration inline fixait `autoupdate:false`, partage et snapshot désactivés,
-compaction désactivée, `subagent_depth:0`, `mcp:{}`, `plugin:[]`,
+compaction désactivée, `subagent_depth:0` — clé ultérieurement prouvée invalide
+sur 1.17.9 —, `mcp:{}`, `plugin:[]`,
 `instructions:[]` et `permission:{"*":"deny"}`. Les variables 1.17.9
 désactivaient plugins par défaut, skills externes, téléchargement LSP, fetch de
 modèles, auto-update et fallback Claude. Les endpoints OTLP étaient absents et
@@ -298,3 +299,19 @@ l'initialisation du provider avec les commandes debug locales autorisées, puis
 capturer uniquement une catégorie d'erreur expurgée et les écritures/connexions.
 Une nouvelle autorisation distincte devra être obtenue avant tout second
 `opencode run` ou appel modèle.
+
+## Diagnostic ultérieur sans inférence
+
+La mission suivante a établi la cause exacte : la configuration inline contenait
+la clé de premier niveau `subagent_depth`, rejetée par le schéma OpenCode 1.17.9
+avant l'initialisation du provider. Après son retrait et l'ajout d'un titre CLI
+fixe empêchant la génération secondaire connue, une unique exécution contre un
+provider OpenAI-compatible mock lié à `127.0.0.1` a réussi : une requête de
+génération, modèle fictif exact, kernel exact une fois, zéro outil et JSONL final
+`MOCK_OK`.
+
+Ce résultat ne change pas le verdict **FAIL** du smoke Qwen ci-dessus : aucune
+nouvelle inférence Qwen n'a été lancée. Il lève seulement le blocage
+pré-provider et rend un nouveau smoke local conditionnellement admissible dans
+une mission séparée. Voir le
+[rapport diagnostique](opencode-preflight-diagnostic-1.17.9.md).

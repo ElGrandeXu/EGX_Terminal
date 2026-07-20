@@ -8,6 +8,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
+from urllib import error, request
 
 
 REPOSITORY = Path(__file__).resolve().parents[3]
@@ -43,6 +44,35 @@ def sample_jsonl(output: str = PROBE.EXPECTED_OUTPUT, model: str = PROBE.MODEL) 
         },
     ]
     return "\n".join(json.dumps(event) for event in events)
+
+
+def sample_chat_payload(kernel_occurrences: int = 1, tools=None) -> dict:
+    payload = {
+        "model": PROBE.MOCK_MODEL,
+        "messages": [
+            {"role": "system", "content": PROBE.SYNC._load_source().decode("utf-8") * kernel_occurrences},
+            {"role": "user", "content": PROBE.PROMPT},
+        ],
+        "stream": True,
+        "temperature": 0,
+    }
+    if tools is not None:
+        payload["tools"] = tools
+    return payload
+
+
+def valid_mock_observation() -> dict:
+    generation = PROBE.inspect_chat_payload(
+        sample_chat_payload(),
+        PROBE.SYNC._load_source().decode("utf-8"),
+    )
+    return {
+        "total_requests": 1,
+        "generation_requests": 1,
+        "requests": [{"method": "POST", "route": "/v1/chat/completions", "accepted": True}],
+        "generations": [generation],
+        "raw_payload_retained": False,
+    }
 
 
 class ProbeOpenCodeTests(unittest.TestCase):
@@ -268,6 +298,207 @@ class ProbeOpenCodeTests(unittest.TestCase):
         serialized = json.dumps(sanitized)
         self.assertNotIn("private", serialized)
         self.assertEqual("ok", sanitized["final_output"])
+
+    def test_30_stderr_is_sanitized(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            raw = f"Error at {name} user={Path.home().name} token=private-value\x1b[31m"
+            sanitized = PROBE.sanitize_stderr(raw, (name,))
+        self.assertIn("<REDACTED_PATH>", sanitized)
+        self.assertIn("<REDACTED_USER>", sanitized)
+        self.assertIn("token=<REDACTED>", sanitized)
+        self.assertNotIn("private-value", sanitized)
+        self.assertNotIn("\x1b", sanitized)
+
+    def test_31_empty_stderr_is_explicit(self) -> None:
+        self.assertIsNone(PROBE.sanitize_stderr(""))
+        self.assertIsNone(PROBE.classify_stderr(""))
+
+    def test_32_native_binary_is_preferred_over_powershell_launcher(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            root = Path(name)
+            launcher = root / "opencode.ps1"
+            binary = root / "node_modules" / "opencode-ai" / "bin" / "opencode.exe"
+            binary.parent.mkdir(parents=True)
+            launcher.write_text("launcher", encoding="utf-8")
+            binary.write_bytes(b"binary")
+            with mock.patch.object(PROBE.shutil, "which", return_value=str(launcher)):
+                self.assertEqual(binary.resolve(), PROBE._opencode_binary())
+
+    def test_33_windows_minimal_environment_keeps_only_required_parent_keys(self) -> None:
+        parent = {
+            "PATH": "safe-path",
+            "SYSTEMROOT": "safe-root",
+            "WINDIR": "safe-win",
+            "COMSPEC": "safe-shell",
+            "PATHEXT": ".EXE",
+            "USERNAME": "must-not-survive",
+            "OPENAI_API_KEY": "must-not-survive",
+        }
+        with tempfile.TemporaryDirectory() as name, mock.patch.dict(PROBE.os.environ, parent, clear=True):
+            root = Path(name)
+            env = PROBE.isolated_environment(root)
+            PROBE.validate_isolated_environment(env, root)
+        for key in ("PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT"):
+            self.assertEqual(parent[key], env[key])
+        self.assertNotIn("USERNAME", env)
+        self.assertNotIn("OPENAI_API_KEY", env)
+
+    def test_34_cli_option_placement_and_fixed_title(self) -> None:
+        command = PROBE.opencode_command(Path("opencode.exe"), Path("fixture"))
+        self.assertEqual("run", command[1])
+        self.assertLess(command.index("--pure"), command.index("--dir"))
+        self.assertLess(command.index("--dir"), command.index("--model"))
+        self.assertLess(command.index("--model"), command.index("--format"))
+        self.assertLess(command.index("--format"), command.index("--title"))
+        self.assertEqual(PROBE.PROMPT, command[-1])
+        self.assertNotIn("--continue", command)
+
+    def test_35_inline_configuration_matches_v1179_schema_surface(self) -> None:
+        config = PROBE.build_config()
+        PROBE.validate_config(config)
+        self.assertNotIn("subagent_depth", config)
+        encoded = json.dumps(config, separators=(",", ":"))
+        self.assertEqual(config, json.loads(encoded))
+
+    def test_36_pure_and_inline_configuration_are_both_applied(self) -> None:
+        with tempfile.TemporaryDirectory() as name:
+            env = PROBE.isolated_environment(Path(name))
+        command = PROBE.opencode_command(Path("opencode.exe"), Path("fixture"))
+        self.assertIn("--pure", command)
+        self.assertEqual(PROBE.build_config(), json.loads(env["OPENCODE_CONFIG_CONTENT"]))
+
+    def test_37_mock_endpoint_rejects_non_loopback(self) -> None:
+        for endpoint in (
+            "http://0.0.0.0:12345/v1",
+            "http://localhost:12345/v1",
+            "https://127.0.0.1:12345/v1",
+            "http://127.0.0.1:12345/other",
+        ):
+            with self.assertRaises(PROBE.ProbeError):
+                PROBE.validate_mock_endpoint(endpoint)
+
+    def test_38_mock_server_binds_dynamic_literal_loopback(self) -> None:
+        server = PROBE.MockProviderServer(PROBE.SYNC._load_source().decode("utf-8"))
+        try:
+            server.start()
+            self.assertRegex(server.endpoint, r"^http://127\.0\.0\.1:\d+/v1$")
+        finally:
+            server.stop()
+        self.assertFalse(server.thread.is_alive())
+
+    def test_39_mock_models_endpoint(self) -> None:
+        server = PROBE.MockProviderServer(PROBE.SYNC._load_source().decode("utf-8"))
+        try:
+            server.start()
+            with request.urlopen(server.endpoint + "/models", timeout=5) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        finally:
+            server.stop()
+        self.assertEqual(PROBE.MOCK_MODEL, payload["data"][0]["id"])
+        self.assertEqual(1, server.state.summary()["total_requests"])
+
+    def test_40_mock_chat_endpoint_and_sse_response(self) -> None:
+        kernel = PROBE.SYNC._load_source().decode("utf-8")
+        server = PROBE.MockProviderServer(kernel)
+        body = json.dumps(sample_chat_payload()).encode("utf-8")
+        try:
+            server.start()
+            req = request.Request(
+                server.endpoint + "/chat/completions",
+                data=body,
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with request.urlopen(req, timeout=5) as response:
+                events = PROBE.parse_sse_json(response.read())
+        finally:
+            server.stop()
+        self.assertEqual(PROBE.MOCK_OUTPUT, events[0]["choices"][0]["delta"]["content"])
+        self.assertEqual("stop", events[-1]["choices"][0]["finish_reason"])
+        self.assertEqual(1, server.state.summary()["generation_requests"])
+
+    def test_41_mock_jsonl_response_is_parsed(self) -> None:
+        parsed = PROBE.parse_jsonl(sample_jsonl(PROBE.MOCK_OUTPUT, PROBE.MOCK_MODEL))
+        self.assertEqual(PROBE.MOCK_OUTPUT, parsed["final_output"])
+
+    def test_42_kernel_occurrence_is_counted_exactly(self) -> None:
+        kernel = PROBE.SYNC._load_source().decode("utf-8")
+        inspection = PROBE.inspect_chat_payload(sample_chat_payload(1), kernel)
+        self.assertEqual(1, inspection["kernel_occurrences"])
+        self.assertEqual(1, inspection["prompt_occurrences"])
+
+    def test_43_zero_kernel_occurrence_is_detected(self) -> None:
+        kernel = PROBE.SYNC._load_source().decode("utf-8")
+        payload = sample_chat_payload(0)
+        inspection = PROBE.inspect_chat_payload(payload, kernel)
+        self.assertEqual(0, inspection["kernel_occurrences"])
+        observed = valid_mock_observation()
+        observed["generations"][0] = inspection
+        with self.assertRaises(PROBE.ProbeError):
+            PROBE.validate_mock_observation(observed)
+
+    def test_44_duplicate_kernel_occurrence_is_detected(self) -> None:
+        kernel = PROBE.SYNC._load_source().decode("utf-8")
+        inspection = PROBE.inspect_chat_payload(sample_chat_payload(2), kernel)
+        self.assertEqual(2, inspection["kernel_occurrences"])
+        observed = valid_mock_observation()
+        observed["generations"][0] = inspection
+        with self.assertRaises(PROBE.ProbeError):
+            PROBE.validate_mock_observation(observed)
+
+    def test_45_tools_field_is_inspected(self) -> None:
+        kernel = PROBE.SYNC._load_source().decode("utf-8")
+        inspection = PROBE.inspect_chat_payload(sample_chat_payload(tools=[{"type": "function"}]), kernel)
+        self.assertTrue(inspection["tools_field_present"])
+        self.assertEqual(1, inspection["tool_count"])
+        observed = valid_mock_observation()
+        observed["generations"][0] = inspection
+        with self.assertRaises(PROBE.ProbeError):
+            PROBE.validate_mock_observation(observed)
+
+    def test_46_additional_request_is_detected(self) -> None:
+        observed = valid_mock_observation()
+        observed["total_requests"] = 2
+        observed["requests"].append({"method": "GET", "route": "/v1/models"})
+        with self.assertRaises(PROBE.ProbeError):
+            PROBE.validate_mock_observation(observed)
+
+    def test_47_mock_configuration_is_inline_and_exclusive(self) -> None:
+        endpoint = "http://127.0.0.1:12345/v1"
+        config = PROBE.build_mock_config(endpoint)
+        PROBE.validate_mock_config(config, endpoint)
+        with tempfile.TemporaryDirectory() as name:
+            env = PROBE.isolated_environment(Path(name), config, mock_endpoint=endpoint)
+        self.assertEqual(config, json.loads(env["OPENCODE_CONFIG_CONTENT"]))
+        self.assertEqual([PROBE.MOCK_PROVIDER], config["enabled_providers"])
+
+    def test_48_mock_cleanup_after_handler_error(self) -> None:
+        server = PROBE.MockProviderServer(PROBE.SYNC._load_source().decode("utf-8"))
+        try:
+            server.start()
+            req = request.Request(
+                server.endpoint + "/chat/completions",
+                data=b"not-json",
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            with self.assertRaises(error.HTTPError):
+                request.urlopen(req, timeout=5)
+        finally:
+            server.stop()
+        self.assertFalse(server.thread.is_alive())
+        self.assertEqual(0, server.state.summary()["generation_requests"])
+
+    def test_49_diagnostic_preflight_never_starts_ollama_or_a_model(self) -> None:
+        with mock.patch.object(PROBE, "validate_opencode_install", return_value={}), mock.patch.object(
+            PROBE, "opencode_processes", return_value=[]
+        ), mock.patch.object(PROBE.OLLAMA, "ollama_processes", return_value=[]), mock.patch.object(
+            PROBE.OLLAMA, "_loopback_responds", return_value=False
+        ), mock.patch.object(PROBE.OLLAMA, "_port_is_free", return_value=True), mock.patch.object(
+            PROBE.OLLAMA, "ServerSession", side_effect=AssertionError("Ollama must not start")
+        ):
+            result = PROBE._diagnostic_preflight()
+        self.assertTrue(result["port_11434_free"])
 
 
 if __name__ == "__main__":

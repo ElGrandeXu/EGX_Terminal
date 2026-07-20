@@ -80,6 +80,17 @@ transmission du kernel. Modèle, serveur, processus, port et racine temporaire o
 été intégralement nettoyés. Le protocole et les limites sont consignés dans le
 [rapport OpenCode/Qwen](validation/opencode-qwen3.6-smoke-1.17.9.md).
 
+## Diagnostic OpenCode 1.17.9 sans inférence
+
+Le défaut pré-provider a ensuite été identifié précisément : OpenCode 1.17.9
+rejetait la clé inline inconnue `subagent_depth`. Le probe corrigé expose
+désormais `diagnose`, démarre un faux provider OpenAI-compatible uniquement sur
+loopback et inspecte la requête sans conserver son payload. L'unique validation
+mock a obtenu une requête, le modèle fictif exact, le kernel exact une fois,
+aucun outil et un JSONL final `MOCK_OK`, avec nettoyage complet. Cela valide
+l'initialisation et le transport OpenCode, pas Qwen. Détails et limites :
+[rapport diagnostique](validation/opencode-preflight-diagnostic-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -114,9 +125,9 @@ maintient le payload en LF lors des checkouts Git.
 - Aucun effet comportemental n'a été validé.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
-- La readiness OpenCode est documentée, mais aucune inférence OpenCode, session
-  réussie ou découverte par canari n'a été obtenue ; le premier smoke a échoué
-  localement avant toute requête modèle.
+- L'initialisation OpenCode, le transport mock et la découverte racine unique du
+  kernel sont validés sans inférence ; le premier smoke Qwen reste un **FAIL** et
+  n'a pas été retenté.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible et le chemin OpenAI-compatible reste à tester via
   OpenCode.

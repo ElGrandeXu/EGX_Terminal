@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""Smoke-test one isolated OpenCode call against the fixed local Ollama model."""
+"""Diagnose OpenCode locally or smoke-test one isolated call against Ollama."""
 
 from __future__ import annotations
 
 import argparse
 import contextlib
 import hashlib
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import importlib.util
 import io
 import ipaddress
@@ -21,6 +22,7 @@ import tempfile
 import threading
 import time
 from typing import Any, Callable
+from urllib.parse import urlparse
 
 
 EXPECTED_PYTHON_VERSION = (3, 11, 9)
@@ -47,6 +49,13 @@ OPENCODE_TIMEOUT_SECONDS = 600
 MAX_OPENCODE_INFERENCE_PROCESSES = 1
 MAX_MODEL_REQUESTS = 1
 MAX_RETRIES = 0
+MOCK_PROVIDER = "mock-openai"
+MOCK_MODEL = "egx-mock"
+MOCK_OUTPUT = "MOCK_OK"
+MOCK_CONTEXT_TOKENS = 4_096
+MOCK_MAX_OUTPUT_TOKENS = 16
+MOCK_TIMEOUT_SECONDS = 120
+MAX_REQUEST_BODY_BYTES = 8 * 1024 * 1024
 MISSION11_BASELINE_VRAM_MIB = 1_076
 MISSION11_MODEL_DELTA_VRAM_MIB = 21_748
 MAX_BASELINE_DRIFT_MIB = 256
@@ -153,6 +162,23 @@ def validate_endpoint(url: str) -> str:
     return url
 
 
+def validate_mock_endpoint(url: str) -> str:
+    parsed = urlparse(url)
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname != HOST
+        or parsed.port is None
+        or parsed.port <= 0
+        or parsed.port > 65_535
+        or parsed.path.rstrip("/") != "/v1"
+        or parsed.params
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ProbeError("mock provider endpoint must be HTTP on literal 127.0.0.1 with a dynamic port and /v1")
+    return url
+
+
 def validate_provider_name(provider: str) -> str:
     if provider != PROVIDER:
         raise ProbeError("only the fixed local Ollama provider is permitted")
@@ -255,7 +281,6 @@ def build_config(endpoint: str = OPENAI_BASE_URL, provider: str = PROVIDER) -> d
         "autoupdate": False,
         "share": "disabled",
         "snapshot": False,
-        "subagent_depth": 0,
         "compaction": {"auto": False, "prune": False},
         "permission": {"*": "deny"},
         "mcp": {},
@@ -281,6 +306,41 @@ def build_config(endpoint: str = OPENAI_BASE_URL, provider: str = PROVIDER) -> d
     }
 
 
+def build_mock_config(endpoint: str) -> dict[str, Any]:
+    validate_mock_endpoint(endpoint)
+    model_name = f"{MOCK_PROVIDER}/{MOCK_MODEL}"
+    return {
+        "autoupdate": False,
+        "share": "disabled",
+        "snapshot": False,
+        "compaction": {"auto": False, "prune": False},
+        "permission": {"*": "deny"},
+        "mcp": {},
+        "plugin": [],
+        "instructions": [],
+        "enabled_providers": [MOCK_PROVIDER],
+        "model": model_name,
+        "small_model": model_name,
+        "provider": {
+            MOCK_PROVIDER: {
+                "npm": "@ai-sdk/openai-compatible",
+                "name": "EGX loopback mock",
+                "options": {"baseURL": endpoint},
+                "models": {
+                    MOCK_MODEL: {
+                        "name": "EGX deterministic mock",
+                        "limit": {
+                            "context": MOCK_CONTEXT_TOKENS,
+                            "output": MOCK_MAX_OUTPUT_TOKENS,
+                        },
+                        "options": {"temperature": 0},
+                    }
+                },
+            }
+        },
+    }
+
+
 def validate_config(config: dict[str, Any]) -> None:
     expected = build_config()
     if config != expected:
@@ -291,9 +351,27 @@ def validate_config(config: dict[str, Any]) -> None:
         raise ProbeError("provider allowlist is not exclusive")
 
 
-def isolated_environment(root: Path, config: dict[str, Any] | None = None) -> dict[str, str]:
+def validate_mock_config(config: dict[str, Any], endpoint: str) -> None:
+    expected = build_mock_config(endpoint)
+    if config != expected:
+        raise ProbeError("OpenCode mock configuration diverges from the fixed isolated configuration")
+    if config["permission"] != {"*": "deny"}:
+        raise ProbeError("all mock tools must be denied by default")
+    if config["enabled_providers"] != [MOCK_PROVIDER] or set(config["provider"]) != {MOCK_PROVIDER}:
+        raise ProbeError("mock provider allowlist is not exclusive")
+
+
+def isolated_environment(
+    root: Path,
+    config: dict[str, Any] | None = None,
+    *,
+    mock_endpoint: str | None = None,
+) -> dict[str, str]:
     config = config or build_config()
-    validate_config(config)
+    if mock_endpoint is None:
+        validate_config(config)
+    else:
+        validate_mock_config(config, mock_endpoint)
     dirs = {
         "HOME": root / "home",
         "USERPROFILE": root / "home",
@@ -358,6 +436,242 @@ def validate_isolated_environment(env: dict[str, str], root: Path) -> None:
         raise ProbeError("NO_PROXY must be limited to literal loopback names")
     if any(any(marker in key.upper() for marker in FORBIDDEN_INHERITED_MARKERS) for key in env if key not in {"OTEL_SDK_DISABLED"}):
         raise ProbeError("a credential or telemetry variable survived environment filtering")
+
+
+def _content_text(content: Any) -> str:
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return ""
+    parts: list[str] = []
+    for item in content:
+        if not isinstance(item, dict):
+            continue
+        for key in ("text", "content"):
+            value = item.get(key)
+            if isinstance(value, str):
+                parts.append(value)
+                break
+    return "".join(parts)
+
+
+def inspect_chat_payload(payload: Any, kernel: str, prompt: str = PROMPT) -> dict[str, Any]:
+    if not isinstance(payload, dict):
+        raise ProbeError("mock chat request body must be a JSON object")
+    messages = payload.get("messages")
+    if not isinstance(messages, list):
+        raise ProbeError("mock chat request must contain a messages array")
+
+    roles: list[str] = []
+    sizes: list[int] = []
+    hashes: list[str] = []
+    texts: list[str] = []
+    for message in messages:
+        if not isinstance(message, dict):
+            raise ProbeError("mock chat message must be a JSON object")
+        role = message.get("role")
+        roles.append(role if isinstance(role, str) else "<missing>")
+        text = _content_text(message.get("content"))
+        texts.append(text)
+        sizes.append(len(text))
+        hashes.append(hashlib.sha256(text.encode("utf-8")).hexdigest())
+
+    tools = payload.get("tools")
+    if isinstance(tools, list):
+        tool_count = len(tools)
+    elif isinstance(tools, dict):
+        tool_count = len(tools)
+    else:
+        tool_count = 0
+    generation_keys = (
+        "stream",
+        "temperature",
+        "max_tokens",
+        "max_completion_tokens",
+        "top_p",
+        "seed",
+        "stop",
+        "stream_options",
+    )
+    generation = {
+        key: payload[key]
+        for key in generation_keys
+        if key in payload and isinstance(payload[key], (str, int, float, bool, list, dict, type(None)))
+    }
+    return {
+        "model": payload.get("model") if isinstance(payload.get("model"), str) else None,
+        "message_count": len(messages),
+        "message_roles": roles,
+        "content_characters": sizes,
+        "content_sha256": hashes,
+        "kernel_detection": "exact UTF-8-decoded KERNEL.md substring across message contents",
+        "kernel_occurrences": sum(text.count(kernel) for text in texts),
+        "kernel_present": any(kernel in text for text in texts),
+        "claude_import_occurrences": sum(text.count(SYNC.CLAUDE_CONTENT.decode("utf-8")) for text in texts),
+        "prompt_occurrences": sum(text.count(prompt) for text in texts),
+        "prompt_present": any(prompt in text for text in texts),
+        "tools_field_present": "tools" in payload,
+        "tool_count": tool_count,
+        "tool_choice_present": "tool_choice" in payload,
+        "generation_options": generation,
+        "raw_payload_retained": False,
+    }
+
+
+def mock_sse_body() -> bytes:
+    chunks = [
+        {
+            "id": "chatcmpl-egx-mock",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": MOCK_MODEL,
+            "choices": [
+                {
+                    "index": 0,
+                    "delta": {"role": "assistant", "content": MOCK_OUTPUT},
+                    "finish_reason": None,
+                }
+            ],
+        },
+        {
+            "id": "chatcmpl-egx-mock",
+            "object": "chat.completion.chunk",
+            "created": 0,
+            "model": MOCK_MODEL,
+            "choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}],
+            "usage": {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+        },
+    ]
+    lines = [f"data: {json.dumps(chunk, separators=(',', ':'))}\n\n" for chunk in chunks]
+    lines.append("data: [DONE]\n\n")
+    return "".join(lines).encode("utf-8")
+
+
+def parse_sse_json(raw: bytes | str) -> list[dict[str, Any]]:
+    text = raw.decode("utf-8") if isinstance(raw, bytes) else raw
+    events: list[dict[str, Any]] = []
+    for line in text.splitlines():
+        if not line.startswith("data:"):
+            continue
+        data = line.removeprefix("data:").strip()
+        if not data or data == "[DONE]":
+            continue
+        try:
+            event = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise ProbeError("mock SSE contains invalid JSON") from exc
+        if not isinstance(event, dict):
+            raise ProbeError("mock SSE event must be a JSON object")
+        events.append(event)
+    return events
+
+
+class MockProviderState:
+    def __init__(self, kernel: str) -> None:
+        self.kernel = kernel
+        self.lock = threading.Lock()
+        self.requests: list[dict[str, Any]] = []
+        self.generations: list[dict[str, Any]] = []
+
+    def record(self, request: dict[str, Any], generation: dict[str, Any] | None = None) -> None:
+        with self.lock:
+            self.requests.append(request)
+            if generation is not None:
+                self.generations.append(generation)
+
+    def summary(self) -> dict[str, Any]:
+        with self.lock:
+            return {
+                "total_requests": len(self.requests),
+                "generation_requests": len(self.generations),
+                "requests": [dict(item) for item in self.requests],
+                "generations": [dict(item) for item in self.generations],
+                "raw_payload_retained": False,
+            }
+
+
+def _mock_handler(state: MockProviderState) -> type[BaseHTTPRequestHandler]:
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def log_message(self, format: str, *args: Any) -> None:
+            return
+
+        def _write(self, status: int, content_type: str, body: bytes) -> None:
+            self.send_response(status)
+            self.send_header("Content-Type", content_type)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Connection", "close")
+            self.end_headers()
+            self.wfile.write(body)
+            self.close_connection = True
+
+        def do_GET(self) -> None:
+            route = urlparse(self.path).path
+            state.record({"method": "GET", "route": route})
+            if route != "/v1/models":
+                self._write(404, "application/json", b'{"error":{"message":"not found"}}')
+                return
+            body = json.dumps(
+                {
+                    "object": "list",
+                    "data": [{"id": MOCK_MODEL, "object": "model", "created": 0, "owned_by": "egx"}],
+                },
+                separators=(",", ":"),
+            ).encode("utf-8")
+            self._write(200, "application/json", body)
+
+        def do_POST(self) -> None:
+            route = urlparse(self.path).path
+            try:
+                length = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                length = -1
+            if length < 0 or length > MAX_REQUEST_BODY_BYTES:
+                state.record({"method": "POST", "route": route, "accepted": False})
+                self._write(413, "application/json", b'{"error":{"message":"request too large"}}')
+                return
+            raw = self.rfile.read(length)
+            try:
+                payload = json.loads(raw.decode("utf-8"))
+                inspection = inspect_chat_payload(payload, state.kernel)
+            except (UnicodeDecodeError, json.JSONDecodeError, ProbeError):
+                state.record({"method": "POST", "route": route, "accepted": False})
+                self._write(400, "application/json", b'{"error":{"message":"invalid request"}}')
+                return
+            request = {"method": "POST", "route": route, "accepted": route == "/v1/chat/completions"}
+            state.record(request, inspection if route == "/v1/chat/completions" else None)
+            if route != "/v1/chat/completions":
+                self._write(404, "application/json", b'{"error":{"message":"not found"}}')
+                return
+            self._write(200, "text/event-stream", mock_sse_body())
+
+    return Handler
+
+
+class MockProviderServer:
+    def __init__(self, kernel: str) -> None:
+        self.state = MockProviderState(kernel)
+        self.server = ThreadingHTTPServer((HOST, 0), _mock_handler(self.state), bind_and_activate=False)
+        self.server.daemon_threads = True
+        self.server.server_bind()
+        self.server.server_activate()
+        address, port = self.server.server_address[:2]
+        if address != HOST:
+            self.server.server_close()
+            raise ProbeError("mock provider did not bind to literal loopback")
+        self.endpoint = validate_mock_endpoint(f"http://{HOST}:{port}/v1")
+        self.thread = threading.Thread(target=self.server.serve_forever, name="egx-opencode-mock", daemon=True)
+
+    def start(self) -> None:
+        self.thread.start()
+
+    def stop(self) -> None:
+        self.server.shutdown()
+        self.server.server_close()
+        self.thread.join(timeout=15)
+        if self.thread.is_alive():
+            raise ProbeError("mock provider thread did not stop")
 
 
 def _sync_write(workspace: Path) -> None:
@@ -509,21 +823,49 @@ def parse_jsonl(raw: str) -> dict[str, Any]:
     }
 
 
-def validate_parsed_events(parsed: dict[str, Any]) -> None:
+def validate_parsed_events(
+    parsed: dict[str, Any],
+    provider: str = PROVIDER,
+    model: str = MODEL,
+) -> None:
     if parsed["tool_call"]:
         raise ProbeError("OpenCode emitted a tool event")
     if parsed["permission_request"]:
         raise ProbeError("OpenCode emitted a permission event")
     if parsed["reasoning_visible"]:
         raise ProbeError("OpenCode exposed visible model reasoning")
-    if parsed["providers"] and parsed["providers"] != [PROVIDER]:
+    if parsed["providers"] and parsed["providers"] != [provider]:
         raise ProbeError("OpenCode events exposed an unexpected provider")
-    if parsed["models"] and parsed["models"] != [MODEL]:
+    if parsed["models"] and parsed["models"] != [model]:
         raise ProbeError("OpenCode events exposed an unexpected model")
 
 
 def exact_output_matches(actual: str) -> bool:
     return actual == EXPECTED_OUTPUT
+
+
+def sanitize_stderr(raw: str, roots: tuple[Path | str, ...] = ()) -> str | None:
+    if not raw:
+        return None
+    result = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", raw).replace("\r\n", "\n").replace("\r", "\n")
+    replacements = [
+        *(str(root) for root in roots),
+        str(REPOSITORY_ROOT),
+        str(Path.home()),
+    ]
+    for value in sorted({item for item in replacements if item}, key=len, reverse=True):
+        for variant in {value, value.replace("\\", "/")}:
+            result = re.sub(re.escape(variant), "<REDACTED_PATH>", result, flags=re.IGNORECASE)
+    username = Path.home().name
+    if username:
+        result = re.sub(re.escape(username), "<REDACTED_USER>", result, flags=re.IGNORECASE)
+    result = re.sub(
+        r"(?i)\b(api[_-]?key|token|secret|password|credential)(\s*[:=]\s*)([^\s,;]+)",
+        r"\1\2<REDACTED>",
+        result,
+    )
+    lines = [line.rstrip() for line in result.splitlines() if line.strip()]
+    return "\n".join(lines[-20:])
 
 
 def classify_stderr(raw: str) -> str | None:
@@ -646,14 +988,19 @@ class ConnectionMonitor:
         return evaluate_connections(self.records)
 
 
-def normalized_command() -> str:
+def normalized_command(provider: str = PROVIDER, model: str = MODEL) -> str:
     return (
         "opencode.exe run --pure --dir <temporary-workspace> "
-        f"--model {PROVIDER}/{MODEL} --format json <closed-prompt>"
+        f"--model {provider}/{model} --format json --title <fixed-title> <closed-prompt>"
     )
 
 
-def opencode_command(binary: Path, workspace: Path) -> list[str]:
+def opencode_command(
+    binary: Path,
+    workspace: Path,
+    provider: str = PROVIDER,
+    model: str = MODEL,
+) -> list[str]:
     return [
         str(binary),
         "run",
@@ -661,18 +1008,28 @@ def opencode_command(binary: Path, workspace: Path) -> list[str]:
         "--dir",
         str(workspace),
         "--model",
-        f"{PROVIDER}/{MODEL}",
+        f"{provider}/{model}",
         "--format",
         "json",
+        "--title",
+        "EGX isolated probe",
         PROMPT,
     ]
 
 
-def invoke_opencode(binary: Path, workspace: Path, env: dict[str, str], budget: InferenceBudget) -> dict[str, Any]:
+def invoke_opencode(
+    binary: Path,
+    workspace: Path,
+    env: dict[str, str],
+    budget: InferenceBudget,
+    provider: str = PROVIDER,
+    model: str = MODEL,
+    timeout_seconds: int = OPENCODE_TIMEOUT_SECONDS,
+) -> dict[str, Any]:
     budget.reserve_process()
     flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     process = subprocess.Popen(
-        opencode_command(binary, workspace),
+        opencode_command(binary, workspace, provider, model),
         cwd=workspace,
         env=env,
         stdin=subprocess.DEVNULL,
@@ -688,7 +1045,7 @@ def invoke_opencode(binary: Path, workspace: Path, env: dict[str, str], budget: 
     monitor.start()
     timed_out = False
     try:
-        stdout, stderr = process.communicate(timeout=OPENCODE_TIMEOUT_SECONDS)
+        stdout, stderr = process.communicate(timeout=timeout_seconds)
     except subprocess.TimeoutExpired:
         timed_out = True
         if process.poll() is None:
@@ -718,6 +1075,7 @@ def invoke_opencode(binary: Path, workspace: Path, env: dict[str, str], budget: 
         "connections": connections,
         "stderr_present": bool(stderr),
         "stderr_category": classify_stderr(stderr),
+        "stderr_sanitized": sanitize_stderr(stderr, (workspace.parent, workspace)),
     }
 
 
@@ -915,6 +1273,7 @@ def _run() -> dict[str, Any]:
                 "tokens": call["parsed"]["tokens"],
                 "stderr_present": call["stderr_present"],
                 "stderr_category": call["stderr_category"],
+                "stderr_sanitized": call["stderr_sanitized"],
             }
             summary["connections"] = call["connections"]
             log_text = _read_ollama_log(session)
@@ -1005,6 +1364,181 @@ def _run() -> dict[str, Any]:
     return sanitize_summary(summary)
 
 
+def validate_mock_observation(observed: dict[str, Any]) -> dict[str, Any]:
+    if observed["total_requests"] != 1:
+        raise ProbeError(f"mock observed {observed['total_requests']} total requests; exactly one is required")
+    if observed["generation_requests"] != 1:
+        raise ProbeError(
+            f"mock observed {observed['generation_requests']} generation requests; exactly one is required"
+        )
+    request = observed["requests"][0]
+    if request != {"method": "POST", "route": "/v1/chat/completions", "accepted": True}:
+        raise ProbeError("mock observed an unexpected method or route")
+    generation = observed["generations"][0]
+    if generation["model"] != MOCK_MODEL:
+        raise ProbeError("OpenCode requested an unexpected mock model")
+    if generation["kernel_occurrences"] != 1:
+        raise ProbeError(
+            f"mock observed {generation['kernel_occurrences']} exact kernel occurrences; exactly one is required"
+        )
+    if generation["prompt_occurrences"] != 1:
+        raise ProbeError("mock did not observe the closed prompt exactly once")
+    if generation["tool_count"] != 0:
+        raise ProbeError(f"mock observed {generation['tool_count']} active tools")
+    return generation
+
+
+def _diagnostic_preflight() -> dict[str, Any]:
+    if sys.version_info[:3] != EXPECTED_PYTHON_VERSION:
+        raise ProbeError("Python version differs from locked 3.11.9")
+    source = SYNC._load_source()
+    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    if hashlib.sha256(source).hexdigest() != manifest.get("sha256"):
+        raise ProbeError("kernel hash diverges from the manifest")
+    if OLLAMA.ollama_processes() or opencode_processes():
+        raise ProbeError("a pre-existing Ollama or OpenCode process was detected")
+    if OLLAMA._loopback_responds() or not OLLAMA._port_is_free():
+        raise ProbeError("port 11434 is occupied or responding during mock preflight")
+    return {
+        "kernel_sha256": manifest["sha256"],
+        "opencode": validate_opencode_install(),
+        "ollama_processes": 0,
+        "opencode_processes": 0,
+        "port_11434_free": True,
+    }
+
+
+def _diagnose() -> dict[str, Any]:
+    preflight = _diagnostic_preflight()
+    repository_before = _repository_snapshot()
+    binary = _opencode_binary()
+    budget = InferenceBudget()
+    summary: dict[str, Any] = {
+        "mode": "diagnose",
+        "status": "FAIL",
+        "preflight": preflight,
+        "protocol": {
+            "provider": MOCK_PROVIDER,
+            "model": MOCK_MODEL,
+            "response": MOCK_OUTPUT,
+            "transport": "OpenAI-compatible chat completions SSE",
+            "server_bind": "127.0.0.1:<dynamic>",
+            "model_computation": False,
+            "ollama_started": False,
+        },
+        "opencode_invocations": 0,
+        "mock_server_starts": 0,
+        "mock": None,
+        "cleanup": {
+            "mock_stopped": False,
+            "temporary_root_removed": False,
+            "repository_unchanged": False,
+            "success": False,
+        },
+    }
+    temporary_name = ""
+    failure: BaseException | None = None
+    with tempfile.TemporaryDirectory(prefix="egx-opencode-mock-") as temporary_name:
+        temporary = Path(temporary_name)
+        workspace = temporary / "workspace"
+        _sync_write(workspace)
+        workspace_evidence = validate_workspace(workspace)
+        workspace_before = snapshot_tree(workspace)
+        kernel = SYNC._load_source().decode("utf-8")
+        server = MockProviderServer(kernel)
+        config = build_mock_config(server.endpoint)
+        env = isolated_environment(temporary, config, mock_endpoint=server.endpoint)
+        validate_isolated_environment(env, temporary)
+        try:
+            server.start()
+            summary["mock_server_starts"] = 1
+            call = invoke_opencode(
+                binary,
+                workspace,
+                env,
+                budget,
+                provider=MOCK_PROVIDER,
+                model=MOCK_MODEL,
+                timeout_seconds=MOCK_TIMEOUT_SECONDS,
+            )
+            summary["opencode_invocations"] = budget.processes
+            observed = server.state.summary()
+            summary["mock"] = observed
+            generation = validate_mock_observation(observed)
+            validate_parsed_events(call["parsed"], MOCK_PROVIDER, MOCK_MODEL)
+            if call["connections"]["non_loopback_detected"]:
+                raise ProbeError("a non-loopback OpenCode connection was observed")
+            if not call["connections"]["owned_processes_gone"]:
+                raise ProbeError("an owned OpenCode process survived the mock call")
+            if call["exit_code"] != 0:
+                raise ProbeError("OpenCode returned a non-zero exit code against the mock")
+            if call["parsed"]["final_output"] != MOCK_OUTPUT:
+                raise ProbeError("OpenCode JSONL did not contain the exact mock response")
+            if workspace_before != snapshot_tree(workspace):
+                raise ProbeError("OpenCode changed the disposable generated workspace")
+            _sync_check(workspace)
+            summary["workspace"] = {
+                **workspace_evidence,
+                "unchanged_during_call": True,
+                "static_check_after": True,
+            }
+            summary["opencode"] = {
+                "command": normalized_command(MOCK_PROVIDER, MOCK_MODEL),
+                "executable": "native opencode.exe",
+                "exit_code": call["exit_code"],
+                "event_count": call["parsed"]["event_count"],
+                "final_output": call["parsed"]["final_output"],
+                "tool_call": call["parsed"]["tool_call"],
+                "permission_request": call["parsed"]["permission_request"],
+                "reasoning_visible": call["parsed"]["reasoning_visible"],
+                "providers_exposed": call["parsed"]["providers"],
+                "models_exposed": call["parsed"]["models"],
+                "stderr_present": call["stderr_present"],
+                "stderr_category": call["stderr_category"],
+                "stderr_sanitized": call["stderr_sanitized"],
+                "jsonl_raw_retained": False,
+            }
+            summary["request_validation"] = {
+                "model": generation["model"],
+                "kernel_occurrences": generation["kernel_occurrences"],
+                "prompt_occurrences": generation["prompt_occurrences"],
+                "tool_count": generation["tool_count"],
+                "tool_choice_present": generation["tool_choice_present"],
+            }
+            summary["connections"] = call["connections"]
+            summary["temporary_file_count_before_removal"] = len(list_temporary_files(temporary))
+            summary["status"] = "PASS"
+        except BaseException as exc:
+            failure = exc
+            summary["error"] = sanitize_stderr(str(exc), (temporary, workspace)) or type(exc).__name__
+            summary["opencode_invocations"] = budget.processes
+            summary["mock"] = server.state.summary()
+        finally:
+            try:
+                server.stop()
+            except BaseException as exc:
+                summary["status"] = "FAIL"
+                summary["error"] = sanitize_stderr(str(exc), (temporary, workspace)) or type(exc).__name__
+            else:
+                summary["cleanup"]["mock_stopped"] = True
+    summary["cleanup"]["temporary_root_removed"] = not Path(temporary_name).exists()
+    summary["cleanup"]["repository_unchanged"] = repository_before == _repository_snapshot()
+    summary["cleanup"]["ollama_processes_after"] = len(OLLAMA.ollama_processes())
+    summary["cleanup"]["opencode_processes_after"] = len(opencode_processes())
+    summary["cleanup"]["port_11434_free_after"] = not OLLAMA._loopback_responds() and OLLAMA._port_is_free()
+    summary["cleanup"]["success"] = bool(
+        summary["cleanup"]["mock_stopped"]
+        and summary["cleanup"]["temporary_root_removed"]
+        and summary["cleanup"]["repository_unchanged"]
+        and summary["cleanup"]["ollama_processes_after"] == 0
+        and summary["cleanup"]["opencode_processes_after"] == 0
+        and summary["cleanup"]["port_11434_free_after"]
+    )
+    if not summary["cleanup"]["success"] or failure is not None:
+        summary["status"] = "FAIL"
+    return sanitize_summary(summary)
+
+
 def sanitize_summary(value: Any) -> Any:
     forbidden_keys = ("raw", "transcript", "sessionid", "authorization", "password", "api_key", "secret")
     home = str(Path.home())
@@ -1024,9 +1558,10 @@ def sanitize_summary(value: Any) -> Any:
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Smoke-test OpenCode 1.17.9 with fixed local Qwen.")
+    parser = argparse.ArgumentParser(description="Diagnose or smoke-test isolated OpenCode 1.17.9.")
     subparsers = parser.add_subparsers(dest="command", required=True)
     subparsers.add_parser("plan", help="validate the fixed zero-process protocol")
+    subparsers.add_parser("diagnose", help="validate OpenCode initialization against a loopback mock")
     run = subparsers.add_parser("run", help="perform the authorized single local inference")
     run.add_argument("--acknowledge-local-inference", action="store_true")
     return parser
@@ -1038,12 +1573,17 @@ def main(argv: list[str] | None = None) -> int:
         print("REFUSED: run requires --acknowledge-local-inference", file=sys.stderr)
         return 2
     try:
-        summary = _plan() if args.command == "plan" else _run()
+        if args.command == "plan":
+            summary = _plan()
+        elif args.command == "diagnose":
+            summary = _diagnose()
+        else:
+            summary = _run()
     except (ProbeError, OLLAMA.ProbeError, SYNC.CheckError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
         print(f"BLOCKED: {exc}", file=sys.stderr)
         return 3
     print(json.dumps(summary, indent=2, sort_keys=True))
-    if args.command == "run" and summary["status"] != "PASS":
+    if args.command in {"run", "diagnose"} and summary["status"] != "PASS":
         return 4
     return 0
 

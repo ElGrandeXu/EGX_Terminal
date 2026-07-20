@@ -256,7 +256,8 @@ Le futur enfant doit cumuler :
 - `OPENCODE_DISABLE_LSP_DOWNLOAD=1` ;
 - `permission: { "*": "deny" }` dans la configuration inline ;
 - `OPENCODE_PERMISSION={"*":"deny"}` comme dernière surcharge connue du tag ;
-- `subagent_depth: 0`, `mcp: {}` et `snapshot: false` ;
+- `mcp: {}` et `snapshot: false` ;
+- un titre CLI fixe pour éviter la génération secondaire automatique ;
 - absence de `--dangerously-skip-permissions` ;
 - arrêt de campagne au premier événement tool/permission ou à la première
   mutation de fixture.
@@ -379,7 +380,6 @@ Illustration seulement, non écrite ni exécutée pendant cette mission :
   "autoupdate": false,
   "share": "disabled",
   "snapshot": false,
-  "subagent_depth": 0,
   "compaction": {
     "auto": false,
     "prune": false
@@ -589,3 +589,12 @@ le modèle exact a été chargé à 16 384 tokens, l'unique réponse attendue a 
 obtenue, puis modèle, serveur et enfants ont été nettoyés. La campagne OpenCode
 reste non exécutée ; ses autres gates d'isolation, de provider, de stockage et
 de découverte demeurent applicables.
+
+## 23. Mise à jour diagnostique ultérieure
+
+Le [diagnostic pré-provider](opencode-preflight-diagnostic-1.17.9.md) a ensuite
+prouvé que `subagent_depth` était une clé inline inconnue sur 1.17.9. Après son
+retrait, une exécution sans inférence contre un mock loopback a validé
+l'initialisation, le transport, une occurrence exacte du kernel et zéro outil.
+Les constats historiques de readiness ci-dessus restent datés de leur mission ;
+le smoke OpenCode + Qwen réel n'a pas encore été retenté.
