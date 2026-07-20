@@ -128,6 +128,24 @@ OpenCode a émis une première ligne non JSONL avant toute requête Qwen. Le ré
 est donc **FAIL**, sans retry, puis avec nettoyage complet. Détails :
 [rapport final OpenCode/Qwen 27B](validation/opencode-qwen3.6-27b-final-smoke-1.17.9.md).
 
+## Résolution OpenCode/Qwen 27B
+
+La mission de résolution a capturé la ligne invalide en octets et établi qu'elle
+était un log d'erreur OpenCode sur stdout, non un JSONL corrompu. Le probe avait
+figé `qwen3.6:35b` dans des paramètres Python par défaut alors que le profil actif
+et la configuration déclaraient le 27B. La résolution tardive du modèle corrige
+ce défaut et les runs suivants ont atteint une fois le provider local avec
+OpenCode exit 0.
+
+Une seconde correction remplace l'option inefficace `think:false` par le contrat
+OpenAI-compatible officiel `reasoningEffort:"none"`, observé sur le fil mock
+comme `reasoning_effort:"none"`. La génération réelle suivante a bien rendu du
+texte sans reasoning, mais pas la réponse exacte : elle a omis la ponctuation et
+dépassé huit mots. Le statut terminal reste donc **BLOCKED** après les trois
+démarrages Ollama autorisés, avec deux requêtes Qwen et nettoyage complet. Le
+[rapport de résolution](validation/opencode-qwen3.6-27b-resolution.md) sépare les
+preuves, causes, correctifs et limites.
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -163,12 +181,14 @@ maintient le payload en LF lors des checkouts Git.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
 - L'initialisation OpenCode, le transport mock et la découverte racine unique du
-  kernel sont validés sans inférence ; le premier smoke Qwen reste un **FAIL** et
-  n'a pas été retenté.
+  kernel sont validés. Le chemin provider réel atteint désormais le 27B avec une
+  requête et exit 0, mais la sortie Qwen sans thinking n'est pas exacte ; le PASS
+  comportemental reste non démontré.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible pour le 35B comme pour le 27B ; même la réserve 27B
-  de 4 Gio n'a laissé que 3 683 MiB libres. Les deux gates 27B ont bloqué avant
-  inférence et le chemin OpenAI-compatible réel reste à tester via OpenCode.
+  de 4 Gio n'a laissé que 3 683 MiB libres lors d'une campagne antérieure. La
+  mission de résolution a ensuite maintenu entre 3 588 et 3 648 MiB pendant les
+  appels et validé le transport OpenAI-compatible, sans généraliser cette marge.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
 - Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.

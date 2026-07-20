@@ -145,6 +145,17 @@ consigne l'ancienne limite, et le
 [smoke final](validation/opencode-qwen3.6-27b-final-smoke-1.17.9.md) le run au
 gate mesuré.
 
+La [mission de résolution](validation/opencode-qwen3.6-27b-resolution.md) prouve
+ensuite deux défauts d'intégration du probe, sans modifier le contrat d'adaptateur
+ni le profil matériel : le modèle 35B restait capturé dans des paramètres Python
+par défaut après activation du 27B, puis `think:false` ne suivait pas le contrat
+OpenAI-compatible Ollama. Le probe résout maintenant le modèle actif à l'appel et
+transmet `reasoningEffort:"none"`, observé par le mock comme
+`reasoning_effort:"none"`. OpenCode atteint réellement le 27B avec exit 0 et une
+requête unique, mais le modèle ne produit pas encore la chaîne exacte exigée.
+Cette preuve valide transport, unicité mock du kernel et suppression du thinking ;
+elle ne promeut pas l'adaptateur et ne valide pas l'adhérence comportementale.
+
 ## Risque de double chargement
 
 Le cas le plus net est OpenCode : sa documentation dit que `instructions` est

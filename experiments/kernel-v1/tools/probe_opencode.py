@@ -100,6 +100,15 @@ class ProbeError(Exception):
     """A fixed safety, isolation, identity, or runtime condition failed."""
 
 
+class OpenCodeJSONLError(ProbeError):
+    """OpenCode stdout was not strict JSONL; bounded diagnostics remain available."""
+
+    def __init__(self, message: str, diagnostic: dict[str, Any], parsed: dict[str, Any]) -> None:
+        super().__init__(message)
+        self.diagnostic = diagnostic
+        self.parsed = parsed
+
+
 class InferenceBudget:
     """A one-process, one-request budget without a retry path."""
 
@@ -356,7 +365,7 @@ def build_config(endpoint: str = OPENAI_BASE_URL, provider: str = PROVIDER) -> d
                     MODEL: {
                         "name": f"{MODEL} Q4_K_M local",
                         "limit": {"context": CONTEXT_TOKENS, "output": MAX_OUTPUT_TOKENS},
-                        "options": {"temperature": 0, "think": False},
+                        "options": {"temperature": 0, "reasoningEffort": "none"},
                     }
                 },
             }
@@ -391,7 +400,7 @@ def build_mock_config(endpoint: str) -> dict[str, Any]:
                             "context": MOCK_CONTEXT_TOKENS,
                             "output": MOCK_MAX_OUTPUT_TOKENS,
                         },
-                        "options": {"temperature": 0},
+                        "options": {"temperature": 0, "reasoningEffort": "none"},
                     }
                 },
             }
@@ -550,6 +559,7 @@ def inspect_chat_payload(payload: Any, kernel: str, prompt: str = PROMPT) -> dic
         "seed",
         "stop",
         "stream_options",
+        "reasoning_effort",
     )
     generation = {
         key: payload[key]
@@ -802,19 +812,81 @@ def list_temporary_files(root: Path) -> list[str]:
     return sorted(path.relative_to(root).as_posix() for path in root.rglob("*") if path.is_file())
 
 
-def parse_jsonl(raw: str) -> dict[str, Any]:
-    events: list[dict[str, Any]] = []
-    for number, line in enumerate(raw.splitlines(), 1):
-        if not line.strip():
-            continue
-        try:
-            event = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise ProbeError(f"invalid OpenCode JSONL at line {number}") from exc
-        if not isinstance(event, dict):
-            raise ProbeError(f"OpenCode JSONL event {number} is not an object")
-        events.append(event)
+UTF8_BOM = b"\xef\xbb\xbf"
+ANSI_BYTES_RE = re.compile(rb"\x1b\[[0-?]*[ -/]*[@-~]")
+MAX_SANITIZED_LINE_CHARACTERS = 512
 
+
+def _line_endings(raw: bytes) -> dict[str, int]:
+    crlf = raw.count(b"\r\n")
+    return {
+        "crlf": crlf,
+        "lf": raw.count(b"\n") - crlf,
+        "cr": raw.count(b"\r") - crlf,
+    }
+
+
+def _split_line_bytes(line: bytes) -> tuple[bytes, str]:
+    if line.endswith(b"\r\n"):
+        return line[:-2], "CRLF"
+    if line.endswith(b"\n"):
+        return line[:-1], "LF"
+    if line.endswith(b"\r"):
+        return line[:-1], "CR"
+    return line, "none"
+
+
+def _stream_encoding(raw: bytes) -> str:
+    try:
+        raw.removeprefix(UTF8_BOM).decode("utf-8", errors="strict")
+    except UnicodeDecodeError:
+        return "invalid-utf-8"
+    return "utf-8-bom" if raw.startswith(UTF8_BOM) else "utf-8"
+
+
+def _parse_jsonl_line(content: bytes, *, first_line: bool) -> tuple[dict[str, Any] | None, list[str]]:
+    normalizations: list[str] = []
+    if first_line and content.startswith(UTF8_BOM):
+        content = content[len(UTF8_BOM) :]
+        normalizations.append("utf-8-bom")
+    text = content.decode("utf-8", errors="strict")
+    if not text.strip():
+        return None, [*normalizations, "blank-line"]
+    if ANSI_BYTES_RE.search(content):
+        stripped = content
+        while True:
+            match = ANSI_BYTES_RE.match(stripped)
+            if match is None:
+                break
+            stripped = stripped[match.end() :]
+        while True:
+            matches = list(ANSI_BYTES_RE.finditer(stripped))
+            if not matches or matches[-1].end() != len(stripped):
+                break
+            stripped = stripped[: matches[-1].start()]
+        if stripped != content and ANSI_BYTES_RE.search(stripped) is None:
+            text = stripped.decode("utf-8", errors="strict")
+            normalizations.append("ansi-wrapped-json")
+    event = json.loads(text)
+    if not isinstance(event, dict):
+        raise TypeError("JSONL event is not an object")
+    return event, normalizations
+
+
+def _valid_json_lines_after(lines: list[bytes], invalid_index: int) -> int:
+    valid = 0
+    for index, line in enumerate(lines[invalid_index + 1 :], invalid_index + 1):
+        content, _ = _split_line_bytes(line)
+        try:
+            event, _normalizations = _parse_jsonl_line(content, first_line=index == 0)
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+            continue
+        if event is not None:
+            valid += 1
+    return valid
+
+
+def _summarize_jsonl_events(events: list[dict[str, Any]]) -> dict[str, Any]:
     text_parts: list[str] = []
     tool_events: list[str] = []
     permission_events: list[str] = []
@@ -822,6 +894,7 @@ def parse_jsonl(raw: str) -> dict[str, Any]:
     providers: set[str] = set()
     models: set[str] = set()
     tokens: dict[str, int] | None = None
+    finish_reasons: set[str] = set()
 
     def walk(value: Any) -> None:
         nonlocal reasoning_visible, tokens
@@ -860,6 +933,10 @@ def parse_jsonl(raw: str) -> dict[str, Any]:
         event_type = str(event.get("type", "")).lower()
         part = event.get("part")
         part_type = str(part.get("type", "")).lower() if isinstance(part, dict) else ""
+        if part_type == "step-finish" and isinstance(part, dict):
+            reason = part.get("reason", part.get("finishReason"))
+            if isinstance(reason, str) and reason:
+                finish_reasons.add(reason)
         if event_type == "text" and isinstance(part, dict) and part_type == "text":
             if isinstance(part.get("text"), str):
                 text_parts.append(part["text"])
@@ -878,14 +955,102 @@ def parse_jsonl(raw: str) -> dict[str, Any]:
         "providers": sorted(providers),
         "models": sorted(models),
         "tokens": tokens,
+        "finish_reasons": sorted(finish_reasons),
     }
+
+
+def _invalid_jsonl_diagnostic(
+    raw: bytes,
+    lines: list[bytes],
+    index: int,
+    byte_offset: int,
+    content: bytes,
+    ending: str,
+    valid_before: int,
+    exc: BaseException,
+    *,
+    channel: str,
+) -> dict[str, Any]:
+    replacement_used = isinstance(exc, UnicodeDecodeError)
+    display = content.decode("utf-8", errors="replace")
+    sanitized = sanitize_stderr(display) or ""
+    sanitized = sanitized[:MAX_SANITIZED_LINE_CHARACTERS]
+    ansi_count = len(ANSI_BYTES_RE.findall(content))
+    column = exc.colno if isinstance(exc, json.JSONDecodeError) else None
+    invalid_byte = exc.start if isinstance(exc, UnicodeDecodeError) else None
+    return {
+        "channel": channel,
+        "stream_size_bytes": len(raw),
+        "stream_bom_present": raw.startswith(UTF8_BOM),
+        "detected_encoding": _stream_encoding(raw),
+        "line_endings": _line_endings(raw),
+        "line_number": index + 1,
+        "byte_offset_zero_based": byte_offset,
+        "line_size_bytes": len(content),
+        "line_ending": ending,
+        "first_bytes_hex": content[:32].hex(),
+        "line_bom_present": content.startswith(UTF8_BOM),
+        "ansi_present": bool(ansi_count),
+        "ansi_sequence_count": ansi_count,
+        "sanitized_text": sanitized,
+        "invalid_character_replaced_in_sanitized_text": replacement_used,
+        "invalid_utf8_byte_offset_in_line": invalid_byte,
+        "json_error_column_one_based": column,
+        "valid_json_lines_before": valid_before,
+        "valid_json_lines_after": _valid_json_lines_after(lines, index),
+        "raw_retained": False,
+    }
+
+
+def parse_jsonl(raw: bytes | str, *, channel: str = "stdout") -> dict[str, Any]:
+    raw_bytes = raw.encode("utf-8") if isinstance(raw, str) else raw
+    lines = raw_bytes.splitlines(keepends=True)
+    events: list[dict[str, Any]] = []
+    normalizations: list[str] = []
+    byte_offset = 0
+    for index, line in enumerate(lines):
+        content, ending = _split_line_bytes(line)
+        try:
+            event, line_normalizations = _parse_jsonl_line(content, first_line=index == 0)
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
+            diagnostic = _invalid_jsonl_diagnostic(
+                raw_bytes,
+                lines,
+                index,
+                byte_offset,
+                content,
+                ending,
+                len(events),
+                exc,
+                channel=channel,
+            )
+            message = f"invalid OpenCode JSONL on {channel} at line {index + 1}"
+            raise OpenCodeJSONLError(message, diagnostic, _summarize_jsonl_events(events)) from exc
+        normalizations.extend(line_normalizations)
+        if event is not None:
+            events.append(event)
+        byte_offset += len(line)
+    parsed = _summarize_jsonl_events(events)
+    parsed["jsonl"] = {
+        "channel": channel,
+        "stream_size_bytes": len(raw_bytes),
+        "detected_encoding": _stream_encoding(raw_bytes),
+        "bom_present": raw_bytes.startswith(UTF8_BOM),
+        "line_endings": _line_endings(raw_bytes),
+        "ansi_sequence_count": len(ANSI_BYTES_RE.findall(raw_bytes)),
+        "blank_line_count": normalizations.count("blank-line"),
+        "benign_normalizations": sorted(set(normalizations) - {"blank-line"}),
+        "raw_retained": False,
+    }
+    return parsed
 
 
 def validate_parsed_events(
     parsed: dict[str, Any],
     provider: str = PROVIDER,
-    model: str = MODEL,
+    model: str | None = None,
 ) -> None:
+    model = model or MODEL
     if parsed["tool_call"]:
         raise ProbeError("OpenCode emitted a tool event")
     if parsed["permission_request"]:
@@ -1052,7 +1217,7 @@ class OwnedServerConnectionMonitor:
 
 
 class ConnectionMonitor:
-    def __init__(self, process: subprocess.Popen[str]) -> None:
+    def __init__(self, process: subprocess.Popen[bytes]) -> None:
         self.process = process
         self.owned_pids = {process.pid}
         self.records: list[dict[str, Any]] = []
@@ -1090,7 +1255,8 @@ class ConnectionMonitor:
         return evaluate_connections(self.records)
 
 
-def normalized_command(provider: str = PROVIDER, model: str = MODEL) -> str:
+def normalized_command(provider: str = PROVIDER, model: str | None = None) -> str:
+    model = model or MODEL
     return (
         "opencode.exe run --pure --dir <temporary-workspace> "
         f"--model {provider}/{model} --format json --title <fixed-title> <closed-prompt>"
@@ -1101,8 +1267,9 @@ def opencode_command(
     binary: Path,
     workspace: Path,
     provider: str = PROVIDER,
-    model: str = MODEL,
+    model: str | None = None,
 ) -> list[str]:
+    model = model or MODEL
     return [
         str(binary),
         "run",
@@ -1125,9 +1292,10 @@ def invoke_opencode(
     env: dict[str, str],
     budget: InferenceBudget,
     provider: str = PROVIDER,
-    model: str = MODEL,
+    model: str | None = None,
     timeout_seconds: int = OPENCODE_TIMEOUT_SECONDS,
 ) -> dict[str, Any]:
+    model = model or MODEL
     budget.reserve_process()
     flags = subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0
     process = subprocess.Popen(
@@ -1137,9 +1305,6 @@ def invoke_opencode(
         stdin=subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
         creationflags=flags,
     )
     monitor = ConnectionMonitor(process)
@@ -1169,15 +1334,45 @@ def invoke_opencode(
     elapsed = time.monotonic() - started
     if timed_out:
         raise ProbeError("the single OpenCode call timed out; no retry is permitted")
-    parsed = parse_jsonl(stdout)
+    parse_error = None
+    try:
+        parsed = parse_jsonl(stdout, channel="stdout")
+    except OpenCodeJSONLError as exc:
+        parsed = exc.parsed
+        parse_error = {
+            "message": str(exc),
+            "first_invalid_line": exc.diagnostic,
+        }
+    stderr_text = stderr.decode("utf-8", errors="replace")
     return {
         "exit_code": process.returncode,
         "wall_seconds": elapsed,
         "parsed": parsed,
+        "parse_error": parse_error,
         "connections": connections,
         "stderr_present": bool(stderr),
-        "stderr_category": classify_stderr(stderr),
-        "stderr_sanitized": sanitize_stderr(stderr, (workspace.parent, workspace)),
+        "stderr_category": classify_stderr(stderr_text),
+        "stderr_sanitized": sanitize_stderr(stderr_text, (workspace.parent, workspace)),
+        "stdout_capture": {
+            "channel": "stdout",
+            "size_bytes": len(stdout),
+            "detected_encoding": _stream_encoding(stdout),
+            "bom_present": stdout.startswith(UTF8_BOM),
+            "line_endings": _line_endings(stdout),
+            "ansi_sequence_count": len(ANSI_BYTES_RE.findall(stdout)),
+            "raw_retained": False,
+        },
+        "stderr_capture": {
+            "channel": "stderr",
+            "size_bytes": len(stderr),
+            "detected_encoding": _stream_encoding(stderr),
+            "bom_present": stderr.startswith(UTF8_BOM),
+            "line_endings": _line_endings(stderr),
+            "ansi_sequence_count": len(ANSI_BYTES_RE.findall(stderr)),
+            "sanitized_text": sanitize_stderr(stderr_text, (workspace.parent, workspace)),
+            "invalid_character_replaced_in_sanitized_text": _stream_encoding(stderr) == "invalid-utf-8",
+            "raw_retained": False,
+        },
     }
 
 
@@ -1416,14 +1611,23 @@ def _run() -> dict[str, Any]:
                 "providers_exposed": call["parsed"]["providers"],
                 "models_exposed": call["parsed"]["models"],
                 "tokens": call["parsed"]["tokens"],
+                "finish_reasons": call["parsed"]["finish_reasons"],
+                "jsonl": call["parsed"].get("jsonl"),
+                "parse_error": call["parse_error"],
+                "stdout_capture": call["stdout_capture"],
                 "stderr_present": call["stderr_present"],
                 "stderr_category": call["stderr_category"],
                 "stderr_sanitized": call["stderr_sanitized"],
+                "stderr_capture": call["stderr_capture"],
             }
             summary["connections"] = call["connections"]
             log_text = _read_ollama_log(session)
             request_count = count_model_requests(log_text)
             summary["model_requests"] = request_count
+            if call["parse_error"] is not None:
+                budget.requests_recorded = True
+                budget.requests = request_count
+                raise ProbeError(call["parse_error"]["message"])
             budget.record_requests(request_count)
             endpoint_latency = parse_ollama_request_latency(log_text)
             summary["ollama_request"] = {
@@ -1542,6 +1746,8 @@ def validate_mock_observation(observed: dict[str, Any]) -> dict[str, Any]:
         raise ProbeError("mock did not observe the closed prompt exactly once")
     if generation["tool_count"] != 0:
         raise ProbeError(f"mock observed {generation['tool_count']} active tools")
+    if generation["generation_options"].get("reasoning_effort") != "none":
+        raise ProbeError("mock did not observe reasoning_effort none")
     return generation
 
 
@@ -1621,6 +1827,8 @@ def _diagnose() -> dict[str, Any]:
             summary["opencode_invocations"] = budget.processes
             observed = server.state.summary()
             summary["mock"] = observed
+            if call["parse_error"] is not None:
+                raise ProbeError(call["parse_error"]["message"])
             generation = validate_mock_observation(observed)
             validate_parsed_events(call["parsed"], MOCK_PROVIDER, MOCK_MODEL)
             if call["connections"]["non_loopback_detected"]:
@@ -1650,9 +1858,14 @@ def _diagnose() -> dict[str, Any]:
                 "reasoning_visible": call["parsed"]["reasoning_visible"],
                 "providers_exposed": call["parsed"]["providers"],
                 "models_exposed": call["parsed"]["models"],
+                "finish_reasons": call["parsed"]["finish_reasons"],
+                "jsonl": call["parsed"].get("jsonl"),
+                "parse_error": call["parse_error"],
+                "stdout_capture": call["stdout_capture"],
                 "stderr_present": call["stderr_present"],
                 "stderr_category": call["stderr_category"],
                 "stderr_sanitized": call["stderr_sanitized"],
+                "stderr_capture": call["stderr_capture"],
                 "jsonl_raw_retained": False,
             }
             summary["request_validation"] = {

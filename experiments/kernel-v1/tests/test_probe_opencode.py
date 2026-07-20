@@ -55,6 +55,7 @@ def sample_chat_payload(kernel_occurrences: int = 1, tools=None) -> dict:
         ],
         "stream": True,
         "temperature": 0,
+        "reasoning_effort": "none",
     }
     if tools is not None:
         payload["tools"] = tools
@@ -574,6 +575,143 @@ class ProbeOpenCodeTests(unittest.TestCase):
         self.assertEqual(58, parsed["gpu_layers"])
         self.assertEqual(7, parsed["cpu_layers"])
         self.assertTrue(parsed["exposed"])
+
+    def test_55_jsonl_utf8_bom_is_precisely_normalized(self) -> None:
+        parsed = PROBE.parse_jsonl(PROBE.UTF8_BOM + sample_jsonl().encode("utf-8"))
+        self.assertEqual("utf-8-bom", parsed["jsonl"]["detected_encoding"])
+        self.assertEqual(["utf-8-bom"], parsed["jsonl"]["benign_normalizations"])
+
+    def test_56_jsonl_spaces_and_blank_lines_are_benign(self) -> None:
+        raw = b"  \n\t\n  " + json.dumps({"type": "text", "text": "ok"}).encode() + b"  \n"
+        parsed = PROBE.parse_jsonl(raw)
+        self.assertEqual("ok", parsed["final_output"])
+        self.assertEqual(2, parsed["jsonl"]["blank_line_count"])
+
+    def test_57_jsonl_crlf_is_recorded_without_relaxing_json(self) -> None:
+        parsed = PROBE.parse_jsonl(sample_jsonl().replace("\n", "\r\n").encode())
+        self.assertEqual(2, parsed["jsonl"]["line_endings"]["crlf"])
+        self.assertEqual(3, parsed["event_count"])
+
+    def test_58_only_ansi_wrapping_json_is_benign(self) -> None:
+        event = json.dumps({"type": "text", "text": "ok"}).encode()
+        parsed = PROBE.parse_jsonl(b"\x1b[32m" + event + b"\x1b[0m\n")
+        self.assertEqual("ok", parsed["final_output"])
+        self.assertEqual(["ansi-wrapped-json"], parsed["jsonl"]["benign_normalizations"])
+        embedded = b'{"type":"text","text":"\x1b[31mbad"}'
+        with self.assertRaises(PROBE.OpenCodeJSONLError):
+            PROBE.parse_jsonl(embedded)
+
+    def test_59_text_warning_is_not_silently_ignored(self) -> None:
+        with self.assertRaises(PROBE.OpenCodeJSONLError) as raised:
+            PROBE.parse_jsonl(b"warning: provider fallback\n")
+        self.assertEqual("stdout", raised.exception.diagnostic["channel"])
+        self.assertIn("warning", raised.exception.diagnostic["sanitized_text"])
+
+    def test_60_json_preceded_by_log_is_rejected(self) -> None:
+        event = json.dumps({"type": "text", "text": "ok"}).encode()
+        with self.assertRaises(PROBE.OpenCodeJSONLError):
+            PROBE.parse_jsonl(b"debug: initialized " + event + b"\n")
+
+    def test_61_fragmented_json_is_rejected(self) -> None:
+        with self.assertRaises(PROBE.OpenCodeJSONLError) as raised:
+            PROBE.parse_jsonl(b'{"type":"text",\n"text":"ok"}\n')
+        self.assertEqual(1, raised.exception.diagnostic["line_number"])
+        self.assertEqual(0, raised.exception.diagnostic["valid_json_lines_before"])
+
+    def test_62_multiple_json_objects_require_one_object_per_line(self) -> None:
+        first = json.dumps({"type": "text", "text": "a"}).encode()
+        second = json.dumps({"type": "text", "text": "b"}).encode()
+        parsed = PROBE.parse_jsonl(first + b"\n" + second + b"\n")
+        self.assertEqual("ab", parsed["final_output"])
+        with self.assertRaises(PROBE.OpenCodeJSONLError):
+            PROBE.parse_jsonl(first + second)
+
+    def test_63_invalid_utf8_is_not_replaced_before_validation(self) -> None:
+        with self.assertRaises(PROBE.OpenCodeJSONLError) as raised:
+            PROBE.parse_jsonl(b'{"type":"text","text":"\xff"}\n')
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual("invalid-utf-8", diagnostic["detected_encoding"])
+        self.assertTrue(diagnostic["invalid_character_replaced_in_sanitized_text"])
+        self.assertEqual(23, diagnostic["invalid_utf8_byte_offset_in_line"])
+
+    def test_64_empty_stdout_is_explicit_and_has_zero_events(self) -> None:
+        parsed = PROBE.parse_jsonl(b"")
+        self.assertEqual(0, parsed["event_count"])
+        self.assertEqual(0, parsed["jsonl"]["stream_size_bytes"])
+        self.assertEqual({"crlf": 0, "lf": 0, "cr": 0}, parsed["jsonl"]["line_endings"])
+
+    def test_65_invalid_line_keeps_partial_events_and_counts_valid_after(self) -> None:
+        valid = json.dumps({"type": "text", "text": "kept"}).encode()
+        raw = valid + b"\r\nwarning\r\n" + valid + b"\r\n"
+        with self.assertRaises(PROBE.OpenCodeJSONLError) as raised:
+            PROBE.parse_jsonl(raw)
+        self.assertEqual("kept", raised.exception.parsed["final_output"])
+        diagnostic = raised.exception.diagnostic
+        self.assertEqual(1, diagnostic["valid_json_lines_before"])
+        self.assertEqual(1, diagnostic["valid_json_lines_after"])
+        self.assertEqual(len(valid) + 2, diagnostic["byte_offset_zero_based"])
+        self.assertEqual("CRLF", diagnostic["line_ending"])
+
+    def test_66_invoke_keeps_stdout_stderr_exit_and_connections_on_parse_failure(self) -> None:
+        class FakeProcess:
+            pid = 4321
+            returncode = 7
+
+            def communicate(self, timeout=None):
+                return b"warning text\r\n", b"provider stderr\r\n"
+
+        class FakeMonitor:
+            def __init__(self, process):
+                self.owned_pids = {process.pid}
+
+            def start(self):
+                return None
+
+            def stop(self):
+                return {
+                    "loopback": [],
+                    "non_loopback": [],
+                    "non_loopback_detected": False,
+                }
+
+        with mock.patch.object(PROBE.subprocess, "Popen", return_value=FakeProcess()), mock.patch.object(
+            PROBE, "ConnectionMonitor", FakeMonitor
+        ), mock.patch.object(PROBE.OLLAMA, "_pid_exists", return_value=False):
+            call = PROBE.invoke_opencode(
+                Path("opencode.exe"), Path("workspace"), {}, PROBE.InferenceBudget()
+            )
+        self.assertEqual(7, call["exit_code"])
+        self.assertEqual(14, call["stdout_capture"]["size_bytes"])
+        self.assertEqual("stdout", call["parse_error"]["first_invalid_line"]["channel"])
+        self.assertEqual("stderr", call["stderr_capture"]["channel"])
+        self.assertEqual("provider stderr", call["stderr_sanitized"])
+        self.assertTrue(call["connections"]["owned_processes_gone"])
+
+    def test_67_stdout_and_stderr_decoding_are_independent(self) -> None:
+        parsed = PROBE.parse_jsonl(json.dumps({"type": "text", "text": "ok"}).encode())
+        self.assertEqual("ok", parsed["final_output"])
+        self.assertEqual("invalid-utf-8", PROBE._stream_encoding(b"stderr \xff"))
+
+    def test_68_active_profile_is_resolved_when_command_is_built(self) -> None:
+        try:
+            PROBE.activate_profile("qwen3.6-27b-q4km")
+            config = PROBE.build_config()
+            command = PROBE.opencode_command(Path("opencode.exe"), Path("workspace"))
+            self.assertEqual(config["model"], command[command.index("--model") + 1])
+            self.assertIn("local-ollama/qwen3.6:27b", PROBE.normalized_command())
+            self.assertNotIn("qwen3.6:35b", PROBE.normalized_command())
+            parsed = PROBE.parse_jsonl(sample_jsonl(model="qwen3.6:27b"))
+            PROBE.validate_parsed_events(parsed)
+        finally:
+            PROBE.activate_profile()
+
+    def test_69_openai_compatible_thinking_is_disabled_with_official_field(self) -> None:
+        config = PROBE.build_config()
+        options = config["provider"][PROBE.PROVIDER]["models"][PROBE.MODEL]["options"]
+        self.assertEqual({"temperature": 0, "reasoningEffort": "none"}, options)
+        self.assertNotIn("think", options)
+        generation = PROBE.validate_mock_observation(valid_mock_observation())
+        self.assertEqual("none", generation["generation_options"]["reasoning_effort"])
 
 
 if __name__ == "__main__":

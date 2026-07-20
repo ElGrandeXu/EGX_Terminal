@@ -27,10 +27,20 @@
   keeps the 4 GiB requested reservation but uses a 3 GiB hard gate, with 4 GiB
   retained as the comfort target. The unique final run passed that gate at
   3 550 MiB free with the same 55/65 GPU-layer split, then failed because
-  OpenCode emitted invalid JSONL before any Qwen request. There was no retry and
-  cleanup was complete. This validates the machine-specific material margin,
-  not the real OpenCode + Qwen path. The active root bootstrap is unchanged and
-  no promotion has occurred.
-- **Next step:** do not rerun inference or promote the kernel. A separately
-  authorized mission would first need to explain the pre-provider OpenCode JSONL
-  failure without assuming the measured 3 GiB gate generalizes to other hosts.
+  OpenCode emitted invalid JSONL before any Qwen request. Mission 18 instrumented
+  the binary streams and proved that line was an OpenCode error log caused by a
+  stale Python default: the active configuration declared the 27B while the CLI
+  still requested the 35B. Resolving the model at call time made the real provider
+  path succeed with OpenCode exit 0 and one Qwen request. A second run then spent
+  its 64-token output budget before visible text because `think:false` did not
+  follow Ollama's OpenAI-compatible contract. Replacing it with
+  `reasoningEffort:"none"`, validated on the mock as `reasoning_effort:"none"`,
+  produced real text with zero reasoning. That text still omitted punctuation and
+  exceeded the requested eight words, so the terminal result is **BLOCKED**, not
+  PASS, after the authorized maximum of three Ollama starts and two Qwen requests.
+  Cleanup was complete throughout. The active root bootstrap is unchanged and no
+  promotion has occurred.
+- **Next step:** do not rerun inference or promote the kernel without a new
+  authorization. The provider integration is repaired; remaining work is a
+  bounded, non-prompt-changing investigation of Qwen output control with a new
+  Ollama-start and inference budget. The measured 3 GiB gate remains host-specific.
