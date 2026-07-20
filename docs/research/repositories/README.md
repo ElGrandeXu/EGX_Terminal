@@ -15,3 +15,5 @@ audits are complete. Cross-repository synthesis begins only after that boundary.
    `72c33eee81ea439cf01991e93729adfce2ffc99e`.
 3. [DietrichGebert/ponytail](03-ponytail/README.md) — audited at
    `16f29800fd2681bdf24f3eb4ccffe38be3baec6b`.
+4. [multica-ai/andrej-karpathy-skills](04-andrej-karpathy-skills/README.md) —
+   audited at `2c606141936f1eeef17fa3043a72095b4765b9c2`.

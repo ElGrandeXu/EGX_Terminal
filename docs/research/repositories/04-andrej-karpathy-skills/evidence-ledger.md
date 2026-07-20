@@ -1,0 +1,93 @@
+# Evidence ledger
+
+## Légende
+
+- **Snapshot confirmé** : observation directe du commit épinglé.
+- **Source primaire externe confirmée** : documentation officielle, objet Git ou métadonnée du service directement accessible.
+- **Plausible non mesuré** : mécanisme raisonnable mais sans résultat expérimental pertinent.
+- **Corrigé/contredit** : l'histoire ou une source primaire invalide la revendication telle quelle.
+- **Non démontré** : claim formulé, preuve insuffisante.
+- **Invérifiable** : source nécessaire inaccessible ou incomplète.
+
+La confiance porte sur la qualification de l'audit, pas sur l'efficacité future. Chaque ligne distingue fait et implication ; une implication est une inférence sauf si elle est elle-même documentée.
+
+## Snapshot, histoire et provenance
+
+| Claim | Source exacte | Statut | Confiance | Contradiction/limite | Implication pour EGX_Terminal |
+|---|---|---|---|---|---|
+| `main` audité est `2c606141…` | [commit](https://github.com/multica-ai/andrej-karpathy-skills/commit/2c606141936f1eeef17fa3043a72095b4765b9c2) et `refs/heads/main` résolu le 2026-07-20 | Source primaire externe confirmée | Haute | Snapshot susceptible d'évoluer après la date | Toute conclusion est bornée à ce SHA |
+| Le snapshot a 9 fichiers, tous textuels | Arbre Git du [snapshot](https://github.com/multica-ai/andrej-karpathy-skills/tree/2c606141936f1eeef17fa3043a72095b4765b9c2), `git ls-files`, inspection des blobs | Snapshot confirmé | Haute | Aucun | Petit dépôt : inspection exhaustive possible |
+| L'historique accessible comprend 30 commits, dont 28 sur `main` | `git rev-list --all`, clone complet ; [historique](https://github.com/multica-ai/andrej-karpathy-skills/commits/2c606141936f1eeef17fa3043a72095b4765b9c2/) | Source primaire externe confirmée | Haute | Historique réécrit ou refs supprimés antérieurement inconnus | Les 30 objets accessibles ont été inspectés |
+| 5 branches, 0 tag, 0 release | refs Git et [releases](https://github.com/multica-ai/andrej-karpathy-skills/releases) au 2026-07-20 | Source primaire externe confirmée | Haute | Branches supprimées inconnues | Pas de version publiée stable à citer |
+| 147 PR : 96 ouvertes, 12 fusionnées, 39 fermées sans fusion | [recherche PR](https://github.com/multica-ai/andrej-karpathy-skills/pulls?q=is%3Apr) et GraphQL GitHub au 2026-07-20 | Source primaire externe confirmée | Haute | État temporel | Les propositions ouvertes ne sont pas `main` |
+| Aucune issue n'est accessible et Issues est désactivé | [repository](https://github.com/multica-ai/andrej-karpathy-skills), API GitHub (`has_issues: false`), recherche 0 | Source primaire externe confirmée | Haute pour l'état actuel | Des PR citent d'anciens numéros répondant désormais 404 | Le contenu de ces issues reste inconnu |
+| Le lien initial `188619…` pointe vers le « vibe coding » | [commit initial](https://github.com/multica-ai/andrej-karpathy-skills/commit/8462496b34419f20b32778610571ac723e91f94c), [publication X](https://x.com/karpathy/status/1886192184808149383), oEmbed X | Corrigé/contredit | Haute sur auteur/date/début | Pas la source des quatre notes | Le premier état avait une provenance erronée |
+| Le lien actuel `201588…` est une publication de Karpathy sur Claude coding | [publication X](https://x.com/karpathy/status/2015883857489522876), oEmbed X, [PR #1](https://github.com/multica-ai/andrej-karpathy-skills/pull/1) | Source primaire externe confirmée | Haute sur identité/date/sujet | Le corps complet n'est pas exposé de façon fiable | Citer la source, qualifier les comparaisons textuelles |
+| Le commit `bf5837f` a corrigé le lien | [commit](https://github.com/multica-ai/andrej-karpathy-skills/commit/bf5837f278a8a7b4bff8bce6bc2414a75faa34f7) | Snapshot/histoire confirmé | Haute | Aucun | Pivot de provenance traçable |
+| Les « quotes » README sont exactes verbatim | [README épinglé](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md), publication X actuelle | Corrigé/contredit | Moyenne-haute | Copies indexées montrent retraits/raccords ; source primaire complète inaccessible | Les traiter comme extraits condensés/composites, pas texte à copier |
+| `Goal-Driven Execution` est un principe nommé par Karpathy | [publication X](https://x.com/karpathy/status/2015883857489522876), [commit initial](https://github.com/multica-ai/andrej-karpathy-skills/commit/8462496b34419f20b32778610571ac723e91f94c) | Corrigé/contredit | Haute | La source porte l'idée impératif→déclaratif, pas ce label ni cette procédure exacte | Conserver l'idée générale, attribuer la synthèse au dépôt |
+| Les quatre principes sont co-rédigés avec Claude Opus 4.5 | Trailers du [commit initial](https://github.com/multica-ai/andrej-karpathy-skills/commit/8462496b34419f20b32778610571ac723e91f94c) et de [#2](https://github.com/multica-ai/andrej-karpathy-skills/pull/2) | Source primaire externe confirmée | Haute sur la déclaration | Proportion de génération inconnue ; trailer auto-déclaré | Ne pas attribuer tout le texte à Karpathy ou aux mainteneurs seuls |
+| Dix commits déclarent un co-auteur Claude | `git log --all --grep='Co-Authored-By: Claude'` ; neuf Opus 4.5, un Haiku 4.5 | Source primaire externe confirmée | Haute | N'établit pas le processus effectif | Provenance multi-auteur/LLM à documenter |
+| Le nom signifie un projet de Karpathy ou approuvé par lui | README et historique des auteurs/contributeurs | Non démontré | Haute | Aucun commit, compte ou endorsement de Karpathy trouvé | Branding en quarantaine |
+| Le repository est passé de `forrestchang` à `multica-ai` | [repository actuel](https://github.com/multica-ai/andrej-karpathy-skills), [PR #189](https://github.com/multica-ai/andrej-karpathy-skills/pull/189) | Source primaire externe confirmée | Haute sur l'état actuel | Date/conditions exactes non établies ; anciennes URLs redirigent | Utiliser URL actuelle dans les citations, garder l'inconnu historique |
+
+## Comportement et efficacité
+
+| Claim | Source exacte | Statut | Confiance | Contradiction/limite | Implication pour EGX_Terminal |
+|---|---|---|---|---|---|
+| Le snapshot contient exactement quatre principes | [`CLAUDE.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/CLAUDE.md) et [`SKILL.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/skills/karpathy-guidelines/SKILL.md) | Snapshot confirmé | Haute | PR ouvertes proposent des extensions mais ne changent pas `main` | Auditer ce noyau, pas l'écosystème de PR comme doctrine active |
+| Think Before Coding réduit les mauvaises hypothèses | README, publication X actuelle | Plausible non mesuré | Moyenne | Aucun taux avant/après ; peut provoquer des clarifications inutiles | Tester un seuil de matérialité |
+| Une doctrine saine doit afficher la chaîne de pensée privée | Formulation du dépôt « state assumptions/reasoning » | Corrigé/contredit comme exigence doctrinale | Haute | Une synthèse utile suffit ; le raisonnement détaillé n'est ni nécessaire ni souhaitable | Demander décisions/hypothèses/compromis observables, pas le raisonnement interne |
+| Simplicity First diminue nécessairement la complexité | [`CLAUDE.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/CLAUDE.md) | Plausible non mesuré | Haute | Moins de lignes peut déplacer la dette ; « impossible » peut être supposé à tort | Qualifier par correction et complexité essentielle |
+| Surgical Changes réduit le bruit du diff | README et principe | Plausible non mesuré | Moyenne-haute | Peut bloquer migration ou correctif transversal nécessaire | Employer « périmètre causal nécessaire » |
+| Chaque ligne modifiée doit remonter à la demande | [`CLAUDE.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/CLAUDE.md) | Snapshot confirmé comme règle, non démontré comme universel | Haute | Generated files, lockfiles, migrations et prérequis sont causalement indirects | En faire un audit causal, pas une interdiction textuelle |
+| Goal-Driven Execution réduit les faux achèvements | Principe, README | Plausible non mesuré | Moyenne | Test/build/scénario ne sont pas équivalents ; boucle et proxy gaming possibles | Critère observable, proportionné, indépendant et borné |
+| « Fewer unnecessary changes », etc. sont des résultats | [README](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md) | Corrigé/contredit | Haute | La section les présente comme indicateurs à observer, sans données | Ne pas les convertir en preuve |
+| Le dépôt possède tests, benchmark ou enforcement sur `main` | Arbre du [snapshot](https://github.com/multica-ai/andrej-karpathy-skills/tree/2c606141936f1eeef17fa3043a72095b4765b9c2) | Corrigé/contredit | Haute | Aucun ; #54/#186 sont des PR ouvertes | Efficacité du snapshot non établie |
+| #25 améliore la découvrabilité de 84 à 96 | [PR #25](https://github.com/multica-ai/andrej-karpathy-skills/pull/25), `scores.json`, `score_card.png` | Non démontré | Haute | Pas de protocole, données brutes, version, corpus ou reproduction ; auteur lié à l'outil | Séparer détection de skill et efficacité du payload |
+| #186 observe un gain sur son microbenchmark | [PR #186](https://github.com/multica-ai/andrej-karpathy-skills/pull/186) et artefacts JSON de sa branche | Confirmé comme résultat déclaré dans une PR | Haute sur les fichiers, basse sur généralisation | 3 tâches, graders étroits, pas d'agent terminal ; doctrine réécrite ; pas `main` | Signal pour concevoir une vraie étude, pas preuve d'adoption |
+| La popularité GitHub prouve l'efficacité | Métadonnées du repository | Non démontré | Haute | Popularité/distribution ≠ résultat comportemental | Exclure étoiles, forks et témoignages des critères causaux |
+| La boucle compacte est fidèle et suffisante | Analyse des quatre textes | Plausible non mesuré | Moyenne | Perd compromis, correction, causalité, proportion/arrêt | Tester une version qualifiée, avec ablations |
+
+## Livraison et portabilité
+
+| Claim | Source exacte | Statut | Confiance | Contradiction/limite | Implication pour EGX_Terminal |
+|---|---|---|---|---|---|
+| `CLAUDE.md` copié à la racine est automatically loaded | [docs Claude plugins](https://code.claude.com/docs/en/plugins) et instructions du [README](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md) | Source primaire externe confirmée | Haute | Un `CLAUDE.md` à la racine d'un plugin n'est pas automatiquement le même mécanisme | Distinguer instruction projet et composant plugin |
+| Le SKILL complet est toujours injecté | [skills Claude](https://code.claude.com/docs/en/slash-commands), [`SKILL.md`](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/skills/karpathy-guidelines/SKILL.md) | Corrigé/contredit | Haute | Métadonnées d'abord, corps à la demande/sélection | Le coût courant est metadata + activation conditionnelle |
+| Ajouter la marketplace installe le plugin | [marketplaces Claude](https://code.claude.com/docs/en/plugin-marketplaces), [PR #18](https://github.com/multica-ai/andrej-karpathy-skills/pull/18) | Corrigé/contredit | Haute | Ajout et installation sont deux étapes | Documenter découverte, installation et activation séparément |
+| Le manifeste Claude a été correct du premier coup | [#13](https://github.com/multica-ai/andrej-karpathy-skills/pull/13), [#15](https://github.com/multica-ai/andrej-karpathy-skills/pull/15), [#17](https://github.com/multica-ai/andrej-karpathy-skills/pull/17), [#18](https://github.com/multica-ai/andrej-karpathy-skills/pull/18) | Corrigé/contredit | Haute | Quatre PR ont réparé propriétaire, emplacement, marketplace, chemin et schéma | Les adaptateurs doivent être testés par version |
+| Les commandes `/plugin` du README courant suivent le flux marketplace puis installation | [README](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md), [docs Claude](https://code.claude.com/docs/en/plugins), [PR #18](https://github.com/multica-ai/andrej-karpathy-skills/pull/18) | Source primaire externe confirmée | Haute | Les commandes antérieures `claude plugins`, le repo mal orthographié et plusieurs manifests étaient cassés ; #41 proposait aussi la CLI singulière | Vérifier chaque commande et version, distinguer CLI et commande interactive |
+| Le champ `skills` du manifeste est nécessaire | [référence Claude](https://code.claude.com/docs/en/plugins-reference), [PR #136](https://github.com/multica-ai/andrej-karpathy-skills/pull/136) | Corrigé/contredit ou redondant | Moyenne-haute | Il ajoute au scan par défaut de `skills/` et peut doubler l'enregistrement | Préférer conventions natives et manifestes minimaux |
+| Cursor `alwaysApply: true` charge toujours la règle | [règles Cursor](https://docs.cursor.com/context/rules), [fichier épinglé](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/.cursor/rules/karpathy-guidelines.mdc) | Source primaire externe confirmée | Haute | Portée exacte dépend des surfaces/versions Cursor | Taxe de contexte systématique à mesurer |
+| README/CURSOR/EXAMPLES sont chargés runtime | Arbre et références du snapshot | Non démontré | Haute | Aucun include/référence de chargement | Exclure du coût runtime normal |
+| Il existe une source canonique générant les copies | Fichiers et [README développement](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md) | Corrigé/contredit | Haute | Synchronisation manuelle demandée ; divergences présentes | Risque de drift ; futur design à source neutre |
+| `main` supporte nativement Codex | Arbre du snapshot | Corrigé/contredit | Haute | Aucun `AGENTS.md`, `.agents/skills` ou plugin Codex | #97 reste proposition séparée |
+| #97 emploie des mécanismes Codex valides | [PR #97](https://github.com/multica-ai/andrej-karpathy-skills/pull/97), [AGENTS.md Codex](https://learn.chatgpt.com/docs/agent-configuration/agents-md), [skills Codex](https://learn.chatgpt.com/docs/build-skills) | Source primaire externe confirmée dans le principe | Haute | 1 257 lignes, neuf fichiers, duplications ; non fusionnée | Idée d'adaptateur instructive, implémentation non mince |
+| `main` supporte nativement OpenCode/Qwen | Arbre du snapshot | Corrigé/contredit | Haute | Aucun adaptateur OpenCode | Ne pas revendiquer cette portabilité |
+| #96 est l'adaptateur OpenCode requis | [PR #96](https://github.com/multica-ai/andrej-karpathy-skills/pull/96), [skills](https://opencode.ai/docs/skills), [plugins](https://opencode.ai/docs/plugins) OpenCode | Non démontré | Haute | Hook expérimental absent des événements documentés ; skill native `.agents/skills` disponible | Rejeter injection automatique/exécutable non épinglée comme défaut |
+| OpenCode peut utiliser des modèles locaux/Qwen | [providers OpenCode](https://opencode.ai/docs/providers), [models](https://opencode.ai/docs/models) | Source primaire externe confirmée | Haute | Ne prouve aucune efficacité de ces guidelines | Inclure Qwen dans une future matrice, pas dans les claims actuels |
+
+## Tokens, licence et attribution
+
+| Claim | Source exacte | Statut | Confiance | Contradiction/limite | Implication pour EGX_Terminal |
+|---|---|---|---|---|---|
+| Un payload comportemental vaut environ 600–675 tokens | Tailles des blobs épinglés ; approximation caractères/4 documentée dans [token-economics.md](token-economics.md) | Plausible, mesure approximative | Haute sur caractères, moyenne sur tokens | Aucun tokenizer fiable utilisé ; enveloppe harness absente | Suffisamment petit pour essai, pas gratuit en always-on |
+| Le repository économise globalement des tokens | Aucun benchmark de session complète sur `main` | Non démontré | Haute | Verbalisation/outils peuvent annuler code et reprises évités | Mesurer sessions complètes et succès, pas prompt seul |
+| Le repository est sous une licence MIT complète | [arbre](https://github.com/multica-ai/andrej-karpathy-skills/tree/2c606141936f1eeef17fa3043a72095b4765b9c2), [README](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/README.md), [SKILL](https://github.com/multica-ai/andrej-karpathy-skills/blob/2c606141936f1eeef17fa3043a72095b4765b9c2/skills/karpathy-guidelines/SKILL.md) | Corrigé/contredit | Haute | Marqueurs MIT, mais aucun texte `LICENSE` ni titulaire | Aucune copie textuelle avant clarification |
+| #47 ou #156 résout la licence du snapshot | [PR #47](https://github.com/multica-ai/andrej-karpathy-skills/pull/47), [PR #156](https://github.com/multica-ai/andrej-karpathy-skills/pull/156) | Corrigé/contredit | Haute | #47 fermée sans fusion et son `issue-46` inaccessible ; #156 ouverte avec titulaire non confirmé | Les PR ne confèrent pas leur contenu à `main` |
+| Public sur GitHub signifie librement réutilisable | État du repository, absence de `LICENSE`, [documentation GitHub](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/licensing-a-repository) | Corrigé/contredit | Haute | En l'absence de licence, les règles de copyright par défaut s'appliquent | Quarantaine juridique ; pas d'avis définitif |
+| Une paraphrase neutre de principes généraux équivaut à copier le texte | Analyse conceptuelle | Plausible distinction, juridiquement non tranchée | Moyenne | Droit applicable et expression originale à évaluer | Inspiration conceptuelle possible seulement après revue, avec attribution souhaitable |
+
+## Unknowns explicites
+
+1. Texte primaire intégral et stable de la publication X `2015883857489522876`; donc exactitude mot à mot complète des extraits.
+2. Répartition exacte de l'auteur humain et de Claude Opus/Haiku dans les formulations.
+3. Date, conditions et autorité du transfert vers `multica-ai`.
+4. Contenu et résolution des issues historiques désormais inaccessibles.
+5. Titulaire du copyright et portée juridique effective des seules mentions MIT.
+6. Comportement runtime exact du champ Claude `skills` selon toutes les versions installées, notamment le doublon signalé.
+7. Reproductibilité du score #25 et effet de la découvrabilité sur l'exécution.
+8. Généralisation des chiffres #186 à `main`, aux vrais repositories, aux outils et aux modèles locaux.
+9. Coût total de session et économie nette par harness/modèle/type de tâche.
+10. Effet des quatre principes sur les petits modèles, notamment Qwen via OpenCode.
