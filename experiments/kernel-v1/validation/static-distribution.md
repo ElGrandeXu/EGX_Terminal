@@ -135,7 +135,10 @@ attendu de `check` avec le code `4`.
 
 ## Propriétés non vérifiées
 
-- découverte réelle, ordre, scope, précédence ou troncature dans un harness ;
+- dans cette validation statique : découverte réelle, ordre, scope, précédence
+  ou troncature dans un harness ; la découverte, le scope et l'override Codex CLI
+  0.144.6 sont traités séparément par le
+  [probe runtime](codex-runtime-0.144.6.md) ;
 - développement effectif de l'import Claude au premier lancement ou après
   compaction ;
 - unicité du chargement OpenCode et comportement depuis un sous-répertoire ;
@@ -158,7 +161,7 @@ chargement ni de comportement.
 
 | Cellule future | Adaptateur à observer | Contrôles de chargement à réaliser | Modèle |
 | --- | --- | --- | --- |
-| Codex CLI | copie `AGENTS.md` | découverte racine/sous-répertoire, ordre global/local, occurrence unique, contexte injecté si observable | modèle courant précisément fixé |
+| Codex CLI | copie `AGENTS.md` | découverte racine/sous-répertoire et override validés sur 0.144.6 ; occurrence interne unique et contexte complet encore inconnus | modèle non nommé par la synthèse JSONL |
 | Claude Code | import `CLAUDE.md` | résolution relative, premier consentement éventuel, occurrence unique, reprise/compaction | modèle précisément fixé |
 | OpenCode | copie commune `AGENTS.md`, sans `opencode.json` | premier match local, lancement imbriqué, absence de double injection, contexte transmis | grand modèle précisément fixé |
 | OpenCode ou autre runtime local | même doctrine statique | responsabilité du runtime, template, contexte, occurrence et coût prefill | Qwen exact, taille et quantification fixées |
@@ -181,11 +184,9 @@ capacité de découverte ne lui est attribuée.
 
 ## Prochaine action
 
-Concevoir une mission séparée de validation de chargement, sans promotion : figer
-les versions et configurations visibles, générer uniquement dans des fixtures
-jetables, capturer les sources réellement chargées lorsque chaque harness le
-permet, tester racine et sous-répertoire avec des canaris non comportementaux, et
-prouver l'occurrence unique du hash. Cette mission devra commencer par Codex,
-puis Claude Code lorsqu'il sera disponible, puis OpenCode ; les essais Qwen
-resteront une cellule modèle/runtime distincte. Elle ne devra encore évaluer ni
-l'efficacité comportementale du kernel, ni sa promotion.
+La première mission runtime est achevée pour Codex CLI 0.144.6 et documentée dans
+le [rapport dédié](codex-runtime-0.144.6.md), sans promotion. La prochaine cellule
+recommandée est Claude Code lorsqu'une version fixe et des garanties officielles
+de session jetable et de sandbox read-only sont disponibles, puis OpenCode. Les
+essais Qwen resteront une cellule modèle/runtime distincte. Ces missions ne
+devront encore évaluer ni l'efficacité comportementale du kernel, ni sa promotion.

@@ -3,16 +3,18 @@
 ## Statut
 
 Ce candidat est **expérimental, inactif et non promu**. Il n'est chargé
-automatiquement ni par Codex, ni par Claude Code, ni par OpenCode. Son existence
-ne modifie pas le bootstrap actuellement chargé à la racine.
+automatiquement dans EGX_Terminal ni par Codex, ni par Claude Code, ni par
+OpenCode. Son existence ne modifie pas le bootstrap actuellement chargé à la
+racine. Une validation séparée a confirmé sa découverte dans des fixtures Codex
+CLI 0.144.6 jetables ; cela ne constitue ni activation ni promotion.
 
 ## Objet de l'expérience
 
 Le répertoire isole un traitement compact destiné à tester si neuf invariants
 comportementaux améliorent la correction, le périmètre causal, la vérification et
 la communication sans coût permanent disproportionné. Il fige aussi un prototype
-de distribution statique avant tout test de chargement ou de comportement
-inter-harness.
+de distribution statique, puis isole la validation de chargement Codex de toute
+évaluation comportementale inter-harness.
 
 ## Prototype de distribution statique
 
@@ -28,9 +30,23 @@ matérialise :
 
 Les opérations disponibles sont `plan`, `write` et `check`. La cible racine du
 repository est toujours refusée. Le générateur n'est ni une dépendance runtime,
-ni une preuve de découverte par un harness. Son contrat, ses tests et ses limites
-sont consignés dans le
+ni à lui seul une preuve de découverte par un harness. Son contrat, ses tests et
+ses limites sont consignés dans le
 [rapport de distribution statique](validation/static-distribution.md).
+
+## Probe runtime Codex 0.144.6
+
+[`tools/probe_codex.py`](tools/probe_codex.py) construit six repositories Git
+jetables et teste baseline, découverte racine, deux chargements du kernel généré,
+scope imbriqué et override. Il impose `--ephemeral`, une sandbox read-only et les
+événements JSONL, refuse EGX_Terminal comme cible et ne conserve aucun transcript
+brut. Ses tests sans modèle sont dans
+[`tests/test_probe_codex.py`](tests/test_probe_codex.py).
+
+La campagne du 2026-07-20 a obtenu six `PASS` sur six tentatives, sans outil,
+retry ni mutation. Le protocole, les tokens, les limites et la recommandation
+restreinte à Codex CLI 0.144.6 sont consignés dans le
+[rapport runtime](validation/codex-runtime-0.144.6.md).
 
 ## Origine conceptuelle
 
@@ -64,7 +80,8 @@ maintient le payload en LF lors des checkouts Git.
 ## Limites
 
 - Aucun effet comportemental n'a été validé.
-- Aucun contexte réellement injecté par un harness n'a été capturé.
+- Aucun contexte système complet réellement injecté par un harness n'a été
+  capturé ; la validation Codex repose sur des canaris fermés.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
 - Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.
