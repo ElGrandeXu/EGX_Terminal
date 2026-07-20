@@ -104,7 +104,7 @@ priorité, la troncature ou l'adhérence du modèle.
 | --- | --- | --- | --- | --- | --- |
 | Codex CLI | Global : premier fichier non vide entre `AGENTS.override.md` et `AGENTS.md` dans `CODEX_HOME`. Projet : de la racine vers le répertoire courant, au plus un fichier par niveau, ordre `AGENTS.override.md`, `AGENTS.md`, puis fallbacks configurés. Les fichiers sont concaténés racine d'abord ; le plus proche apparaît plus tard. La recherche s'arrête au répertoire courant. | Aucun include générique n'est documenté pour `AGENTS.md`. Les noms fallback sont de la configuration et ne constituent pas un include repository-owned. | **Fallback C :** copie générée dans l'adaptateur `AGENTS.md`, avec hash visible hors payload. | Global, overrides et fichiers sur le chemin de lancement peuvent contredire le payload ; limite de taille et répertoire de lancement affectent la chaîne. Sans adaptateur reconnu, le canon neutre n'est pas chargé. | Recherche/précédence : **documenté**. Absence d'include et copie : **inféré**. Découverte, scope et override : **validés par canaris sur 0.144.6** ; contexte complet toujours inconnu. |
 | Claude Code | Projet : `./CLAUDE.md` ou `./.claude/CLAUDE.md`, plus `CLAUDE.local.md` et `.claude/rules/**/*.md`. Les fichiers au-dessus du répertoire courant chargent au lancement ; ceux des sous-répertoires et les règles path-scoped chargent à la lecture correspondante. Les `CLAUDE.md` découverts sont concaténés du plus général au plus proche. | `@path` est développé au lancement, relatif au fichier importeur, récursif jusqu'à quatre sauts. | **B :** `CLAUDE.md` mince important la future source neutre. | Les conflits concaténés peuvent être suivis arbitrairement ; imports externes soumis au flux d'approbation documenté ; les fichiers imbriqués sont chargés à la demande. Sans `CLAUDE.md` adaptateur, le canon neutre n'est pas chargé. | Recherche/include : **documenté**. Wrapper exact et comportement premier import/compaction : **à tester**. |
-| OpenCode | Projet : recherche locale ascendante de `AGENTS.md`, avec `CLAUDE.md` comme fallback ; global : `~/.config/opencode/AGENTS.md`, puis fallback Claude global. Le premier match gagne dans chaque catégorie. | `opencode.json` accepte `instructions` avec chemins/globs et combine ces fichiers avec `AGENTS.md`. Les références textuelles dans `AGENTS.md` ne sont pas développées automatiquement. | **Fallback C partagé :** consommer la copie `AGENTS.md` générée pour Codex. Ne pas ajouter simultanément `instructions` vers le même canon tant que l'unicité n'est pas prouvée. | `AGENTS.md` + `instructions` peut doubler ou contredire la sémantique. Le détail du premier match lors de lancements imbriqués doit être vérifié. Sans fichier découvert/configuré, le canon neutre n'est pas chargé. | Fichiers/config/combinaison : **documenté**. Adaptateur partagé : **inféré**. Parcours imbriqué et double chargement : **à tester**. |
+| OpenCode | Projet : recherche locale ascendante de `AGENTS.md`, avec `CLAUDE.md` comme fallback ; global : `~/.config/opencode/AGENTS.md`, puis fallback Claude global. Le premier match gagne dans chaque catégorie. | `opencode.json` accepte `instructions` avec chemins/globs et combine ces fichiers avec `AGENTS.md`. Les références textuelles dans `AGENTS.md` ne sont pas développées automatiquement. | **Fallback C partagé :** consommer la copie `AGENTS.md` générée pour Codex. Ne pas ajouter simultanément `instructions` vers le même canon tant que l'unicité n'est pas prouvée. | `AGENTS.md` + `instructions` peut doubler ou contredire la sémantique. Le détail du premier match lors de lancements imbriqués doit être vérifié. Sans fichier découvert/configuré, le canon neutre n'est pas chargé. | Fichiers/config/combinaison : **documenté**. Adaptateur partagé : **inféré**. Découverte/injection racine unique : **validée par mock sur 1.17.9**. Transport réel vers Ollama/Qwen : **validé**. Parcours imbriqué et double chargement : **à tester**. |
 
 ### Sources officielles
 
@@ -152,9 +152,13 @@ par défaut après activation du 27B, puis `think:false` ne suivait pas le contr
 OpenAI-compatible Ollama. Le probe résout maintenant le modèle actif à l'appel et
 transmet `reasoningEffort:"none"`, observé par le mock comme
 `reasoning_effort:"none"`. OpenCode atteint réellement le 27B avec exit 0 et une
-requête unique, mais le modèle ne produit pas encore la chaîne exacte exigée.
-Cette preuve valide transport, unicité mock du kernel et suppression du thinking ;
-elle ne promeut pas l'adaptateur et ne valide pas l'adhérence comportementale.
+requête unique, mais le modèle ne produit pas la chaîne exacte exigée.
+
+La [synthèse de compatibilité runtime](validation/runtime-compatibility-summary.md)
+classe désormais séparément ces preuves : distribution/découverte OpenCode mock
+**PASS**, transport réel OpenCode → Ollama → Qwen **PASS**, adhérence formelle
+exacte du 27B **FAIL**, efficacité comportementale **NOT TESTED**. L'échec du
+canari n'est donc pas un blocage d'intégration et ne promeut pas l'adaptateur.
 
 ## Risque de double chargement
 

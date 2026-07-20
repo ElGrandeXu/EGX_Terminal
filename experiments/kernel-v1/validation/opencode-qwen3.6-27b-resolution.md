@@ -19,6 +19,32 @@ OpenCode a quitté avec le code 0. Le PASS terminal n'est toutefois pas établi.
 Après désactivation effective du thinking, Qwen n'a pas rendu la chaîne exacte
 demandée. Un quatrième démarrage Ollama aurait dépassé le budget de mission.
 
+## Résolution classificatoire finale
+
+Le verdict `BLOCKED` ci-dessus reste le résultat historique de cette mission :
+son budget était épuisé avant d'obtenir l'égalité stricte exigée. Il n'est pas
+réécrit. La résolution de compatibilité du 2026-07-21 interprète cependant les
+preuves selon quatre niveaux indépendants :
+
+1. distribution statique : **PASS** ;
+2. transport runtime OpenCode → Ollama → `qwen3.6:27b` : **PASS** ;
+3. adhérence formelle exacte au canari : **FAIL** ;
+4. efficacité comportementale : **NOT TESTED**.
+
+La dernière tentative a réellement utilisé le 27B à 16 384 tokens de contexte,
+envoyé une seule requête et reçu une réponse sans reasoning. Les mots exigés y
+apparaissent dans le bon ordre, mais sans la ponctuation exacte et avec des mots
+supplémentaires. Aucun outil ni réseau non-loopback n'a été utilisé. Ces faits
+établissent un échec formel de contrôle de sortie, pas un défaut de découverte,
+de provider ou de modèle.
+
+OpenCode + Qwen n'est donc plus `BLOCKED` au niveau projet. La compatibilité est
+**SUPPORTED — EXPERIMENTAL**, le projet est non bloqué pour poursuivre, et la
+prochaine preuve attendue est comportementale. Aucun kernel n'est promu. La
+[synthèse de compatibilité runtime](runtime-compatibility-summary.md) porte le
+verdict transversal et explique pourquoi le canari exact ne doit pas servir de
+proxy de qualité générale.
+
 ## Ledger
 
 | Tentative | Provider atteint | Requête Qwen | Résultat | Cause | Correctif |

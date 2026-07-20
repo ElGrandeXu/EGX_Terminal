@@ -36,11 +36,20 @@
   follow Ollama's OpenAI-compatible contract. Replacing it with
   `reasoningEffort:"none"`, validated on the mock as `reasoning_effort:"none"`,
   produced real text with zero reasoning. That text still omitted punctuation and
-  exceeded the requested eight words, so the terminal result is **BLOCKED**, not
-  PASS, after the authorized maximum of three Ollama starts and two Qwen requests.
-  Cleanup was complete throughout. The active root bootstrap is unchanged and no
-  promotion has occurred.
-- **Next step:** do not rerun inference or promote the kernel without a new
-  authorization. The provider integration is repaired; remaining work is a
-  bounded, non-prompt-changing investigation of Qwen output control with a new
-  Ollama-start and inference budget. The measured 3 GiB gate remains host-specific.
+  exceeded the requested eight words. That mission therefore retained its
+  historical terminal result **BLOCKED**, not PASS, after the authorized maximum
+  of three Ollama starts and two Qwen requests. Cleanup was complete throughout.
+  The final compatibility resolution now separates proof levels: static
+  distribution is **PASS**; Codex CLI 0.144.6 distribution/discovery is **PASS**;
+  OpenCode 1.17.9 distribution/discovery against the mock is **PASS**; and the
+  real OpenCode → Ollama → `qwen3.6:27b` path is **PASS** for runtime transport.
+  Exact canary adherence is **FAIL**, while behavioral effectiveness is
+  **NOT TESTED**. Runtime portability is validated experimentally and OpenCode +
+  Qwen is no longer **BLOCKED**. Overall compatibility is **SUPPORTED —
+  EXPERIMENTAL** and the project is not blocked from proceeding. The active root
+  bootstrap is unchanged and no kernel promotion has occurred. See the
+  [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md).
+- **Next step:** behavioral evaluation on real tasks, beginning with a
+  pre-registered pilot that compares the baseline and candidate kernel. Do not
+  rerun exact-canary inference or promote the kernel as part of that transition.
+  The measured 3 GiB gate remains host-specific.

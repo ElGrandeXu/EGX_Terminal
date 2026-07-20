@@ -6,7 +6,12 @@ Ce candidat est **expérimental, inactif et non promu**. Il n'est chargé
 automatiquement dans EGX_Terminal ni par Codex, ni par Claude Code, ni par
 OpenCode. Son existence ne modifie pas le bootstrap actuellement chargé à la
 racine. Une validation séparée a confirmé sa découverte dans des fixtures Codex
-CLI 0.144.6 jetables ; cela ne constitue ni activation ni promotion.
+CLI 0.144.6 jetables. La portabilité runtime est désormais validée
+expérimentalement pour les cellules Codex et OpenCode mesurées, avec une
+compatibilité générale **SUPPORTED — EXPERIMENTAL** ; cela ne constitue ni
+activation ni promotion. La
+[synthèse de compatibilité](validation/runtime-compatibility-summary.md) sépare
+distribution, transport, adhérence formelle et efficacité comportementale.
 
 ## Objet de l'expérience
 
@@ -54,10 +59,12 @@ Une mission strictement sans inférence a identifié le binaire OpenCode 1.17.9,
 sa surface non interactive, ses mécanismes d'isolation connus et les runtimes
 locaux disponibles. Un modèle Ollama `qwen3.6:35b` est présent sur disque, mais
 aucun serveur local n'était actif et plusieurs propriétés de confinement restent
-à valider. La campagne runtime OpenCode est donc **BLOCKED**, sans création de
-probe. Les faits, divergences entre documentation actuelle et version installée,
-gates réseau et proposition de configuration jetable sont consignés dans le
-[rapport de readiness](validation/opencode-readiness-1.17.9.md).
+à valider. À ce stade historique, la campagne runtime OpenCode était donc
+**BLOCKED**, sans création de probe. Les faits, divergences entre documentation
+actuelle et version installée, gates réseau et proposition de configuration
+jetable sont consignés dans le
+[rapport de readiness](validation/opencode-readiness-1.17.9.md). Les campagnes
+ultérieures ont levé ce blocage de transport.
 
 ## Smoke runtime Ollama 0.20.2 + Qwen 3.6 35B
 
@@ -141,10 +148,16 @@ Une seconde correction remplace l'option inefficace `think:false` par le contrat
 OpenAI-compatible officiel `reasoningEffort:"none"`, observé sur le fil mock
 comme `reasoning_effort:"none"`. La génération réelle suivante a bien rendu du
 texte sans reasoning, mais pas la réponse exacte : elle a omis la ponctuation et
-dépassé huit mots. Le statut terminal reste donc **BLOCKED** après les trois
-démarrages Ollama autorisés, avec deux requêtes Qwen et nettoyage complet. Le
-[rapport de résolution](validation/opencode-qwen3.6-27b-resolution.md) sépare les
-preuves, causes, correctifs et limites.
+dépassé huit mots. Le [rapport de résolution](validation/opencode-qwen3.6-27b-resolution.md)
+conserve le statut historique **BLOCKED** de cette mission après les trois
+démarrages Ollama autorisés, avec deux requêtes Qwen et nettoyage complet.
+
+La résolution classificatoire finale ne traite plus cette non-conformité comme
+un blocage d'intégration : OpenCode → Ollama → Qwen est **PASS** pour le transport
+runtime, tandis que l'adhérence formelle exacte au canari est **FAIL** et
+l'efficacité comportementale **NOT TESTED**. Le projet est non bloqué pour
+poursuivre vers des tâches réelles, sans nouveau canari ni promotion. Détails :
+[synthèse de compatibilité runtime](validation/runtime-compatibility-summary.md).
 
 ## Origine conceptuelle
 
@@ -177,13 +190,13 @@ maintient le payload en LF lors des checkouts Git.
 
 ## Limites
 
-- Aucun effet comportemental n'a été validé.
+- Aucun effet comportemental n'a été validé ; ce niveau reste **NOT TESTED**.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
-- L'initialisation OpenCode, le transport mock et la découverte racine unique du
-  kernel sont validés. Le chemin provider réel atteint désormais le 27B avec une
-  requête et exit 0, mais la sortie Qwen sans thinking n'est pas exacte ; le PASS
-  comportemental reste non démontré.
+- L'initialisation OpenCode, le transport mock, la découverte racine unique du
+  kernel et le transport provider réel vers le 27B sont validés. La sortie Qwen
+  sans thinking n'est pas exacte : **FAIL** d'adhérence formelle, sans invalider
+  le **PASS** de transport. L'efficacité comportementale reste **NOT TESTED**.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible pour le 35B comme pour le 27B ; même la réserve 27B
   de 4 Gio n'a laissé que 3 683 MiB libres lors d'une campagne antérieure. La
