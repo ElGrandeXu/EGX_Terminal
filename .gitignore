@@ -1,0 +1,35 @@
+# Secrets and environment files
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*secret*
+
+# Local, non-shareable agent configuration
+CLAUDE.local.md
+.claude/settings.local.json
+*.local.json
+
+# Local-only research and reports
+docs/research/local/
+reports/local/
+*.local-report.md
+
+# Logs, caches, and temporary output
+*.log
+logs/
+.cache/
+cache/
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Editors and operating systems
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+Desktop.ini
