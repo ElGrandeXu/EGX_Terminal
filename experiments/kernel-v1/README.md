@@ -69,6 +69,17 @@ n'active pas OpenCode et ne valide pas encore son provider. Protocole, identité
 mémoire, métriques, incidents pré-inférence et limites sont consignés dans le
 [rapport Ollama/Qwen](validation/ollama-qwen3.6-35b-smoke.md).
 
+## Smoke OpenCode 1.17.9 + Ollama + Qwen
+
+Un probe fermé a ensuite généré le workspace jetable attendu, isolé toutes les
+racines connues d'OpenCode, chargé une fois le modèle exact à 16 384 tokens et
+lancé un unique `opencode run`. OpenCode a quitté avec le code 1 avant toute
+requête modèle ou émission JSONL ; aucune relance n'a été faite. Le résultat est
+donc **FAIL** et ne valide ni le provider, ni la découverte d'`AGENTS.md`, ni la
+transmission du kernel. Modèle, serveur, processus, port et racine temporaire ont
+été intégralement nettoyés. Le protocole et les limites sont consignés dans le
+[rapport OpenCode/Qwen](validation/opencode-qwen3.6-smoke-1.17.9.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -104,7 +115,8 @@ maintient le payload en LF lors des checkouts Git.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
 - La readiness OpenCode est documentée, mais aucune inférence OpenCode, session
-  runtime ou découverte par canari n'a été exécutée.
+  réussie ou découverte par canari n'a été obtenue ; le premier smoke a échoué
+  localement avant toute requête modèle.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible et le chemin OpenAI-compatible reste à tester via
   OpenCode.
