@@ -59,6 +59,16 @@ probe. Les faits, divergences entre documentation actuelle et version installée
 gates réseau et proposition de configuration jetable sont consignés dans le
 [rapport de readiness](validation/opencode-readiness-1.17.9.md).
 
+## Smoke runtime Ollama 0.20.2 + Qwen 3.6 35B
+
+Un probe Python standard-library fermé a validé séparément le runtime local
+`qwen3.6:35b` avec un contexte effectif de 16 384 tokens. L'unique inférence a
+retourné exactement `QWEN_LOCAL_OK`, sans thinking, puis le modèle, le serveur,
+ses enfants et les journaux temporaires ont été nettoyés. Ce résultat **PASS**
+n'active pas OpenCode et ne valide pas encore son provider. Protocole, identité,
+mémoire, métriques, incidents pré-inférence et limites sont consignés dans le
+[rapport Ollama/Qwen](validation/ollama-qwen3.6-35b-smoke.md).
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -95,6 +105,9 @@ maintient le payload en LF lors des checkouts Git.
   capturé ; la validation Codex repose sur des canaris fermés.
 - La readiness OpenCode est documentée, mais aucune inférence OpenCode, session
   runtime ou découverte par canari n'a été exécutée.
+- Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
+  VRAM observée est faible et le chemin OpenAI-compatible reste à tester via
+  OpenCode.
 - Le générateur statique existe seulement comme outil expérimental ; aucun
   adaptateur n'est actif dans ce repository.
 - Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.

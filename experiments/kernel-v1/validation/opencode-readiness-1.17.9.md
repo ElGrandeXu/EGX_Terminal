@@ -580,3 +580,12 @@ commencer l'évaluation comportementale :
    préenregistrée.
 
 Le probe OpenCode n'est volontairement pas créé dans cette mission.
+
+## 22. Gate runtime levé séparément
+
+Le [smoke test Ollama 0.20.2 + Qwen 3.6 35B](ollama-qwen3.6-35b-smoke.md),
+réalisé le 2026-07-20 dans une mission autonome, a levé le gate runtime local :
+le modèle exact a été chargé à 16 384 tokens, l'unique réponse attendue a été
+obtenue, puis modèle, serveur et enfants ont été nettoyés. La campagne OpenCode
+reste non exécutée ; ses autres gates d'isolation, de provider, de stockage et
+de découverte demeurent applicables.
