@@ -10,9 +10,27 @@ ne modifie pas le bootstrap actuellement chargé à la racine.
 
 Le répertoire isole un traitement compact destiné à tester si neuf invariants
 comportementaux améliorent la correction, le périmètre causal, la vérification et
-la communication sans coût permanent disproportionné. Il permet de figer le
-payload avant la future construction expérimentale des adaptateurs et avant tout
-test inter-harness.
+la communication sans coût permanent disproportionné. Il fige aussi un prototype
+de distribution statique avant tout test de chargement ou de comportement
+inter-harness.
+
+## Prototype de distribution statique
+
+[`tools/sync_adapters.py`](tools/sync_adapters.py) est un générateur expérimental
+Python 3 sans dépendance tierce. Dans une cible jetable explicitement fournie, il
+matérialise :
+
+- `doctrine/KERNEL.md`, copie exacte de [`KERNEL.md`](KERNEL.md) ;
+- `AGENTS.md`, copie exacte du canon pour Codex et OpenCode ;
+- `CLAUDE.md`, import minimal `@doctrine/KERNEL.md` ;
+- `.egx/doctrine-lock.json`, preuve déterministe de version, stratégie, chemins
+  et hashes.
+
+Les opérations disponibles sont `plan`, `write` et `check`. La cible racine du
+repository est toujours refusée. Le générateur n'est ni une dépendance runtime,
+ni une preuve de découverte par un harness. Son contrat, ses tests et ses limites
+sont consignés dans le
+[rapport de distribution statique](validation/static-distribution.md).
 
 ## Origine conceptuelle
 
@@ -47,7 +65,9 @@ maintient le payload en LF lors des checkouts Git.
 
 - Aucun effet comportemental n'a été validé.
 - Aucun contexte réellement injecté par un harness n'a été capturé.
-- Aucun adaptateur, générateur, hook, skill, mémoire ou runtime n'existe ici.
+- Le générateur statique existe seulement comme outil expérimental ; aucun
+  adaptateur n'est actif dans ce repository.
+- Aucun hook, skill, mémoire ou runtime additionnel n'existe ici.
 - Les règles peuvent être sous-spécifiées pour une mission risquée ou trop
   présentes pour une tâche triviale.
 - Qwen n'est pas un harness ; son comportement dépendra du runtime, du modèle
@@ -65,5 +85,6 @@ séparée.
 ## Fichiers racine volontairement inchangés
 
 `AGENTS.md` et `CLAUDE.md` restent inchangés. Aucun `opencode.json`, fichier
-d'instruction racine ou réglage utilisateur/global n'est créé. Le candidat ne
+d'instruction racine ou réglage utilisateur/global n'est créé. Les tests utilisent
+uniquement des répertoires temporaires extérieurs au repository. Le candidat ne
 peut donc pas être confondu avec le comportement actif du workspace.

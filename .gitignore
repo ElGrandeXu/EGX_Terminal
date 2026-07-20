@@ -21,6 +21,8 @@ reports/local/
 logs/
 .cache/
 cache/
+__pycache__/
+*.py[cod]
 tmp/
 temp/
 *.tmp

@@ -1,11 +1,11 @@
-# Contrat des futurs adaptateurs du kernel v1
+# Contrat des adaptateurs du kernel v1
 
 ## Statut et portée
 
-Ce document décrit un contrat sémantique pour de futurs adaptateurs
-**expérimentaux**. Il ne crée aucun adaptateur, ne charge pas le candidat et ne
-change pas les fichiers racine. Les sources officielles ont été consultées le
-**2026-07-20**.
+Ce document décrit le contrat sémantique des adaptateurs **expérimentaux**. Le
+prototype de génération statique l'implémente uniquement dans une cible jetable ;
+il ne charge pas le candidat et ne change pas les fichiers racine. Les sources
+officielles ont été consultées le **2026-07-20**.
 
 Les étiquettes de preuve sont :
 
@@ -15,14 +15,36 @@ Les étiquettes de preuve sont :
 
 ## Source neutre et identité sémantique
 
-Pendant l'expérience, la seule source du candidat est
-[`KERNEL.md`](KERNEL.md). Elle n'est pas un point d'entrée stable. Après une
-éventuelle promotion, le chemin canonique recommandé est `doctrine/KERNEL.md`,
-sans le créer maintenant.
+Dans le repository, la seule source du candidat reste [`KERNEL.md`](KERNEL.md).
+Elle n'est pas un point d'entrée stable. Le prototype la copie octet pour octet
+vers `doctrine/KERNEL.md` dans une cible jetable seulement. Après une éventuelle
+promotion, ce chemin reste le canon stable recommandé ; aucune promotion ni
+création de ce chemin à la racine réelle n'a lieu ici.
 
 Un adaptateur distribue exactement un payload identifié par version et SHA-256.
 Il ne devient jamais la source sémantique. Un wrapper, une métadonnée ou une
 syntaxe d'include est comptabilisé séparément du payload always-on.
+
+## Matérialisation statique expérimentale
+
+[`tools/sync_adapters.py`](tools/sync_adapters.py) expose trois opérations :
+
+- `plan` calcule les créations et modifications sans écrire ;
+- `write` matérialise les quatre sorties attendues dans une cible explicite ;
+- `check` vérifie sans écrire la source, le canon, les adaptateurs et le lockfile.
+
+`AGENTS.md` est la copie exacte commune à Codex et OpenCode. Aucun
+`opencode.json` n'est créé, afin de ne pas combiner cette copie avec une seconde
+surface `instructions`. `CLAUDE.md` contient exactement
+`@doctrine/KERNEL.md`, sans fin de ligne finale. Le kernel, sa copie et l'import
+sont en UTF-8 sans BOM, LF, sans fin de ligne finale. Le JSON est trié, indenté
+sur deux espaces et terminé par LF.
+
+Le lockfile `.egx/doctrine-lock.json` revendique exhaustivement les trois fichiers
+de contenu gérés et leurs hashes. Il s'identifie séparément comme artefact de
+contrôle : un hash de ses propres octets serait récursif. Son intégrité est donc
+vérifiée par régénération déterministe exacte. Il ne contient ni timestamp, ni
+chemin absolu, ni donnée de machine.
 
 ## Responsabilités autorisées
 
@@ -59,6 +81,9 @@ Un adaptateur ne doit pas :
 5. L'absence d'adaptateur signifie que la source neutre n'est pas chargée
    automatiquement. Les autres instructions déjà présentes peuvent rester
    actives ; aucune capacité du kernel ne doit alors être revendiquée.
+6. Une sortie préexistante n'est écrasable que si un lockfile structurellement
+   exact prouve qu'elle appartient à cette génération ; sinon l'écriture échoue
+   avant toute mutation.
 
 ## Précédence, scope et instructions imbriquées
 
