@@ -278,6 +278,60 @@ SPDX-FileComment = "PROVENANCE_UNCLEAR"
         self.assertEqual((), report.findings)
         self.assertEqual(before, after)
 
+    def test_tree_hash_is_independent_of_input_order_and_uses_posix_keys(self) -> None:
+        entries = (
+            ("Nested/File.md", b"upper\n"),
+            ("nested/file.md", b"lower\n"),
+            ("README.md", b"readme\n"),
+            ("alpha.txt", b"alpha\n"),
+        )
+        expected_order = tuple(
+            relative
+            for relative, _ in sorted(entries, key=lambda item: (item[0].casefold(), item[0]))
+        )
+        self.assertEqual(
+            ("alpha.txt", "Nested/File.md", "nested/file.md", "README.md"),
+            expected_order,
+        )
+        self.assertTrue(all("\\" not in relative for relative in expected_order))
+        self.assertEqual(
+            CHECK._tree_sha256_entries(entries),
+            CHECK._tree_sha256_entries(reversed(entries)),
+        )
+
+    def test_tree_hash_is_cwd_independent_with_spaces(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="archive hash ") as temporary:
+            root = Path(temporary) / "archive with spaces"
+            self.write(root, "Nested/File.md", "upper\n")
+            self.write(root, "nested/file.md", "lower\n")
+            before = CHECK.tree_sha256(root)
+            previous = Path.cwd()
+            try:
+                os.chdir(root.parent)
+                after = CHECK.tree_sha256(root)
+            finally:
+                os.chdir(previous)
+        self.assertEqual(before, after)
+
+    def test_real_archive_hash_and_frozen_results_remain_unchanged(self) -> None:
+        experiment_root = REPOSITORY_ROOT / "experiments"
+        before = {
+            path.relative_to(experiment_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in experiment_root.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(
+            CHECK.EXPECTED_ARCHIVE_HASH,
+            CHECK.tree_sha256(experiment_root / "kernel-v1"),
+        )
+        self.assertEqual([], CHECK.check_integrity(REPOSITORY_ROOT))
+        after = {
+            path.relative_to(experiment_root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in experiment_root.rglob("*")
+            if path.is_file()
+        }
+        self.assertEqual(before, after)
+
     def test_experimental_hash_inputs_force_lf_checkouts(self) -> None:
         paths = tuple(
             path

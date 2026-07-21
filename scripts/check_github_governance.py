@@ -216,6 +216,15 @@ def _check_workflow(root: Path, lock: dict[str, str], findings: list[Finding]) -
         for command in REQUIRED_REPOSITORY_COMMANDS:
             if block.count(command) != 1:
                 findings.append(_finding(".github/workflows/validate.yml", "REPOSITORY_COMMAND", f"{key}: {command}"))
+    windows_block = blocks.get("repository-windows", "")
+    if not re.search(r"(?m)^    defaults:\s*$\n^      run:\s*$\n^        shell:\s*bash\s*$", windows_block):
+        findings.append(
+            _finding(
+                ".github/workflows/validate.yml",
+                "WINDOWS_FAIL_FAST_SHELL",
+                "repository / windows must use explicit Bash fail-fast run defaults",
+            )
+        )
     if text.count("reuse==6.2.0") != 1 or re.search(r"reuse==(?!(?:6\.2\.0)\b)", text):
         findings.append(_finding(".github/workflows/validate.yml", "REUSE_VERSION", "REUSE must be pinned exactly to 6.2.0"))
     forbidden = ("actions/cache", "upload-artifact", "download-artifact", "pull_request_target", "schedule:", "repository_dispatch:", "workflow_run:", "release:", "deployment:")
@@ -230,7 +239,7 @@ def _check_workflow(root: Path, lock: dict[str, str], findings: list[Finding]) -
     observed_commands: list[str] = []
     index = 0
     while index < len(lines):
-        match = re.match(r"^(\s*)run:\s*(.*)$", lines[index])
+        match = re.match(r"^(\s{8,})run:\s*(.*)$", lines[index])
         if not match:
             index += 1
             continue

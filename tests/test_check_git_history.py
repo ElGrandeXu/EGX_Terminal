@@ -92,6 +92,18 @@ class HistoryRepository:
         (self.root / relative).unlink()
         self.commit(message)
 
+    def add_remote_ref(self, name: str, oid: str, *, remote: str = "origin") -> None:
+        remotes = self.git("remote").stdout.decode("utf-8").splitlines()
+        if remote not in remotes:
+            self.git("remote", "add", remote, f"https://example.invalid/{remote}.git")
+        self.git("update-ref", f"refs/remotes/{remote}/{name}", oid)
+
+    def commit_tree(self, tree: str, *parents: str, message: str = "test: synthetic commit") -> str:
+        arguments = ["commit-tree", tree]
+        for parent in parents:
+            arguments.extend(("-p", parent))
+        return self.git(*arguments, input_bytes=(message + "\n").encode("utf-8")).stdout.decode("ascii").strip()
+
 
 class GitHistoryTests(unittest.TestCase):
     def repository(self) -> tuple[tempfile.TemporaryDirectory[str], HistoryRepository]:
@@ -316,6 +328,151 @@ class GitHistoryTests(unittest.TestCase):
             complete = CHECK.audit(repo.root, all_refs=True)
         self.assertNotIn("SECRET_SIGNATURE", self.categories(default))
         self.assertIn("SECRET_SIGNATURE", self.categories(complete))
+
+    def test_41_no_remote_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertFalse({"UNEXPECTED_REMOTE", "UNEXPECTED_REMOTE_REF"} & self.categories(report))
+
+    def test_42_matching_origin_main_is_transport_info(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            head = repo.commit()
+            repo.add_remote_ref("main", head)
+            code, output = self.capture_main("--root", str(repo.root), "--fail-on-review")
+            report = CHECK.audit(repo.root)
+        self.assertEqual(0, code, output)
+        self.assertIn("EXPECTED_REMOTE_MAIN", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_43_divergent_origin_main_is_rejected_on_branch(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt", "base\n")
+            base = repo.commit()
+            repo.write("safe.txt", "head\n")
+            repo.commit()
+            repo.add_remote_ref("main", base)
+            report = CHECK.audit(repo.root)
+        self.assertIn("DIVERGENT_REMOTE_MAIN", self.categories(report))
+
+    def test_44_symbolic_origin_head_to_main_is_transport_info(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            head = repo.commit()
+            repo.add_remote_ref("main", head)
+            repo.git("symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main")
+            report = CHECK.audit(repo.root)
+        self.assertIn("EXPECTED_REMOTE_HEAD", self.categories(report))
+        self.assertNotIn("INVALID_REMOTE_HEAD", self.categories(report))
+
+    def test_45_unexpected_remote_is_rejected_without_exposing_url(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            fragments = (
+                "ht",
+                "tps",
+                ":",
+                "/",
+                "/",
+                "fixture-user",
+                ":",
+                "credential",
+                "@",
+                "example.invalid",
+                "/private.git",
+            )
+            sensitive_url = "".join(fragments)
+            repo.write("remote.txt", sensitive_url + "\n")
+            repo.commit()
+            repo.git("remote", "add", "upstream", sensitive_url)
+            first = CHECK.audit(repo.root)
+            second = CHECK.audit(repo.root)
+            code, output = self.capture_main("--root", str(repo.root), "--fail-on-review")
+            fixture_blob = repo.git("show", "HEAD:remote.txt").stdout
+            tracked_paths = subprocess.run(
+                ["git", "-C", str(REPOSITORY_ROOT), "ls-files", "-z"],
+                check=True,
+                stdout=subprocess.PIPE,
+            ).stdout.decode("utf-8", errors="surrogateescape").split("\0")
+            tracked_payloads = (
+                (REPOSITORY_ROOT / path).read_bytes()
+                for path in tracked_paths
+                if path
+            )
+        self.assertEqual(first.findings, second.findings)
+        self.assertEqual(1, code)
+        self.assertIn(sensitive_url.encode("utf-8"), fixture_blob)
+        self.assertIn("AUTHENTICATED_URL", self.categories(first))
+        self.assertIn("UNEXPECTED_REMOTE", self.categories(first))
+        self.assertNotIn(sensitive_url, output)
+        self.assertNotIn("credential", output)
+        self.assertTrue(
+            all(sensitive_url.encode("utf-8") not in payload for payload in tracked_payloads)
+        )
+
+    def test_46_remote_ref_to_independent_graph_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            tree = repo.git("write-tree").stdout.decode("ascii").strip()
+            independent = repo.commit_tree(tree, message="test: independent")
+            repo.add_remote_ref("main", independent)
+            report = CHECK.audit(repo.root)
+        self.assertIn("REMOTE_REF_OUTSIDE_AUDITED_GRAPH", self.categories(report))
+
+    def test_47_detached_pull_request_checkout_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            base = repo.commit()
+            tree = repo.git("write-tree").stdout.decode("ascii").strip()
+            feature = repo.commit_tree(tree, base, message="test: feature head")
+            merge = repo.commit_tree(tree, base, feature, message="test: temporary pull request merge")
+            repo.add_remote_ref("main", base)
+            repo.add_remote_ref("pull-checkout", feature)
+            repo.git("checkout", "--quiet", "--detach", merge)
+            repo.git("update-ref", "-d", "refs/heads/main")
+            report = CHECK.audit(repo.root)
+        self.assertIn("HEAD", report.selected_refs)
+        self.assertIn("CHECKOUT_REMOTE_REF", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_48_all_refs_scans_independent_remote_objects(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            main = repo.commit()
+            repo.add_remote_ref("main", main)
+            secret = ("AK" + "IA" + ("D" * 16) + "\n").encode("ascii")
+            blob = repo.git("hash-object", "-w", "--stdin", input_bytes=secret).stdout.decode("ascii").strip()
+            tree_input = f"100644 blob {blob}\tprivate.txt\n".encode("utf-8")
+            tree = repo.git("mktree", input_bytes=tree_input).stdout.decode("ascii").strip()
+            independent = repo.commit_tree(tree, message="test: independent remote content")
+            repo.add_remote_ref("independent", independent)
+            default = CHECK.audit(repo.root)
+            complete = CHECK.audit(repo.root, all_refs=True)
+        self.assertNotIn("SECRET_SIGNATURE", self.categories(default))
+        self.assertIn("SECRET_SIGNATURE", self.categories(complete))
+
+    def test_49_detached_checkout_rejects_independent_origin_main(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            head = repo.commit()
+            tree = repo.git("write-tree").stdout.decode("ascii").strip()
+            independent = repo.commit_tree(tree, message="test: independent remote main")
+            repo.add_remote_ref("main", independent)
+            repo.git("checkout", "--quiet", "--detach", head)
+            repo.git("update-ref", "-d", "refs/heads/main")
+            report = CHECK.audit(repo.root)
+        self.assertIn("REMOTE_REF_OUTSIDE_AUDITED_GRAPH", self.categories(report))
 
     def test_21_safe_historical_agents_file(self) -> None:
         temporary, repo = self.repository()

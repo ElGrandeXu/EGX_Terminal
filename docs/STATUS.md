@@ -35,19 +35,30 @@
 - **Local governance:** PASS. Community files, deterministic link and GitHub
   governance controls, the action lock, publication plan, and hardened workflow
   are complete.
-- **CI definition:** syntax validated with actionlint 1.7.12; it has not yet run
-  on GitHub. Its three planned checks cover Windows, Ubuntu, and REUSE.
-- **Publication status:** **`READY_FOR_PRIVATE_REMOTE_STAGING`**. Content,
-  licensing, provenance, identity, history, governance, and clean-clone gates
-  pass. The security result remains a bounded heuristic, not an absolute guarantee.
+- **Private staging:** `ElGrandeXu/EGX_Terminal` has been created privately and
+  `main` has received its first push. No public visibility, tag, or release was
+  created.
+- **First remote CI:** GitHub marked Windows and REUSE as passed; Ubuntu failed
+  because the archive checker relied on platform-native `Path` ordering. Review
+  of the Windows log also found that PowerShell continued after the history gate
+  returned nonzero for the normal `origin/main` tracking ref, creating a false
+  pass. The targeted correction derives relative POSIX paths with the locked
+  canonical order, distinguishes publishable refs from transport refs, and runs
+  the Windows validation block through fail-fast Bash. Its new remote run is not
+  claimed as passing before the corrective push.
+- **Corrective commit:** the single authorized CI correction brings local `main`
+  to 33 commits; its remote status remains pending until push and a fresh run.
+- **Publication status:** **`PRIVATE_REMOTE_STAGING_CI_REMEDIATION`**. Public
+  visibility remains forbidden until all three checks pass on the corrective
+  commit and the remaining private staging settings are reviewed.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
-- **Public preparation:** there is still no Git remote, target repository, or
-  push. The next gate is explicit authorization to create the empty private
-  repository and push `main` for remote staging.
+- **Public preparation:** `origin` exists and remains private. The next gate is
+  a fully green CI run on the corrective commit; security settings, ruleset,
+  metadata, public visibility, tags, and releases remain unapplied.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase is private remote staging. No remote action is authorized by this
-status alone.
+The current phase is private remote staging. This status does not authorize a
+public visibility change.

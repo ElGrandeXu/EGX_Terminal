@@ -137,6 +137,18 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("[WRITE_PERMISSION]", result.stdout)
 
+    def test_21_windows_multicommand_powershell_default_is_rejected(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            "    defaults:\n      run:\n        shell: bash\n",
+            "",
+        )
+        self.assertIn("WINDOWS_FAIL_FAST_SHELL", self.codes())
+
+    def test_22_windows_shell_must_be_bash(self) -> None:
+        self.replace(".github/workflows/validate.yml", "shell: bash", "shell: pwsh")
+        self.assertIn("WINDOWS_FAIL_FAST_SHELL", self.codes())
+
 
 if __name__ == "__main__":
     unittest.main()

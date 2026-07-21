@@ -3,8 +3,9 @@
 ## But
 
 La V1 prévue présente un workspace de terminal-agent LLM-agnostique, à racine
-neutre, avec ses principes, recherches, décisions et preuves reproductibles. Ce
-document prépare une publication future ; il ne déclare ni remote ni push.
+neutre, avec ses principes, recherches, décisions et preuves reproductibles. Le
+repository distant existe désormais en staging privé ; aucune visibilité
+publique, aucun tag et aucune release ne sont déclarés.
 
 ## Surface incluse
 
@@ -60,17 +61,38 @@ contenu tiers substantiel ni exception tierce n'a été identifié.
 [`public-commit-identity.json`](../../governance/public-commit-identity.json),
 inspecte l'historique atteignable et exige l'identité publique exacte pour
 chaque auteur et committer. Les modes `--all-refs` et `--fail-on-review` passent
-sur les 32 commits finaux. Le [rapport](HISTORY_AUDIT.md) et la
+localement ; le premier push comptait 32 commits et le correctif ciblé porte ce
+total à 33. Le [rapport](HISTORY_AUDIT.md) et la
 [remédiation](IDENTITY_REMEDIATION.md) documentent la transformation.
 
 `scripts/check_markdown_links.py` valide hors ligne les liens Markdown suivis.
 `scripts/check_github_governance.py` vérifie les fichiers communautaires, la CI,
 le lock d'actions et le plan distant. Le workflow a été validé syntaxiquement
-avec actionlint 1.7.12 mais n'a pas été exécuté sur GitHub.
+avec actionlint 1.7.12 ; sa première exécution GitHub est consignée ci-dessous.
 
-## Gate avant remote et premier push
+## Staging privé et gate public
 
-Avant toute création de remote ou tout premier push :
+Le repository privé `ElGrandeXu/EGX_Terminal` a été créé vide, puis `main` a été
+poussé. La première CI a produit :
+
+- `repository / windows` : PASS ;
+- `licensing / reuse` : PASS ;
+- `repository / ubuntu` : FAIL.
+
+Le défaut Ubuntu provient du tri natif d'objets `Path` dans le calcul agrégé de
+l'archive. Windows et Linux n'appliquaient pas le même ordre aux chemins dont la
+casse diffère. La correction ciblée dérive le chemin relatif POSIX et applique
+explicitement l'ordre canonique insensible à la casse qui préserve le hash
+verrouillé.
+
+Le log Windows a révélé un second défaut : `origin/main`, ref locale de transport
+créée par le checkout, était classée à tort comme ref publiable inattendue, puis
+son code non nul était masqué par la poursuite du bloc PowerShell. La correction
+sépare branches/tags/notes publiables, refs de transport `origin` et commit HEAD
+audité ; le bloc Windows utilise désormais Bash en mode fail-fast. Le résultat
+distant de ces corrections n'est pas anticipé dans ce commit.
+
+Avant toute visibilité publique :
 
 1. conserver la racine neutre, la surface publique et les tests au vert ;
 2. exécuter `python scripts/check_git_history.py --fail-on-review` ;
@@ -79,12 +101,12 @@ Avant toute création de remote ou tout premier push :
 5. confirmer l'intégrité des résultats de Mission 24 ;
 6. confirmer zéro secret, donnée privée ou dépendance au workspace source ;
 7. valider la gouvernance et le workflow ;
-8. obtenir une autorisation explicite séparée avant création du remote et push.
+8. obtenir une autorisation explicite séparée avant le changement de visibilité.
 
 ## État
 
-**`READY_FOR_PRIVATE_REMOTE_STAGING`**
+**`PRIVATE_REMOTE_STAGING_CI_REMEDIATION`**
 
-Les gates de contenu, identité, historique, licences, gouvernance, workflow et
-clone propre passent. Le prochain gate est l'autorisation explicite de staging
-privé. Ce statut n'autorise ni remote, ni push, ni tag, ni publication GitHub.
+Le staging privé est actif. Le passage public reste interdit tant que le nouveau
+run ne valide pas les trois checks et que les réglages privés restants ne sont
+pas examinés. Ce statut n'autorise ni visibilité publique, ni tag, ni release.

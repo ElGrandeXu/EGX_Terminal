@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Audit reachable Git history for publication risks without network access.
 
-By default, only objects reachable from ``refs/heads/main`` are inspected. Use
-``--all-refs`` to include every local ref. Reflogs and unreachable objects are
-never scanned. The default blocking blob limit is 524288 bytes (512 KiB).
+By default, objects reachable from ``refs/heads/main`` are inspected. In a
+detached pull-request checkout, HEAD and the available local or ``origin/main``
+base are inspected instead. Use ``--all-refs`` to include every local ref.
+Reflogs and unreachable objects are never scanned. The default blocking blob
+limit is 524288 bytes (512 KiB).
 
 This deterministic heuristic is not a proof that history contains no secret or
 that publication is legally safe. It never prints a matched sensitive value.
@@ -35,6 +37,8 @@ from check_public_surface import (
 DEFAULT_MAX_BLOB_BYTES = 512 * 1024
 SEVERITIES = ("INFO", "REVIEW", "BLOCKER")
 EXPECTED_PUBLIC_REF = "refs/heads/main"
+EXPECTED_REMOTE_MAIN = "refs/remotes/origin/main"
+EXPECTED_REMOTE_HEAD = "refs/remotes/origin/HEAD"
 PUBLIC_IDENTITY_POLICY = Path("governance/public-commit-identity.json")
 EMAIL_PATTERN = re.compile(
     r"(?i)(?<![A-Z0-9._%+-])([A-Z0-9._%+-]+)@([A-Z0-9.-]+\.[A-Z]{2,})"
@@ -334,30 +338,59 @@ def _parse_commit(
 
 def _all_refs(root: Path) -> tuple[dict[str, str], ...]:
     raw = _git(
-        ("for-each-ref", "--format=%(refname)%00%(objecttype)%00%(objectname)%00"),
+        (
+            "for-each-ref",
+            "--format=%(refname)%00%(objecttype)%00%(objectname)%00%(symref)%00",
+        ),
         cwd=root,
     )
     fields = raw.decode("utf-8", errors="replace").split("\x00")
     records: list[dict[str, str]] = []
-    for index in range(0, len(fields) - 2, 3):
-        name, object_type, oid = fields[index : index + 3]
+    for index in range(0, len(fields) - 3, 4):
+        name, object_type, oid, symref = fields[index : index + 4]
         name = name.lstrip("\n")
         if name:
             records.append(
-                {"name": redact_text(name), "object_type": object_type, "oid": oid}
+                {
+                    "name": redact_text(name),
+                    "object_type": object_type,
+                    "oid": oid,
+                    "symref": redact_text(symref),
+                }
             )
     return tuple(sorted(records, key=lambda item: item["name"]))
 
 
-def _selected_refs(refs: tuple[dict[str, str], ...], all_refs: bool) -> tuple[str, ...]:
+def _detached_head(root: Path) -> bool:
+    return _git(("rev-parse", "--abbrev-ref", "HEAD"), cwd=root).decode("utf-8").strip() == "HEAD"
+
+
+def _base_audit_refs(root: Path, refs: tuple[dict[str, str], ...]) -> tuple[str, ...]:
+    raw_names = tuple(item["name"] for item in refs)
+    if not _detached_head(root):
+        if EXPECTED_PUBLIC_REF not in raw_names:
+            raise HistoryAuditError(f"required publication ref {EXPECTED_PUBLIC_REF} is absent")
+        return (EXPECTED_PUBLIC_REF,)
+    bases = ["HEAD"]
+    if EXPECTED_PUBLIC_REF in raw_names:
+        bases.append(EXPECTED_PUBLIC_REF)
+    if EXPECTED_REMOTE_MAIN in raw_names:
+        bases.append(EXPECTED_REMOTE_MAIN)
+    if len(bases) == 1:
+        raise HistoryAuditError("detached checkout lacks a main base ref")
+    return tuple(bases)
+
+
+def _selected_refs(root: Path, refs: tuple[dict[str, str], ...], all_refs: bool) -> tuple[str, ...]:
     raw_names = tuple(item["name"] for item in refs)
     if all_refs:
         if not raw_names:
             raise HistoryAuditError("the repository has no refs to inspect")
-        return raw_names
-    if EXPECTED_PUBLIC_REF not in raw_names:
-        raise HistoryAuditError(f"required publication ref {EXPECTED_PUBLIC_REF} is absent")
-    return (EXPECTED_PUBLIC_REF,)
+        selected = list(raw_names)
+        if _detached_head(root):
+            selected.append("HEAD")
+        return tuple(dict.fromkeys(selected))
+    return _base_audit_refs(root, refs)
 
 
 def _reachable_objects(root: Path, selected_refs: Sequence[str]) -> dict[str, tuple[str, int]]:
@@ -459,11 +492,113 @@ def _content_findings(location: str, text: str, *, commit_message: bool) -> list
     return findings
 
 
-def _ref_findings(refs: Iterable[dict[str, str]]) -> list[Finding]:
+def _reachable_commit_oids(root: Path, refs: Sequence[str]) -> frozenset[str]:
+    raw = _git(("rev-list", *refs), cwd=root)
+    return frozenset(raw.decode("ascii", errors="strict").splitlines())
+
+
+def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]:
+    """Classify publishable refs separately from transport refs and HEAD.
+
+    ``refs/heads/*``, tags, notes, and custom refs are locally publishable and
+    remain strict. ``refs/remotes/*`` are transport metadata: only ``origin`` is
+    recognized, and its refs must describe the graph already audited from main
+    or from a detached pull-request checkout. HEAD names the currently audited
+    commit but is not itself a publishable ref.
+    """
     findings: list[Finding] = []
+    by_name = {ref["name"]: ref for ref in refs}
+    detached = _detached_head(root)
+    base_refs = _base_audit_refs(root, refs)
+    graph_roots = (
+        tuple(ref for ref in base_refs if ref != EXPECTED_REMOTE_MAIN)
+        if detached
+        else base_refs
+    )
+    audited_graph = _reachable_commit_oids(root, graph_roots)
+    configured_remotes = tuple(
+        name for name in _git(("remote",), cwd=root).decode("utf-8", errors="replace").splitlines() if name
+    )
+    for remote in sorted(configured_remotes):
+        if remote != "origin":
+            findings.append(
+                Finding("REVIEW", "UNEXPECTED_REMOTE", redact_text(remote), "only remote origin is allowed")
+            )
     for ref in refs:
         name = ref["name"]
         if name == EXPECTED_PUBLIC_REF:
+            continue
+        if name.startswith("refs/remotes/"):
+            parts = name.split("/", 3)
+            remote = parts[2] if len(parts) > 2 else ""
+            if remote != "origin":
+                findings.append(
+                    Finding("REVIEW", "UNEXPECTED_REMOTE", name, "remote-tracking ref is not owned by origin")
+                )
+                continue
+            if ref["object_type"] != "commit" or ref["oid"] not in audited_graph:
+                findings.append(
+                    Finding(
+                        "REVIEW",
+                        "REMOTE_REF_OUTSIDE_AUDITED_GRAPH",
+                        name,
+                        "remote-tracking ref does not resolve inside the audited commit graph",
+                    )
+                )
+                continue
+            if name == EXPECTED_REMOTE_HEAD:
+                if ref.get("symref") != EXPECTED_REMOTE_MAIN:
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "INVALID_REMOTE_HEAD",
+                            name,
+                            "origin/HEAD must resolve symbolically to origin/main",
+                        )
+                    )
+                else:
+                    findings.append(
+                        Finding("INFO", "EXPECTED_REMOTE_HEAD", name, "transport ref resolves to origin/main")
+                    )
+                continue
+            if name == EXPECTED_REMOTE_MAIN:
+                local_main = by_name.get(EXPECTED_PUBLIC_REF)
+                if not detached and (local_main is None or local_main["oid"] != ref["oid"]):
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "DIVERGENT_REMOTE_MAIN",
+                            name,
+                            "origin/main differs from the publishable main branch",
+                        )
+                    )
+                elif detached and local_main is not None and local_main["oid"] != ref["oid"]:
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "DIVERGENT_REMOTE_MAIN",
+                            name,
+                            "origin/main differs from the available local main branch",
+                        )
+                    )
+                else:
+                    findings.append(
+                        Finding("INFO", "EXPECTED_REMOTE_MAIN", name, "transport ref is inside the audited graph")
+                    )
+                continue
+            if detached:
+                findings.append(
+                    Finding(
+                        "INFO",
+                        "CHECKOUT_REMOTE_REF",
+                        name,
+                        "detached-checkout transport ref is inside the audited graph",
+                    )
+                )
+            else:
+                findings.append(
+                    Finding("REVIEW", "UNEXPECTED_REMOTE_REF", name, "unexpected origin transport ref")
+                )
             continue
         if name.startswith("refs/tags/"):
             category = "UNEXPECTED_TAG"
@@ -471,12 +606,10 @@ def _ref_findings(refs: Iterable[dict[str, str]]) -> list[Finding]:
             category = "UNEXPECTED_BRANCH"
         elif name.startswith("refs/notes/"):
             category = "GIT_NOTES_REF"
-        elif name.startswith("refs/remotes/"):
-            category = "REMOTE_TRACKING_REF"
         else:
             category = "UNEXPECTED_REF"
         findings.append(
-            Finding("REVIEW", category, name, "ref is outside the planned publication ref")
+            Finding("REVIEW", category, name, "publishable ref is outside refs/heads/main")
         )
     return findings
 
@@ -487,10 +620,10 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
     root = repository_root(root)
     policy = _load_identity_policy(root)
     refs = _all_refs(root)
-    selected = _selected_refs(refs, all_refs)
+    selected = _selected_refs(root, refs, all_refs)
     objects = _reachable_objects(root, selected)
     commits = _reachable_commits(root, selected)
-    findings = _ref_findings(refs)
+    findings = _ref_findings(root, refs)
 
     paths_by_blob: dict[str, set[str]] = defaultdict(set)
     introduction: dict[str, str] = {}

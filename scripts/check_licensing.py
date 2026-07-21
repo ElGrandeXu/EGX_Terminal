@@ -102,14 +102,24 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def tree_sha256(root: Path) -> str:
+def _tree_sha256_entries(entries: Iterable[tuple[str, bytes]]) -> str:
+    """Hash normalized POSIX paths and payloads in the locked canonical order."""
     digest = hashlib.sha256()
-    for path in sorted(candidate for candidate in root.rglob("*") if candidate.is_file()):
-        digest.update(path.relative_to(root).as_posix().encode("utf-8"))
+    for relative, payload in sorted(entries, key=lambda item: (item[0].casefold(), item[0])):
+        digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
-        digest.update(hashlib.sha256(path.read_bytes()).digest())
+        digest.update(hashlib.sha256(payload).digest())
         digest.update(b"\0")
     return digest.hexdigest()
+
+
+def tree_sha256(root: Path) -> str:
+    entries = (
+        (path.relative_to(root).as_posix(), path.read_bytes())
+        for path in root.rglob("*")
+        if path.is_file()
+    )
+    return _tree_sha256_entries(entries)
 
 
 def _glob_regex(pattern: str) -> re.Pattern[str]:
