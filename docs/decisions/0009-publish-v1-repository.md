@@ -1,7 +1,10 @@
 # 0009 — Publish the V1 repository
 
-- **Status:** accepted
+- **Status:** superseded by [0010](0010-recreate-public-repository-after-email-exposure.md)
 - **Date:** 2026-07-21
+
+This record describes the initial publication state. It is not the current
+visibility or release state of the recreated canonical repository.
 
 ## Context
 

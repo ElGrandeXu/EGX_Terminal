@@ -148,9 +148,21 @@ class HistoryRepository:
         releases: list[dict[str, object]] | None = None,
         *,
         signature_policy: dict[str, object] | None = None,
+        historical_releases: list[dict[str, object]] | None = None,
+        next_candidate: str | None = None,
     ) -> None:
+        current = releases or []
+        historical = (
+            historical_releases
+            if historical_releases is not None
+            else ([self.historical_release_record()] if releases is None else [])
+        )
+        known_tags = [str(item["tag"]) for item in (*current, *historical)]
+        known_versions = [tuple(int(part) for part in tag[1:].split(".")) for tag in known_tags]
+        candidate_version = max(known_versions + [(1, 0, 0)])
+        candidate = f"v{candidate_version[0]}.{candidate_version[1]}.{candidate_version[2] + 1}"
         payload = {
-            "schema_version": 3,
+            "schema_version": 4,
             "version_format": r"^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$",
             "stable_tags": {
                 "declaration_required": True,
@@ -177,9 +189,26 @@ class HistoryRepository:
                 "identities": [],
                 "gate": "Select a durable SSH signing key, publish its public key and SHA256 fingerprint, and add the offline allowed-signers record before creating v1.0.1.",
             },
-            "releases": releases or [],
+            "current_releases": current,
+            "historical_releases": historical,
+            "next_candidate": next_candidate or candidate,
         }
         self.write("governance/release-policy.json", json.dumps(payload, indent=2) + "\n")
+
+    @staticmethod
+    def historical_release_record(tag: str = "v1.0.0") -> dict[str, object]:
+        return {
+            "tag": tag,
+            "status": "WITHDRAWN_DURING_PRIVACY_REMEDIATION",
+            "former_target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
+            "former_tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
+            "former_github_release_id": 357471186,
+            "evidence": "PRIVATE_VERIFIED_BUNDLE",
+            "evidence_visibility": "PRIVATE",
+            "public_verification_claim": False,
+            "expected_ref_present": False,
+            "tag_name_reuse_status": "BLOCKED_BY_IMMUTABLE_RELEASE_RESERVATION",
+        }
 
     def release_record(
         self,
@@ -2210,6 +2239,111 @@ class GitHistoryTests(unittest.TestCase):
             repo.commit("test: use invalid revocation boundary")
             with self.assertRaises(CHECK.HistoryAuditError):
                 CHECK.audit(repo.root)
+
+    def test_134_no_tag_with_historical_v1_record_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertNotIn("UNEXPECTED_TAG", self.categories(report))
+
+    def test_135_withdrawn_historical_tag_present_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            repo.annotated_tag("v1.0.0")
+            report = CHECK.audit(repo.root)
+        self.assertIn("WITHDRAWN_HISTORICAL_TAG_PRESENT", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_136_same_tag_cannot_be_current_and_historical(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write_release_policy(
+                [repo.release_record("v1.0.0", "1" * 40, "2" * 40)],
+                historical_releases=[repo.historical_release_record()],
+                next_candidate="v1.0.1",
+            )
+            repo.commit("test: duplicate current and historical release")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_137_unknown_tag_remains_rejected_with_historical_records(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            repo.annotated_tag("unexpected")
+            report = CHECK.audit(repo.root)
+        self.assertTrue({"UNEXPECTED_TAG", "INVALID_RELEASE_VERSION"} <= self.categories(report))
+
+    def test_138_undeclared_v1_0_1_remains_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            repo.annotated_tag("v1.0.1")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNEXPECTED_TAG", self.categories(report))
+
+    def test_139_unsigned_future_current_release_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.1", target)
+            repo.write_release_policy([repo.release_record("v1.0.1", target, tag_object)])
+            repo.commit("test: declare unsigned future release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNSIGNED_FUTURE_RELEASE", self.categories(report))
+        self.assertIn("CURRENT_RELEASE_BLOCKED_BY_SIGNATURE_POLICY", self.categories(report))
+
+    def test_140_coherent_next_candidate_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            policy = CHECK._load_release_policy(repo.root)
+        self.assertEqual("v1.0.1", policy.next_candidate)
+
+    def test_141_incomplete_historical_record_is_invalid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            historical = repo.historical_release_record()
+            del historical["former_tag_object"]
+            repo.write_release_policy(historical_releases=[historical])
+            repo.commit("test: omit historical evidence field")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_142_private_history_cannot_claim_public_verifiability(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            historical = repo.historical_release_record()
+            historical["evidence_visibility"] = "PUBLIC"
+            historical["public_verification_claim"] = True
+            repo.write_release_policy(historical_releases=[historical])
+            repo.commit("test: overclaim historical verification")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_143_absent_historical_objects_are_never_read_or_reconstructed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            former_oids = {
+                str(repo.historical_release_record()["former_target_commit"]),
+                str(repo.historical_release_record()["former_tag_object"]),
+            }
+            with mock.patch.object(CHECK, "_git", wraps=CHECK._git) as git_mock:
+                report = CHECK.audit(repo.root)
+            invoked = "\n".join(
+                " ".join(str(part) for part in call.args[0]) for call in git_mock.call_args_list
+            )
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertTrue(all(oid not in invoked for oid in former_oids))
 
 
 if __name__ == "__main__":

@@ -34,12 +34,15 @@ directly and record observed versions or commits when relevant.
   GitHub `noreply` identity
 - [0008 — Finalize public repository governance](0008-finalize-public-repository-governance.md)
   — accepted; maintainer-led community files, hardened CI, and private staging
-- [0009 — Publish the V1 repository](0009-publish-v1-repository.md) — accepted;
-  green private staging, public security activation, anonymous validation, and
-  no release or compatibility claim beyond the evidence
+- [0009 — Publish the V1 repository](0009-publish-v1-repository.md) — superseded;
+  records the initial publication sequence before repository recreation
 - [0010 — Recreate the public repository after email exposure](0010-recreate-public-repository-after-email-exposure.md)
-  — accepted; quarantine the former staging repository and recreate the public
-  surface from a content-identical `noreply` history
+  — superseded in part; recreate the canonical surface from a content-identical
+  `noreply` history, with remote-quarantine retention later replaced by verified
+  private backup and deletion
 - [0011 — Record the v1.0.0 release and adopt a tag-aware release policy](0011-record-v1.0.0-release-and-tag-policy.md)
-  — accepted; preserve the immutable first release, audit declared annotated
-  tags, and require a recorded SSH signing identity before `v1.0.1`
+  — superseded current-release state; retains the contemporaneous release-policy
+  rationale before privacy remediation
+- [0012 — Close canonical recovery after immutable tag reservation](0012-close-canonical-recovery-after-immutable-tag-reservation.md)
+  — accepted; withdraw `v1.0.0` to verified private history, keep the canonical
+  repository tagless and release-free, and reserve `v1.0.1` for later work

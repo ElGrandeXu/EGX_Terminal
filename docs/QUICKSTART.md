@@ -15,9 +15,10 @@ standard library.
 
 ## Canonical full-clone validation
 
-A complete clone contains `.git`, refs, commit and tag objects, and identity
-metadata. It can therefore prove history, ref topology, tag ancestry, annotated
-tag identity, and the exact locked `v1.0.0` object.
+A complete clone contains `.git`, refs, commit objects, and identity metadata.
+It can therefore prove the current history and ref topology, including that no
+Git tag exists. The withdrawn historical `v1.0.0` objects are intentionally
+absent and are not reconstructed or simulated by the checker.
 
 Confirm that none of the known active project surfaces in the machine-readable
 neutral-root registry is present:
@@ -67,8 +68,8 @@ locks. It is not a project runtime dependency.
 A generated `.zip` or `.tar.gz` source archive has no `.git` directory. It can
 check only the content present: registered neutral-root surfaces, publication
 heuristics, file-scoped licensing, Markdown links, workflow governance, and
-REUSE metadata. It cannot prove history, refs, commit identities, the tag object,
-or the tag's relationship to `main`.
+REUSE metadata. It cannot prove history, refs, commit identities, or the absence
+of historical Git objects from the canonical object database.
 
 Run only this bounded sequence in an extracted source archive:
 

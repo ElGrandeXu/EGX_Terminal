@@ -371,47 +371,99 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     plan = _load_json(root / relative, relative, findings)
     try:
         valid = (
-            plan["schema_version"] == 2
+            plan["schema_version"] == 3
             and plan["remote_settings_status"] == "APPLIED"
-            and plan["identity"] == {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"}
+            and plan["identity"]
+            == {
+                "owner": "ElGrandeXu",
+                "repository": "EGX_Terminal",
+                "repository_id": 1308085094,
+                "default_branch": "main",
+            }
             and plan["visibility_strategy"]["initial_visibility"] == "private"
-            and plan["visibility_strategy"]["target_visibility"] == "public"
+            and plan["visibility_strategy"]["target_visibility"] == "private"
+            and plan["visibility_strategy"]["observed_visibility"] == "private"
+            and plan["metadata"]["description"]
+            == "Evidence-led research for inspectable, LLM-agnostic terminal environments."
             and plan["metadata"]["homepage"] == ""
-            and 1 <= len(plan["metadata"]["topics"]) <= 10
+            and plan["metadata"]["topics"]
+            == [
+                "llm",
+                "developer-tools",
+                "cli",
+                "llm-agnostic",
+                "ai-governance",
+                "reproducible-research",
+                "opencode",
+                "ollama",
+                "qwen",
+                "open-source",
+            ]
             and plan["features"]["issues"] is True
             and plan["features"]["projects"] is False
             and plan["features"]["wiki"] is False
             and plan["features"]["discussions"] is False
+            and plan["features"]["pages"] is False
             and plan["merge_policy"]["squash_merge"] is True
             and plan["merge_policy"]["merge_commits"] is False
             and plan["merge_policy"]["rebase_merge"] is False
+            and plan["merge_policy"]["delete_merged_branches"] is True
+            and plan["merge_policy"]["auto_merge"] is False
             and plan["actions_policy"]["github_token_default"] == "read"
             and plan["actions_policy"]["allowed_actions"] == list(EXPECTED_ACTIONS)
+            and plan["actions_policy"]["github_owned_allowed"] is False
+            and plan["actions_policy"]["verified_allowed"] is False
             and plan["actions_policy"]["full_sha_pinning_required"] is True
             and plan["actions_policy"]["sha_pinning_verified_on"] == "2026-07-21"
             and plan["actions_policy"]["sha_pinning_endpoint"]
             == "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions"
             and plan["security"]["private_vulnerability_reporting"] == "ACTIVE"
+            and plan["security"]["secret_scanning"] == "ACTIVE"
+            and plan["security"]["push_protection"] == "ACTIVE"
+            and plan["security"]["security_alerts"] == "ACTIVE"
             and plan["main_ruleset"]["name"] == "main-protection"
             and plan["main_ruleset"]["target"] == "main"
             and plan["main_ruleset"]["enforcement"] == "active"
             and plan["main_ruleset"]["rules"]["required_approvals"] == 0
+            and plan["main_ruleset"]["rules"]["prevent_deletion"] is True
+            and plan["main_ruleset"]["rules"]["prevent_force_push"] is True
+            and plan["main_ruleset"]["rules"]["require_linear_history"] is True
+            and plan["main_ruleset"]["rules"]["require_pull_request"] is True
+            and plan["main_ruleset"]["rules"]["require_conversation_resolution"] is True
             and plan["main_ruleset"]["rules"]["required_status_checks"] == list(EXPECTED_CHECKS)
+            and plan["main_ruleset"]["administrative_bypass"]["ordinary_use"] is False
             and plan["community_profile"]["code_of_conduct"] == "DEFERRED_UNTIL_ENFORCEABLE"
-            and plan["release"]
+            and plan["release_state"]
             == {
-                "version": "v1.0.0",
-                "target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
-                "tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
-                "annotated_tag": True,
-                "immutable": True,
-                "github_release_id": 357471186,
-                "published_at": "2026-07-21T16:06:25Z",
-                "published": True,
-                "latest": True,
-                "prerelease": False,
-                "tag_push_ci": "NOT_RUN_FOR_V1.0.0",
+                "current_releases": [],
+                "historical_releases": [
+                    {
+                        "tag": "v1.0.0",
+                        "status": "WITHDRAWN_DURING_PRIVACY_REMEDIATION",
+                        "evidence": "PRIVATE_VERIFIED_BUNDLE",
+                        "expected_ref_present": False,
+                    }
+                ],
                 "next_candidate": "v1.0.1",
+                "canonical_git_tag_count": 0,
+                "canonical_github_release_count": 0,
+                "status": "APPLIED",
+            }
+            and plan["recovery_closure"]
+            == {
+                "starting_head": "dee7a7c97ad6991746d7de35f6d7ddb290bb895e",
+                "starting_commit_count": 37,
+                "final_commit_count": 38,
+                "temporary_repositories_backed_up_locally": True,
+                "temporary_repositories_deleted": True,
+                "private_evidence_outside_repository": True,
+                "direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
+                "future_direct_push_authorized": False,
+                "force_push_used": False,
+                "git_tag_created": False,
+                "github_release_created": False,
+                "pull_request_created": False,
+                "experimental_evidence_modified": False,
                 "status": "APPLIED",
             }
         )
@@ -419,7 +471,18 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
         valid = False
     if not valid:
         findings.append(_finding(relative, "PUBLICATION_PLAN", "plan is incomplete or inconsistent"))
-    for section in ("visibility_strategy", "metadata", "features", "merge_policy", "actions_policy", "security", "main_ruleset", "community_profile", "release"):
+    for section in (
+        "visibility_strategy",
+        "metadata",
+        "features",
+        "merge_policy",
+        "actions_policy",
+        "security",
+        "main_ruleset",
+        "community_profile",
+        "release_state",
+        "recovery_closure",
+    ):
         if not isinstance(plan.get(section), dict) or plan[section].get("status") not in FINAL_REMOTE_STATUSES:
             findings.append(_finding(relative, "REMOTE_STATUS", f"{section} does not have a final status"))
 

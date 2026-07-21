@@ -1,136 +1,91 @@
-# Audit de l'historique Git publiable
+# Audit de l'historique Git canonique
 
 ## Verdict final
 
 - **Date :** 2026-07-21.
-- **Ref publiable :** `refs/heads/main` uniquement.
-- **Historique :** **`PASS`**.
-- **Identité :** **`PASS`**.
-- **Clone propre et clone anonyme :** **`PASS`**.
-- **Commits avant la décision de remédiation publique :** 35.
-- **Commits finaux :** 36.
-- **Merges dans l'historique canonique :** 0.
-- **Tags et releases :** 0.
-- **Identités privées :** 0.
-- **Politique active :** schéma 2, contributions GitHub `noreply` et committer
-  web GitHub borné.
+- **Ref canonique :** `refs/heads/main` uniquement.
+- **Historique :** **`PASS`**, linéaire, 38 commits.
+- **Identité :** **`PASS`**, uniquement des identités acceptées.
+- **Tags Git :** 0 localement et à distance.
+- **Releases GitHub :** 0.
+- **Pull requests GitHub :** 0.
+- **Visibilité :** privée.
+- **Preuves expérimentales modifiées :** 0.
 
 Le premier audit prépublication avait remédié 30 commits. Un incident distinct a
-ensuite concerné l'identité d'auteur choisie par GitHub pour le premier squash
-merge public. Le scanner a détecté cette adresse personnelle sans l'afficher et
-a fait échouer `--fail-on-review`. Aucun secret de contenu ni autre bloqueur
-fonctionnel n'a été trouvé.
+ensuite concerné l'identité auteur sélectionnée par GitHub pour un squash merge.
+Le scanner a détecté l'adresse personnelle sans l'afficher et a fait échouer le
+gate `--fail-on-review`. Aucun secret de contenu ni autre bloqueur fonctionnel
+n'a été trouvé.
 
-## Identité publique finale
+## Reconstruction bornée
 
-Les 34 premiers commits utilisent l'identité canonique du mainteneur. Le 35e
-commit reconstruit utilise `ElGrandeXu` comme auteur et `Maxime Erard` comme
-committer. Le 36e commit de documentation utilise l'identité canonique. Toutes
-ces identités emploient l'adresse GitHub ID-based `noreply` approuvée :
+Le commit concerné a été reconstruit à l'identité GitHub ID-based `noreply`
+approuvée. La comparaison a confirmé l'identité du tree, du parent, du message
+complet, du sujet, des dates auteur et committer, du diff binaire, des chemins,
+des modes et du contenu. Seule l'enveloppe d'identité, et donc le SHA du commit,
+a changé.
 
-```text
-177521250+ElGrandeXu@users.noreply.github.com
-```
+Le repository canonique a été recréé vide et privé, puis alimenté uniquement par
+la branche `main` propre. L'objet affecté, l'ancienne pull request et ses refs
+n'ont pas été importés. Aucun force-push n'a été utilisé.
 
-La politique
-[`public-commit-identity.json`](../../governance/public-commit-identity.json)
-accepte aussi les auteurs et committers humains utilisant une adresse GitHub
-ID-based ou username-only `noreply`. Le committer système exact
-`GitHub <noreply@github.com>` est borné au rôle committer d'un merge web. Une
-adresse personnelle, une identité invalide, un faux système ou un bot non
-déclaré reste `REVIEW` et fait échouer `--fail-on-review`.
+## Politique d'identité
 
-## Première réécriture contrôlée
+Les 38 commits utilisent des identités acceptées par
+[`public-commit-identity.json`](../../governance/public-commit-identity.json).
+La politique accepte le mainteneur et les contributeurs humains utilisant une
+adresse GitHub ID-based ou username-only `noreply`. L'identité système GitHub
+exacte est bornée au rôle committer d'un merge web. Une adresse personnelle, une
+identité invalide, un faux système ou un bot non déclaré reste `REVIEW`.
 
-`git-filter-repo` 2.47.0 avait réécrit uniquement `refs/heads/main`. La
-comparaison ordinale des 30 commits avait produit :
+Les diagnostics masquent les adresses. L'adresse exposée lors de l'incident
+n'apparaît ni dans l'historique canonique ni dans cette documentation.
 
-| Propriété | Résultat |
-| --- | ---: |
-| Trees identiques | 30/30 |
-| Messages complets identiques | 30/30 |
-| Sujets identiques | 30/30 |
-| Dates auteur identiques | 30/30 |
-| Dates committer identiques | 30/30 |
-| Nombres de parents identiques | 30/30 |
-| Diffs et chemins modifiés identiques | 30/30 |
-| Noms et emails auteur remédiés | 30/30 |
-| Noms et emails committer remédiés | 30/30 |
+## Refs et release historique
 
-La [cartographie exhaustive](../../governance/history-rewrite-map.json) reste
-inchangée. Douze occurrences dans les archives expérimentales restent
-volontairement exprimées avec les SHA historiques afin de préserver les preuves.
+La seule branche persistante finale est `main`. Les refs locales et distantes
+obsolètes du chantier ont été retirées après vérification de leur sauvegarde et
+de leur intégration. Le clone canonique ne contient aucun Git tag.
 
-## Incident du premier squash merge
+`v1.0.0` est un enregistrement historique retiré pendant la remédiation, et non
+une release active. Ses anciens objets sont absents du canonique et conservés
+uniquement dans des bundles privés vérifiés. Le checker valide la cohérence du
+record historique sans lire, reconstruire ou simuler les objets absents. Toute
+réapparition de la ref retirée est rejetée.
 
-Avant toute mutation distante, le dépôt public avait 35 commits, aucun tag,
-aucune release et aucun fork observé. Son `main`, le tree, le parent et le message
-du commit concerné correspondaient aux valeurs gelées. Le tree était également
-identique au tip de la branche de contribution.
+`v1.0.1` est la prochaine candidate, mais aucun tag, objet tag ou release de ce
+nom n'existe. La politique SSH reste `KEY_SELECTION_REQUIRED` sans identité
+active.
 
-La mise en privé a précédé toute autre mutation distante. La page du dépôt, le
-commit, la pull request fusionnée et le clone ont ensuite été testés sans
-credentials : les trois URLs ont répondu `404` et le clone a échoué. Le dépôt a
-été renommé sous un nom de quarantaine non publié ici ; il reste privé, non
-supprimé et conserve ses runs, sa pull request, ses réglages et son historique.
+## Preuves privées et suppression distante
 
-Le nom canonique a été recréé dans un nouveau repository privé. Aucun objet n'a
-été transféré depuis la quarantaine : seule la branche locale nettoyée a été
-poussée.
+Les deux repositories temporaires ont été capturés séparément dans des mirrors,
+bundles complets, métadonnées privées et synthèses hors repository. Chaque bundle
+passe `git bundle verify`, chaque mirror passe `git fsck --full`, et le manifeste
+SHA-256 complet passe après régénération.
 
-## Reconstruction du 35e commit
-
-Le commit de remplacement `0a7e689142aec791467d200d6e6d3f733bad1e6b` a été
-créé avec `git commit-tree` à partir du tree et du parent gelés, du message exact
-et des dates ISO originales.
-
-| Propriété | Résultat |
-| --- | ---: |
-| Tree | identique, 1/1 |
-| Parent | identique, 1/1 |
-| Message complet et sujet | identiques, 1/1 |
-| Dates auteur et committer | identiques, 1/1 |
-| Diff binaire et contenu | identiques, 1/1 |
-| Chemins, modes et OID de blobs | identiques, 1/1 |
-| Identité auteur | remplacée par `noreply` |
-| Identité committer | remplacée par `noreply` |
-
-Le SHA a nécessairement changé. Aucune propriété fonctionnelle n'a changé et les
-trois commits de la branche de contribution n'ont pas été réécrits
-individuellement.
+Après ces validations, les deux repositories ont été supprimés. Les lectures API
+authentifiées et les URLs renvoient `404`, et la liste du compte ne contient plus
+que le canonique pour ce projet. Les bundles et le manifeste privés sont
+conservés ; leurs chemins et contenus ne sont pas publiés ici.
 
 ## Contenu historique et intégrité
 
 Le scan des commits, arbres, blobs, messages et chemins atteignables n'observe ni
 secret plausible, clé privée PEM, chemin personnel, transcript privé, fichier
-`.env` historique, contenu tiers substantiel, blob supérieur à 512 KiB, pointeur
-Git LFS, submodule, note, tag ou ref inattendue.
+`.env` historique, contenu tiers substantiel, pointeur Git LFS, submodule, note,
+tag ou ref inattendue.
 
-Les 46 fichiers sous `experiments/` sont inchangés. L'archive `kernel-v1`,
-l'archive `kernel-micro-v1` et les dix fichiers gelés de Mission 24 sont
-octet-identiques. Le hash agrégé verrouillé de `kernel-v1` reste
-`c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`.
-
-## Sauvegarde, purge et clones
-
-Avant reconstruction, un bundle complet vérifié, un tar du tree, le diff, les
-modes/OID, les chemins, le message, le sujet et leurs hashes ont été capturés
-hors repository comme **`PRIVATE_RECOVERY_ARTIFACT`**. Les bundles privés
-antérieurs restent eux aussi hors repository.
-
-Après déplacement de `main`, la branche de contribution et toutes les refs de
-transport ont été supprimées, les reflogs expirés et les objets inatteignables
-collectés. L'ancien SHA n'est plus résoluble localement et l'empreinte de
-l'ancienne adresse ne correspond à aucun objet restant.
-
-Un clone indépendant sans hardlinks, puis un clone HTTPS anonyme, contiennent 36
-commits, une branche et zéro tag. Les contrôles de racine, surface, licences,
-historique, gouvernance, liens, tests, JSON, TOML, locks, actionlint, REUSE, Git et
-intégrité gelée y passent.
+Les fichiers sous `experiments/kernel-v1/` et
+`experiments/kernel-micro-v1/` sont inchangés. Le hash agrégé verrouillé de
+`kernel-v1` reste
+`c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`,
+et les dix fichiers gelés de Mission 24 restent octet-identiques.
 
 ## Contrôle reproductible
 
-Depuis la racine du repository :
+Depuis un clone Git complet :
 
 ```console
 python scripts/check_git_history.py
@@ -138,11 +93,9 @@ python scripts/check_git_history.py --all-refs
 python scripts/check_git_history.py --fail-on-review
 ```
 
-Le contrôle n'imprime jamais une adresse personnelle complète. Il reste strict
-sur `main`, borne les branches de contribution et valide le checkout détaché
-d'une pull request seulement après concordance du contexte Actions et de ses
-deux parents. Toute identité personnelle dans un parent persistant reste
-`REVIEW`.
+Une archive source sans `.git` ne peut pas prouver l'historique, les refs ou les
+objets absents. Elle utilise uniquement les validations content-only et ne doit
+simuler aucune preuve Git.
 
 ## Limites
 

@@ -1,6 +1,6 @@
 # EGX_Terminal
 
-EGX_Terminal is a public research and governance workspace for designing
+EGX_Terminal is a research and governance workspace for designing
 inspectable, token-conscious terminal environments that remain LLM-, harness-,
 and provider-agnostic. Its V1 boundary preserves the evidence, decisions, and
 validation methods behind that work; it does not contain a universal agent
@@ -36,26 +36,29 @@ surfaces recorded in
 adapter, or behavioral payload is active at the root. This is a bounded registry
 of current conventions, not a claim about every future harness convention.
 
-The published Git history has been audited and remediated. After GitHub selected
-a personal author address for the first squash merge, the former public staging
-repository was quarantined privately and the canonical repository was recreated
-from a content-identical history. All 36 commits use approved GitHub `noreply`
-metadata, and the affected public object was not imported. The active policy
+The Git history has been audited and remediated. After GitHub selected a
+personal author address for the first squash merge, the affected repository was
+made private and the canonical repository was recreated from a content-identical
+clean history. The recovery-closing commit brings that history to 38 commits,
+all using approved GitHub `noreply` metadata; the affected object was not
+imported. The active policy
 continues to accept attributable GitHub `noreply` contributors and the exact
 GitHub web committer used for squash merges, without accepting personal email
 addresses or undeclared bots; see the [identity remediation
 report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
 
-The stable, latest, immutable release is
-[`v1.0.0`](https://github.com/ElGrandeXu/EGX_Terminal/releases/tag/v1.0.0).
-Its annotated tag object `a5668506f38dfc73ec6d8236de00a6adad095e25`
-targets commit `870964a48fc07ff39d65c46255f189d25658ff2c`. `main`
-now prepares the post-release `v1.0.1` consolidation; `v1.0.1` is not published.
+The canonical repository currently has no Git tag and no published release.
+`v1.0.0` is retained only as a historical release record withdrawn during the
+privacy remediation; its experimental conclusions remain valid, while its
+former release metadata is preserved only in verified private evidence outside
+this repository. GitHub's immutable-release reservation prevents reuse of that
+tag name in the recreated repository. The next candidate is `v1.0.1`, but no
+`v1.0.1` tag or release exists and PR 2 remains a later step.
 
 ## Key V1 decision
 
-V1 is published with a neutral root. Useful principles remain
+V1 is maintained with a neutral root. Useful principles remain
 available as documentation, while any future capability or adapter must be
 explicit and opt-in. Hidden instruction injection is outside the V1 boundary.
 
@@ -178,16 +181,16 @@ These are documented project principles, not an automatically injected payload.
 
 ## Current status
 
-EGX_Terminal is publicly available at
-[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). This
-canonical repository was created privately from the cleaned 36-commit history,
-passed all three required CI checks, and was then validated by anonymous access
-and cloning. The former staging repository remains private and quarantined.
-Private Vulnerability Reporting, secret scanning, push protection, read-only
-Actions permissions, required full-SHA pinning, the documented merge policy, and
-the active `main-protection` ruleset are applied. `v1.0.0` is published, stable,
-latest, and immutable at the commit and tag object recorded above. `main`
-prepares `v1.0.1` after the post-release audit; no `v1.0.1` tag or release exists.
+The sole canonical repository is
+[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). It
+remains private during this recovery closure. The temporary recovery surfaces
+were deleted only after complete local mirrors, bundles, metadata captures, and
+SHA-256 verification were retained privately outside the repository. Private
+Vulnerability Reporting, secret scanning, push protection, read-only Actions
+permissions, required full-SHA pinning, the documented merge policy, and the
+active `main-protection` ruleset are applied. The repository has 38 clean
+commits, no Git tag, no release, and no pull request. PR 2 is the next repository
+step before any separately authorized preparation of candidate `v1.0.1`.
 
 ## License
 

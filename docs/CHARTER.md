@@ -39,8 +39,8 @@ than to a replaceable provider or model.
 - Reopening the choice of an always-on behavioral doctrine for V1.
 - Building skills, hooks, subagents, MCP integrations, memory automation, routing,
   compression, installation tooling, or other advanced capabilities.
-- Replacing, moving, or retroactively signing the immutable `v1.0.0` release, or
-  treating the `v1.0.1` consolidation branch as a published release.
+- Republishing, recreating, moving, or retroactively signing the withdrawn
+  historical `v1.0.0` release, or treating candidate `v1.0.1` as published.
 - Activating a provider-specific adapter or hidden instruction injection.
 
 ## Voluntary mission protocol

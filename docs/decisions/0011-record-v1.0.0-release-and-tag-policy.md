@@ -1,7 +1,11 @@
 # 0011 — Record the v1.0.0 release and adopt a tag-aware release policy
 
-- **Status:** accepted
+- **Status:** superseded by [0012](0012-close-canonical-recovery-after-immutable-tag-reservation.md)
 - **Date:** 2026-07-21
+
+This record describes the repository state before the privacy-remediation
+recreation. Decision 0012 governs the current state: `v1.0.0` is withdrawn, and
+the canonical repository has no tag or published release.
 
 ## Context
 

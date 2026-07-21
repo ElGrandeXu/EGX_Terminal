@@ -1,7 +1,8 @@
 # Status
 
-- **Phase:** `v1.0.0` is published and immutable; `main` prepares the `v1.0.1`
-  post-release governance consolidation without adding product capability.
+- **Phase:** canonical recovery is closed on a private repository with no Git
+  tag or published release. PR 2 is the next step; `v1.0.1` is only the next
+  candidate and has not been created.
 - **Mission 24:** complete. Its final ten-cell campaign is closed and unchanged.
 - **Final doctrine verdict:** **`REJECT_MICRO`**. Baseline used 229,923 tokens;
   micro used 247,972; overhead was 7.850019354305572%, above the frozen 5%
@@ -26,21 +27,22 @@
   blocked Ubuntu and Windows CI. At that incident point the repository had no
   tag, release, or fork.
 - **Repository recreation:** [Decision 0010](decisions/0010-recreate-public-repository-after-email-exposure.md)
-  quarantines the former staging repository privately. The 35th commit was
+  records the private replacement of the affected repository. The functional commit was
   reconstructed with the same tree, parent, complete message, dates, diff,
   paths, modes, and contents, using only approved `noreply` identities. The
-  documentation commit brings the cleaned history to 36 commits.
-- **Public-object boundary:** the canonical repository was newly created from
+  recovery-closing documentation brings the clean history to 38 commits.
+- **Canonical-object boundary:** the canonical repository was newly created from
   the cleaned history with no object carrying the former metadata and no
-  inherited pull request. The old staging repository is private, unarchived,
-  retained as evidence, and must never become public.
+  inherited pull request. Temporary recovery repositories were deleted only
+  after verified private local backups were retained outside this repository.
 - **Integrity:** the locked `kernel-v1` hash, both experimental archives, and the
   ten frozen Mission 24 results are unchanged. Private recovery bundles and the
   Mission 35 capture remain outside the repository.
-- **Release:** `v1.0.0` is the stable, latest, immutable GitHub release. Annotated
-  tag object `a5668506f38dfc73ec6d8236de00a6adad095e25` targets
-  `870964a48fc07ff39d65c46255f189d25658ff2c`. The tag remains unchanged and is
-  now accepted only through the declared release policy.
+- **Release state:** the canonical repository has no Git tag and no published
+  release. `v1.0.0` is a historical release withdrawn during privacy
+  remediation; its former target, tag object, and release record exist only in
+  verified private evidence. The experimental conclusions it documented remain
+  unchanged.
 - **Local governance:** the release policy, neutral-surface registry, action
   lock, publication plan, hashed REUSE locks, hardened workflow, JSON/TOML, Git
   integrity, REUSE, link checks, and the full active test suite form the current
@@ -52,9 +54,10 @@
 - **Ruleset:** `main-protection` is active on `main`. It requires a pull request,
   resolved conversations, linear history, and the three named checks; deletion
   and force-push are blocked. The administrator bypass is reserved for recovery.
-- **Publication status:** **`PUBLIC_V1_RELEASED`**. The canonical repository is
-  public and `v1.0.0` is immutable. `v1.0.1` is not published; its remaining
-  release gate includes selecting and recording a durable SSH signing identity.
+- **Repository status:** **`PRIVATE_RECOVERY_CLOSED`**. The canonical repository
+  remains private, has no tag, release, or pull request, and is ready for PR 2.
+  `v1.0.1` is not published; its release gate still includes selecting and
+  recording a durable SSH signing identity.
 - **Email privacy:** the GitHub account setting is
   `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`; future web operations require it
   to remain enabled and the scanner accepts no personal-address fallback.
@@ -62,6 +65,6 @@
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The active gate is to merge the consolidation through the protected PR path,
-then separately satisfy the recorded signing and release checks before any
-`v1.0.1` tag is created.
+The active gate is PR 2 through the protected pull-request path. Only a later,
+separately authorized mission may satisfy the signing gate and create a
+`v1.0.1` tag or release.

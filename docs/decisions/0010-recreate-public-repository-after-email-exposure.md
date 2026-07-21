@@ -1,7 +1,11 @@
 # 0010 — Recreate the public repository after email exposure
 
-- **Status:** Accepted
+- **Status:** superseded in part by [0012](0012-close-canonical-recovery-after-immutable-tag-reservation.md)
 - **Date:** 2026-07-21
+
+This record explains the repository recreation. Its instruction to retain a
+remote quarantine was superseded when decision 0012 authorized deletion of the
+temporary recovery repositories after complete verified private backups.
 
 ## Context
 

@@ -2,114 +2,93 @@
 
 ## But
 
-La V1 publiée présente un workspace de terminal-agent LLM-agnostique, à racine
-neutre, avec ses principes, recherches, décisions et preuves reproductibles. Le
-repository canonique public est `ElGrandeXu/EGX_Terminal`. La release stable,
-latest et immuable `v1.0.0` pointe sur le 36e commit nettoyé.
+La V1 conserve un workspace de recherche LLM-agnostique, à racine neutre, avec
+ses principes, décisions et preuves reproductibles. Le seul repository canonique
+est `ElGrandeXu/EGX_Terminal`. Il reste privé pendant cette clôture de
+récupération et ne possède actuellement aucun Git tag ni aucune release GitHub.
 
-## Surface incluse
+## Surface canonique incluse
 
 - `README.md`, `docs/` et le quickstart décrivent le projet et sa gouvernance ;
 - `scripts/` et `tests/` fournissent les contrôles locaux actifs ;
 - `governance/` contient les politiques d'identité et de release, le registre
-  des surfaces actives, les locks et le plan de publication ;
+  des surfaces actives, les locks et le plan GitHub ;
 - `REUSE.toml`, `LICENSE`, `LICENSES/` et `licensing/license-lock.json` portent la
   gouvernance de licences ;
 - `experiments/kernel-v1/` et `experiments/kernel-micro-v1/` conservent les deux
   campagnes rejetées comme archives inactives et immuables.
 
-La racine ne contient ni kernel always-on, adaptateur actif, hook, skill, mémoire,
-routing ni injection de doctrine. Les archives ne sont pas des composants
-d'exécution de la V1.
+La racine ne contient ni kernel always-on, adaptateur actif, hook, skill,
+mémoire, routing ni injection de doctrine. Les archives ne sont pas des
+composants d'exécution de la V1.
 
-## Éléments exclus ou différés
+## Éléments privés ou différés
 
-La surface exclut les secrets, credentials, configurations de machine,
+La surface canonique exclut les secrets, credentials, configurations de machine,
 transcripts privés, caches, sorties temporaires, modèles, poids et binaires
-locaux. Les capacités avancées et toute release postérieure à `v1.0.0` restent
-hors périmètre sans autorisation séparée.
+locaux. Elle exclut également les bundles, mirrors, captures API et manifestes
+de l'incident. Ces preuves restent privées, hors repository, et ne constituent
+pas une preuve publiquement vérifiable.
 
-Les bundles de récupération et la capture de l'incident sont des
-**`PRIVATE_RECOVERY_ARTIFACT`** hors repository. Le repository de staging
-antérieur, son nom de quarantaine, ses runs, sa pull request, ses réglages et son
-objet exposé sont également hors de la surface publique. Ce repository reste
-privé, non archivé pendant la migration, conservé comme preuve, et ne doit jamais
-redevenir public.
-
-## Preuves historiques et archives
-
-Les archives conservent légitimement versions, hashes, mesures de capacité,
-protocoles, résultats et endpoints loopback nécessaires à l'audit. Les douze
-anciens SHA de la première réécriture restent dans ces preuves et se résolvent
-via la [cartographie](../../governance/history-rewrite-map.json).
-
-Les contrôles d'intégrité confirment l'archive `kernel-v1`, l'archive
-`kernel-micro-v1` et les dix résultats gelés de Mission 24 octet-identiques. La
-recréation du repository n'a modifié aucun fichier expérimental et n'a relancé
-aucun benchmark.
+Les repositories temporaires de récupération ont été supprimés après sauvegarde
+locale complète et vérifiée. Leurs noms privés, chemins locaux, objets et
+anciennes refs ne sont pas publiés dans le canonique.
 
 ## Historique et identité
 
-La première remédiation contrôlée a réécrit 30 commits prépublication. Les quatre
-commits suivants ont conservé la même identité canonique. Le 35e commit, issu du
-premier squash merge, avait un contenu correct mais GitHub lui avait attribué une
-adresse personnelle comme auteur. La politique v2 l'a classé `REVIEW` et le gate
-`--fail-on-review` a bloqué la CI comme prévu.
+La première remédiation contrôlée avait réécrit 30 commits prépublication à
+l'identité GitHub `noreply` approuvée. Lors d'un premier squash merge ultérieur,
+GitHub a produit un commit fonctionnellement correct avec une adresse auteur
+personnelle. La politique d'identité a détecté l'incident immédiatement.
 
-Un force-push ne pouvait pas exclure les références GitHub associées à la pull
-request fusionnée. Le dépôt antérieur a donc été placé en quarantaine privée et
-le commit a été reconstruit localement avec le même tree, parent, message complet,
-sujet, dates, diff, chemins, modes et contenu. Seuls son enveloppe d'identité et
-son SHA ont changé. Le 36e commit documente cette décision. Tous les commits du
-nouveau repository utilisent une identité GitHub `noreply`, et aucun objet du
-repository canonique n'a contenu l'ancienne métadonnée.
+Le repository affecté a été rendu privé et remplacé. Le commit fonctionnel a été
+reconstruit à l'identité `noreply` avec le même tree, parent, message complet,
+sujet, dates et diff. L'objet affecté et les refs de l'ancienne pull request
+n'ont pas été importés. Le 38e commit clôt cette récupération sans force-push.
 
 Le [rapport d'historique](HISTORY_AUDIT.md), la [remédiation
-d'identité](IDENTITY_REMEDIATION.md) et la [décision
-0010](../decisions/0010-recreate-public-repository-after-email-exposure.md)
-documentent les deux opérations distinctes.
+d'identité](IDENTITY_REMEDIATION.md) et les décisions [0010](../decisions/0010-recreate-public-repository-after-email-exposure.md)
+et [0012](../decisions/0012-close-canonical-recovery-after-immutable-tag-reservation.md)
+documentent les opérations distinctes.
 
-## Contrôles automatisés
+## Release historique retirée
 
-`scripts/check_neutral_root.py`, `scripts/check_public_surface.py`,
-`scripts/check_licensing.py`, les trois modes de `scripts/check_git_history.py`,
-`scripts/check_markdown_links.py`, `scripts/check_github_governance.py`, les 188
-tests, `reuse 6.2.0`, actionlint 1.7.12, les parsers JSON et TOML, les locks,
-`git diff --check` et `git fsck --full` passent dans la source et dans un clone
-indépendant sans hardlinks.
+`v1.0.0` n'est pas une release active ou téléchargeable dans le repository
+recréé. C'est un enregistrement historique retiré pendant la remédiation de
+confidentialité. Son ancienne cible, son ancien objet tag et son ancienne release
+sont conservés uniquement dans des preuves privées vérifiées. La réservation
+GitHub liée aux releases immuables interdit de réutiliser ce nom dans le
+repository recréé ; aucun contournement n'est poursuivi.
 
-Les recherches d'objets et de refs confirment que l'ancien commit et l'ancienne
-identité ne sont pas présents. Le hash agrégé verrouillé de `kernel-v1` reste
-`c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`.
+Les conclusions expérimentales associées à V1 restent valables : aucun fichier
+expérimental, résultat ou protocole n'est modifié. `v1.0.1` est la prochaine
+candidate, mais aucun tag ou release de ce nom n'existe. PR 2 reste une étape
+ultérieure séparée.
 
-## Recréation et publication
+## Gouvernance GitHub
 
-Le nouveau repository canonique a été créé vide et privé, sans initialisation.
-Seule la branche `main` nettoyée a été poussée, sans force, tag, release ni pull
-request. Les jobs privés `repository / ubuntu`, `repository / windows` et
-`licensing / reuse` ont tous réussi avant le changement de visibilité.
+La description, la homepage vide et les dix topics définis par la gouvernance
+sont appliqués. Les issues sont actives ; projects, wiki, discussions et Pages
+sont désactivés. Les merges sont squash-only avec suppression des branches
+fusionnées et auto-merge désactivé.
 
-Les réglages validés ont été réappliqués : description, dix topics, issues,
-projets/wiki/discussions/Pages désactivés, squash-only, suppression des branches
-fusionnées, Actions en lecture seule et limitées aux actions épinglées, absence
-d'approbation automatique, PVR lorsque disponible, secret scanning, push
-protection et alertes de vulnérabilité.
+Actions est limité à `actions/checkout@*` et `actions/setup-python@*`, avec
+pinning SHA complet, token en lecture seule et approbation de pull request
+interdite. Private Vulnerability Reporting, secret scanning, push protection et
+alertes de vulnérabilité sont actifs.
 
-Après passage public, la navigation et le clone anonymes ont retrouvé les 36
-commits et passé la suite complète. L'ancien commit et l'ancienne pull request ne
-sont pas accessibles dans le repository canonique, et le staging quarantiné
-reste inaccessible anonymement.
+Après le premier passage vert des trois checks privés, le ruleset
+`main-protection` impose pull request, résolution des conversations, historique
+linéaire et checks `repository / ubuntu`, `repository / windows` et
+`licensing / reuse`, tout en bloquant suppression et force-push.
 
-Le ruleset `main-protection` est actif sur `main` : pull request requise, zéro
-approbation obligatoire, conversations résolues, historique linéaire, trois
-checks requis, suppression et force-push interdits. Le bypass administrateur est
-réservé à la récupération.
+Le push direct du commit de clôture est une exception unique de récupération
+privée avant activation du ruleset. Il n'autorise aucun push direct futur.
 
 ## État
 
-**`PUBLIC_V1_RELEASED`**
+**`PRIVATE_RECOVERY_CLOSED`**
 
-`v1.0.0` est publiée et immuable au commit
-`870964a48fc07ff39d65c46255f189d25658ff2c`, avec l'objet tag annoté
-`a5668506f38dfc73ec6d8236de00a6adad095e25`. `main` prépare `v1.0.1` après
-audit post-release ; cette version corrective n'est pas publiée.
+Le canonique possède 38 commits propres, aucun Git tag, aucune release et aucune
+pull request. Il est prêt pour PR 2, sans que celle-ci soit commencée par cette
+mission.

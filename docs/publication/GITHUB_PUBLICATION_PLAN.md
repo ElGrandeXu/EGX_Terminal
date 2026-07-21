@@ -1,154 +1,96 @@
-# GitHub publication record
+# GitHub recovery and publication record
 
-This record translates the machine-readable
-[`github-publication-plan.json`](../../governance/github-publication-plan.json)
-into the observed publication sequence. It does not by itself authorize a future
-tag or release.
-Historical staging statements below describe their state at the time. Current
-release authorization and tag acceptance are governed separately by the
-[release policy](RELEASE_POLICY.md).
+This record explains the machine-readable
+[`github-publication-plan.json`](../../governance/github-publication-plan.json).
+It describes the canonical repository after privacy-remediation recovery and
+does not authorize a tag, release, visibility change, or new pull request.
 
-## Local and private staging validation
+## Canonical repository
 
-The local policy checks, 134 tests, `reuse 6.2.0`, actionlint 1.7.12, JSON and
-TOML parsing, locks, Git integrity, Markdown links, archive hash, Mission 24
-frozen results, and authenticated-URL searches passed before the corrective
-push.
+`ElGrandeXu/EGX_Terminal`, repository ID `1308085094`, is the sole repository
+retained for this project. Its default branch is `main` and its visibility is
+private. Recovery began from 37 clean commits at
+`dee7a7c97ad6991746d7de35f6d7ddb290bb895e`; the single closing commit brings the
+history to 38 commits.
 
-The first private staging run exposed three real defects:
+The repository was recreated after the first consolidation squash merge used a
+personal author address. The incident was detected immediately. The functional
+commit was rebuilt with the approved GitHub `noreply` identity while preserving
+its tree, parent, complete message, author and committer dates, and diff. The
+affected object and the former pull-request refs were not imported.
 
-- archive ordering depended on platform-native `Path` ordering;
-- the history audit treated the expected `origin/main` transport ref as a
-  publishable ref; and
-- the Windows multi-command block did not stop after a failing PowerShell
-  command.
+## Private evidence and temporary repositories
 
-The corrective commit preserved the archive hash, introduced explicit ref
-semantics, and selected Bash fail-fast on Windows. Its test fixture initially
-contained a complete fictitious authenticated URL in a tracked source file. The
-commit was amended once so that the value is assembled only at runtime in a
-temporary Git repository while still proving `AUTHENTICATED_URL` detection and
-redaction.
+Historical Git objects and incident records remain outside this repository in
+private evidence. Before deleting either temporary GitHub repository, the
+recovery process captured accessible repository metadata, branches, tags,
+releases, pull requests, issues, Actions runs, and settings; created independent
+mirror clones and complete bundles; ran `git bundle verify` and
+`git fsck --full`; and verified every retained file through a SHA-256 manifest.
 
-The amended private staging SHA
-`ff2111f6b1f7e6ea0e295b2a997d19b1a1dbdd31` passed:
+The temporary repositories were then deleted through GitHub. Authenticated API
+reads and their URLs return `404`, the owner repository list no longer contains
+them, and the canonical repository remains intact. Their private names, local
+storage paths, and sensitive contents are intentionally absent from this record.
+
+## Current release state
+
+The canonical repository has no Git tag and no GitHub release. `v1.0.0` is a
+historical release withdrawn during privacy remediation, not a current or
+downloadable release. Its former target, tag object, and GitHub release record
+are retained only in verified private bundles. GitHub's immutable-release
+reservation prevents reuse of its tag name in the recreated repository.
+
+The next candidate is `v1.0.1`. No `v1.0.1` tag or release exists, this recovery
+does not authorize either, and PR 2 remains a separate future step. Future
+release tags still require the declared SSH-signature gate.
+
+## Repository metadata and features
+
+The canonical description is:
+
+> Evidence-led research for inspectable, LLM-agnostic terminal environments.
+
+The homepage is empty. The ten repository topics are `llm`, `developer-tools`,
+`cli`, `llm-agnostic`, `ai-governance`, `reproducible-research`, `opencode`,
+`ollama`, `qwen`, and `open-source`.
+
+Issues are enabled. Projects, wiki, discussions, Pages, and sponsorship are not
+enabled. Merge settings allow squash merges only, use the pull-request title and
+body, delete merged branches, and keep auto-merge disabled.
+
+## Actions and security
+
+Actions is limited to `actions/checkout@*` and `actions/setup-python@*`.
+GitHub-owned and verified-action broad allowances are disabled, full SHA pinning
+is required, the default workflow token is read-only, and workflows cannot
+approve pull requests.
+
+Private Vulnerability Reporting, secret scanning, push protection, and
+vulnerability alerts are active. No personal security address is published.
+
+## Protected main
+
+The `main-protection` ruleset is activated only after the closing commit has
+produced the three private green checks:
 
 - `repository / ubuntu`;
 - `repository / windows`; and
 - `licensing / reuse`.
 
-The Windows log showed Bash with `-e -o pipefail`; the history audit accepted
-the Actions checkout refs; no complete fixture appeared in the logs. The two
-failed staging runs were deleted only after this green run, which was retained.
+The active ruleset blocks deletion and force-push, requires linear history and a
+pull request, requires conversation resolution, and requires those three checks
+with zero mandatory approvals. No ordinary bypass is permitted.
 
-## Applied repository settings
+The direct fast-forward push of the closing commit is a one-time recovery
+exception while the repository is private and before ruleset activation. It is
+not precedent or authorization for future direct pushes.
 
-The description, ten topics, issues, disabled projects/wiki/discussions/Pages,
-squash-only merge policy, PR-title-and-body squash messages, merged-branch
-cleanup, and disabled auto-merge match the machine-readable record.
+## Validation boundary
 
-Actions is enabled for only `actions/checkout` and `actions/setup-python`.
-Repository policy requires full SHA pinning, the default `GITHUB_TOKEN` access
-is read-only, and workflows cannot approve pull requests. The workflow itself
-declares only `contents: read` and persists no checkout credentials.
-
-The post-release audit reproduced `sha_pinning_required: false` through
-`GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions`, despite the earlier
-machine-readable `APPLIED` claim. The official PUT endpoint changed it to
-`true`. Because that mutation temporarily broadened `github_owned_allowed`, the
-selected-actions endpoint immediately restored the exact prior allowlist:
-`actions/checkout@*` and `actions/setup-python@*`, with verified actions still
-disabled. A final read confirmed full-SHA pinning, the exact allowlist, read-only
-workflow tokens, and disabled PR approval.
-
-## Public transition and security
-
-Maxime explicitly authorized the visibility change. The repository is public,
-non-archived, uses `main`, and retained the amended HEAD. Private Vulnerability
-Reporting, secret scanning, push protection, and vulnerability alerts are
-active. [`SECURITY.md`](../../SECURITY.md) is publicly accessible and publishes
-no personal security address.
-
-An HTTPS clone created without Git credentials or local hardlinks passed the
-complete local suite. It contained 33 commits before this documentation commit,
-only the approved public identity, no old amended commit, no authenticated URL
-in reachable blobs, and the locked `kernel-v1` hash. The temporary clone was
-removed.
-
-## Protected pull-request gate
-
-The 34th reachable commit passed the second public CI with `repository / ubuntu`,
-`repository / windows`, and `licensing / reuse` all successful. The
-`main-protection` ruleset is `APPLIED` and active with a required pull request,
-zero required approvals, required conversation resolution, linear history,
-deletion and force-push protection, and the same three named checks. Repository
-merge settings permit squash only. The administrator bypass is reserved for
-repository recovery and is not used by the ordinary protected workflow.
-
-The identity and ref-policy correction is delivered through the repository's
-first fully protected pull request. The policy accepts attributable GitHub
-`noreply` contributors and the exact GitHub web committer, while the history
-check audits a bounded current contribution branch and detached Actions checkout
-without treating arbitrary refs as permanent publication roots.
-
-## Public metadata incident and repository recreation
-
-The first squash merge left the former public repository with 35 commits and a
-personal author address on its HEAD. The policy correctly failed
-`--fail-on-review`; Ubuntu and Windows failed while `licensing / reuse` passed.
-The tree, parent, message, dates, diff, paths, modes, and contents were otherwise
-correct. There were no tags, releases, or observed public forks.
-
-The repository was made private before any other remote mutation. Anonymous
-requests for the repository, commit, and pull request returned `404`, and an
-anonymous clone failed. The repository was then renamed to a private quarantine
-whose name is intentionally excluded from public records. It remains unarchived
-and retains the original object, pull request, runs, settings, and protections as
-private evidence.
-
-The affected commit was reconstructed locally with the same functional
-properties and dates, using only the approved ID-based `noreply` identity. Local
-contribution refs, transport refs, reflogs, and unreachable objects were purged.
-The old object no longer resolves locally, while verified recovery artifacts
-remain outside the repository.
-
-A new empty private `ElGrandeXu/EGX_Terminal` received only the cleaned `main`
-branch by a non-force push. The remediation documentation is the 36th commit.
-The complete local suite now contains 188 tests and passes alongside REUSE
-6.2.0, actionlint 1.7.12, JSON and TOML parsing, locks, Git integrity, Markdown
-links, the locked archive hash, and Mission 24 frozen-result checks in both the
-source and a no-hardlink clean clone.
-
-The new private repository passed `repository / ubuntu`, `repository / windows`,
-and `licensing / reuse` before publication. The validated metadata, feature,
-merge, Actions, security, and branch-protection settings were reapplied. After
-the visibility change, anonymous browsing and cloning validated all 36 commits;
-the affected object and former pull request are absent from the canonical
-repository, while the quarantined repository remains inaccessible anonymously.
-
-The GitHub account email-privacy setting is not API-verifiable and is recorded as
-`EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`. Future web operations require it to
-remain enabled; no personal address is accepted.
-
-## v1.0.0 release and v1.0.1 consolidation
-
-`v1.0.0` was separately authorized and published after commit
-`870964a48fc07ff39d65c46255f189d25658ff2c`. Its annotated tag object is
-`a5668506f38dfc73ec6d8236de00a6adad095e25`; GitHub release `357471186` is
-stable, latest, and immutable. The tag and release remain unchanged.
-
-The post-release audit found that repository documents still described the
-pre-release gate, the history checker rejected every tag, and CI had no tag-push
-trigger. The `v1.0.1` consolidation records the release, admits only declared
-annotated tags in canonical `main`, adds the narrow `v*` push trigger, and hash-
-locks the REUSE installation. The tag-push CI gate did not run for `v1.0.0` and
-is not claimed retroactively. `v1.0.1` is not published, and future compatibility
-claims remain bounded by the preserved evidence.
-
-For future tag pushes, each existing repository job uses isolated policy and
-release worktrees. Canonical `main` performs the strict declaration, ancestry,
-identity, object, and SSH-signature audit. The exact triggering tag target then
-runs content-only repository checks, structured-file validation, the unit suite,
-and Git integrity checks. The REUSE job installs exclusively from the locks in
-that tagged tree before linting it. A checkout of `main` cannot substitute for
-the exact release-tree proof.
+The local and clean-clone gates cover the neutral root, public-surface heuristic,
+licensing, Git history and all refs, Markdown links, GitHub governance, tests,
+REUSE, JSON and TOML parsing, Git integrity, the locked experimental archive
+hash, and the ten frozen Mission 24 results. A source archive without `.git`
+runs only the content-applicable subset and never simulates absent history or
+historical release objects.

@@ -2,10 +2,12 @@
 
 ## Supported versions
 
-The latest stable release (`v1.0.0` at publication time) and `main` for upcoming
-corrective work are examined on a best-effort basis. No long-term-support window
-or backport promise is made. Archived experiments are research evidence, not
-supported products or independently supported versions.
+There is currently no published release or Git tag. The private canonical
+`main` branch is examined on a best-effort basis. Historical `v1.0.0` was
+withdrawn during privacy remediation and is not a downloadable supported
+release. No long-term-support window or backport promise is made. Archived
+experiments are research evidence, not supported products or independently
+supported versions.
 
 ## Reporting a vulnerability
 

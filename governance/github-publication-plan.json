@@ -1,18 +1,34 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "remote_settings_status": "APPLIED",
-  "identity": {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"},
+  "identity": {
+    "owner": "ElGrandeXu",
+    "repository": "EGX_Terminal",
+    "repository_id": 1308085094,
+    "default_branch": "main"
+  },
   "visibility_strategy": {
     "initial_visibility": "private",
-    "target_visibility": "public",
-    "observed_visibility": "public",
-    "reason": "Create a new canonical object database, validate the cleaned first push, CI, repository settings, and a clean remote clone before public exposure.",
+    "target_visibility": "private",
+    "observed_visibility": "private",
+    "reason": "Keep the recreated canonical repository private through recovery closure and the future pull-request preparation phase.",
     "status": "APPLIED"
   },
   "metadata": {
     "description": "Evidence-led research for inspectable, LLM-agnostic terminal environments.",
     "homepage": "",
-    "topics": ["llm", "developer-tools", "cli", "llm-agnostic", "ai-governance", "reproducible-research", "opencode", "ollama", "qwen", "open-source"],
+    "topics": [
+      "llm",
+      "developer-tools",
+      "cli",
+      "llm-agnostic",
+      "ai-governance",
+      "reproducible-research",
+      "opencode",
+      "ollama",
+      "qwen",
+      "open-source"
+    ],
     "status": "APPLIED"
   },
   "features": {
@@ -39,7 +55,12 @@
   "actions_policy": {
     "github_token_default": "read",
     "fork_workflow_write_tokens": false,
-    "allowed_actions": ["actions/checkout", "actions/setup-python"],
+    "allowed_actions": [
+      "actions/checkout",
+      "actions/setup-python"
+    ],
+    "github_owned_allowed": false,
+    "verified_allowed": false,
     "full_sha_pinning_required": true,
     "sha_pinning_verified_on": "2026-07-21",
     "sha_pinning_endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions",
@@ -58,7 +79,7 @@
     "name": "main-protection",
     "target": "main",
     "enforcement": "active",
-    "activation_condition": "Applied after the 36th remediation documentation commit passed all three private CI jobs and anonymous public validation.",
+    "activation_condition": "Apply after the 38th clean recovery-closing commit passes all three required private checks on the recreated repository.",
     "rules": {
       "prevent_deletion": true,
       "prevent_force_push": true,
@@ -69,12 +90,16 @@
       "require_branch_up_to_date": false,
       "require_signed_commits": false,
       "require_code_owner_review": false,
-      "required_status_checks": ["repository / ubuntu", "repository / windows", "licensing / reuse"]
+      "required_status_checks": [
+        "repository / ubuntu",
+        "repository / windows",
+        "licensing / reuse"
+      ]
     },
     "administrative_bypass": {
       "planned": true,
       "scope": "Repository administrator",
-      "reason": "Permit recovery by the sole maintainer while retaining pull-request and status-check defaults for ordinary changes.",
+      "reason": "Document the one-time direct recovery-closing push made while the repository was private and before this ruleset was activated.",
       "ordinary_use": false
     },
     "status": "APPLIED"
@@ -90,46 +115,35 @@
     "profile_completion_claim": "NOT_CLAIMED",
     "status": "APPLIED"
   },
-  "release": {
-    "version": "v1.0.0",
-    "target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
-    "tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
-    "annotated_tag": true,
-    "immutable": true,
-    "github_release_id": 357471186,
-    "published_at": "2026-07-21T16:06:25Z",
-    "published": true,
-    "latest": true,
-    "prerelease": false,
-    "tag_push_ci": "NOT_RUN_FOR_V1.0.0",
+  "release_state": {
+    "current_releases": [],
+    "historical_releases": [
+      {
+        "tag": "v1.0.0",
+        "status": "WITHDRAWN_DURING_PRIVACY_REMEDIATION",
+        "evidence": "PRIVATE_VERIFIED_BUNDLE",
+        "expected_ref_present": false
+      }
+    ],
     "next_candidate": "v1.0.1",
+    "canonical_git_tag_count": 0,
+    "canonical_github_release_count": 0,
     "status": "APPLIED"
   },
-  "publication_verification": {
-    "private_staging_ci": "APPLIED",
-    "failed_staging_run_cleanup": "APPLIED",
-    "anonymous_public_clone": "APPLIED",
-    "security_activation": "APPLIED",
-    "second_public_ci": "APPLIED",
-    "main_ruleset": "APPLIED",
-    "metadata_incident_detected": "APPLIED",
-    "former_repository_quarantined": "APPLIED",
-    "canonical_repository_recreated": "APPLIED",
-    "clean_history_private_ci": "APPLIED",
-    "old_object_absent": "APPLIED"
-  },
-  "incident_remediation": {
-    "decision": "RECREATE_CANONICAL_REPOSITORY",
-    "commits_before_decision": 35,
-    "final_commit_count": 36,
-    "former_repository_visibility": "private",
-    "former_repository_name_published": false,
-    "former_repository_must_remain_private": true,
-    "functional_content_changed": false,
-    "old_object_imported": false,
-    "email_privacy_setting": "EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE",
-    "tag_existed_at_incident": false,
-    "release_existed_at_incident": false,
+  "recovery_closure": {
+    "starting_head": "dee7a7c97ad6991746d7de35f6d7ddb290bb895e",
+    "starting_commit_count": 37,
+    "final_commit_count": 38,
+    "temporary_repositories_backed_up_locally": true,
+    "temporary_repositories_deleted": true,
+    "private_evidence_outside_repository": true,
+    "direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
+    "future_direct_push_authorized": false,
+    "force_push_used": false,
+    "git_tag_created": false,
+    "github_release_created": false,
+    "pull_request_created": false,
+    "experimental_evidence_modified": false,
     "status": "APPLIED"
   }
 }

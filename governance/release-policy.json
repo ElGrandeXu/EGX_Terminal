@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "version_format": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$",
   "stable_tags": {
     "declaration_required": true,
@@ -26,16 +26,20 @@
     "identities": [],
     "gate": "Select a durable SSH signing key, publish its public key and SHA256 fingerprint, and add the offline allowed-signers record before creating v1.0.1."
   },
-  "releases": [
+  "current_releases": [],
+  "historical_releases": [
     {
       "tag": "v1.0.0",
-      "target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
-      "tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
-      "immutable": true,
-      "attestation_mode": "HISTORICAL_UNSIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE",
-      "signing_identity": null,
-      "published": true,
-      "github_release_id": 357471186
+      "status": "WITHDRAWN_DURING_PRIVACY_REMEDIATION",
+      "former_target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
+      "former_tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
+      "former_github_release_id": 357471186,
+      "evidence": "PRIVATE_VERIFIED_BUNDLE",
+      "evidence_visibility": "PRIVATE",
+      "public_verification_claim": false,
+      "expected_ref_present": false,
+      "tag_name_reuse_status": "BLOCKED_BY_IMMUTABLE_RELEASE_RESERVATION"
     }
-  ]
+  ],
+  "next_candidate": "v1.0.1"
 }

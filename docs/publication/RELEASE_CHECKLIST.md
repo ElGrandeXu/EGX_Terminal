@@ -1,88 +1,70 @@
-# First publication and release checklist
+# Recovery closure and future release checklist
 
 Each checked item is backed by a command result, API response, remote run, or
-anonymous validation.
+verified private artifact. This checklist does not authorize `v1.0.1`.
 
-## Metadata incident and quarantine
+## Canonical recovery
 
-- [x] The former public HEAD, parent, tree, message, dates, and 35-commit count
-  matched the frozen values before mutation.
-- [x] No tag, release, or public fork was observed.
-- [x] The former repository was made private before any other remote mutation.
-- [x] Anonymous repository, commit, and pull-request access returned `404`; an
-  anonymous clone failed.
-- [x] The former repository was renamed to an unpublished private quarantine,
-  remains unarchived, and retains its runs, pull request, settings, and history.
-- [x] GitHub email privacy is recorded as
-  `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`; future web operations require it.
+- [x] The pre-closing `main` HEAD is the expected 37th clean commit.
+- [x] Local `main`, `origin/main`, and remote `main` agree before mutation.
+- [x] The canonical repository ID and private visibility match governance.
+- [x] The canonical repository has no GitHub tag, release, or pull request.
+- [x] The affected commit and former pull-request refs were not imported.
+- [x] The functional commit retains its tree, parent, complete message, dates,
+  and diff under the approved GitHub `noreply` identity.
 
-## Cleaned local history
+## Private evidence and repository cleanup
 
-- [x] The replacement commit preserves the tree, parent, complete message,
-  subject, author and committer dates, binary diff, paths, modes, and contents.
-- [x] The replacement uses `ElGrandeXu` as author, `Maxime Erard` as committer,
-  and only the approved GitHub ID-based `noreply` address.
-- [x] The contribution branch, transport refs, reflogs, and unreachable objects
-  were removed; the old commit no longer resolves locally.
-- [x] Private bundles and the incident capture remain outside the repository.
-- [x] The remediation documentation is the 36th commit.
-- [x] Canonical checks, 188 tests, JSON, TOML, locks, `reuse lint`, actionlint,
-  Markdown links, `git diff --check`, and `git fsck --full` pass.
-- [x] The locked `kernel-v1` hash, both archives, and the ten Mission 24 results
-  are unchanged.
-- [x] A clean clone created without hardlinks passes the same validations.
+- [x] Both temporary repositories were private and had the expected IDs.
+- [x] Each repository has an independent mirror, complete bundle, private API
+  metadata capture, ref inventory, and summary outside the canonical repository.
+- [x] Each bundle passes `git bundle verify`.
+- [x] Each mirror passes `git fsck --full`.
+- [x] SHA-256 covers the bundles and captures, and the complete private manifest
+  verifies.
+- [x] Metadata captures contain no unredacted email address.
+- [x] The temporary repositories were deleted only after those checks passed.
+- [x] Authenticated API reads, account listing, and repository URLs confirm their
+  absence while the canonical repository remains intact.
 
-## New private repository
+## Historical v1.0.0 state
 
-- [x] `ElGrandeXu/EGX_Terminal` was created empty and private with `main` as its
-  only pushed branch.
-- [x] The initial push was non-force and contained 36 commits, zero tags, zero
-  releases, zero pull requests, no old object, and no personal identity.
-- [x] `repository / ubuntu`, `repository / windows`, and `licensing / reuse`
-  passed privately with `REVIEW=0`, `BLOCKER=0`, fail-fast Windows, and intact
-  archives.
-- [x] Description, topics, features, merge policy, Actions policy, and security
-  settings match the machine-readable record.
+- [x] `v1.0.0` is declared as withdrawn during privacy remediation, not current.
+- [x] Its former target, tag object, and GitHub release ID are retained only as
+  private historical metadata backed by a verified bundle.
+- [x] The canonical policy expects no `v1.0.0` ref.
+- [x] The checker rejects the withdrawn tag if it reappears.
+- [x] The checker does not read, reconstruct, or simulate absent historical
+  objects.
+- [x] GitHub's immutable-release reservation is recorded as blocking reuse of
+  the tag name; no workaround or Support request is pursued.
 
-## Public transition
+## Canonical current state
 
-- [x] Maxime explicitly authorized the visibility change.
-- [x] Visibility is public and anonymous browsing, `ls-remote`, and cloning work.
-- [x] The anonymous clone contains 36 commits and passes the complete suite.
-- [x] The former commit and pull request are absent from the canonical repository.
-- [x] The quarantined repository remains inaccessible anonymously.
-- [x] Private Vulnerability Reporting where available, secret scanning, push
-  protection, and vulnerability alerts are active.
-- [x] `main-protection` is active with the three required checks, pull requests,
-  zero required approvals, resolved conversations, linear history, and deletion
-  and force-push protection.
+- [x] `current_releases` is empty.
+- [x] The canonical repository has zero Git tags and zero GitHub releases.
+- [x] `v1.0.1` is recorded only as `next_candidate`.
+- [x] No `v1.0.1` tag or release is created by recovery closure.
+- [x] PR 2 is not created or started by recovery closure.
+- [x] The SSH policy remains `KEY_SELECTION_REQUIRED`, with no active identity
+  and no key added.
 
-## Historical v1.0.0 release
+## Closing commit and protected workflow
 
-- [x] The release was separately and explicitly authorized after commit
-  `870964a48fc07ff39d65c46255f189d25658ff2c`.
-- [x] The release target and notes describe only the validated V1 evidence and
-  preserve the existing compatibility limits.
-- [x] Annotated tag object `a5668506f38dfc73ec6d8236de00a6adad095e25`
-  and immutable GitHub release `357471186` were created for `v1.0.0`.
-- [ ] A generated GitHub source archive was validated after publication using a
-  documented archive-only sequence. This was not recorded for `v1.0.0`.
-- [ ] CI ran from the tag-push event. The workflow did not yet have that trigger,
-  so this proof is intentionally not claimed for `v1.0.0`.
+- [x] One intentional closing commit uses the approved GitHub `noreply` author
+  and committer identity and has the former clean HEAD as its sole parent.
+- [x] The push is a direct non-force fast-forward to private `main`, documented
+  as a one-time recovery exception before final ruleset activation.
+- [x] The three private checks pass on the closing commit.
+- [x] Repository metadata, topics, features, merge policy, Actions policy,
+  security features, and the final `main-protection` ruleset match governance.
+- [x] The final clean clone and content-only archive validations pass.
+- [x] The final history contains 38 clean commits and no experimental change.
 
-## Policy prepared on main for v1.0.1
+## Future v1.0.1 mission — not authorized here
 
-- [x] The exact historical tag and release are declared in the release policy.
-- [x] Unknown, lightweight, moved, divergent, or mismatched tags fail review.
-- [x] The validation workflow has a narrow `v*` tag-push trigger and retains its
-  three names, read-only permissions, SHA-pinned actions, and Windows gate.
-- [x] The future tag gate separately validates authorization from canonical
-  `main` and all applicable content from the exact triggering tag target.
-- [x] The history checker supports an `ACTIVE` SSH policy and verifies signed
-  tags cryptographically with Git and a repository-owned allowed-signers file.
-- [x] REUSE 6.2.0 and its Python 3.11/Ubuntu dependency chain install from
-  dedicated SHA256-hashed locks.
-- [ ] A durable SSH signing public key, fingerprint, principal, and offline
-  allowed-signers record are selected and published.
-- [ ] A `v1.0.1` tag or GitHub release is created. This consolidation PR does not
-  authorize or perform either action.
+- [ ] Complete PR 2 through the protected pull-request path.
+- [ ] Select and record a durable SSH public signing identity.
+- [ ] Verify the repository-owned allowed-signers record offline.
+- [ ] Prepare and separately authorize the exact `v1.0.1` tag.
+- [ ] Run the tag event gates and publish a release only after they succeed.

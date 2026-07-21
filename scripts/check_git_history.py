@@ -162,6 +162,20 @@ class ReleaseRecord:
 
 
 @dataclasses.dataclass(frozen=True)
+class HistoricalReleaseRecord:
+    tag: str
+    status: str
+    former_target_commit: str
+    former_tag_object: str
+    former_github_release_id: int
+    evidence: str
+    evidence_visibility: str
+    public_verification_claim: bool
+    expected_ref_present: bool
+    tag_name_reuse_status: str
+
+
+@dataclasses.dataclass(frozen=True)
 class SigningIdentity:
     identity_id: str
     principal: str
@@ -189,7 +203,9 @@ class ReleasePolicy:
     main_ref: str
     allowed_taggers: frozenset[tuple[str, str, str]]
     signatures: SignaturePolicy
-    releases: Mapping[str, ReleaseRecord]
+    current_releases: Mapping[str, ReleaseRecord]
+    historical_releases: Mapping[str, HistoricalReleaseRecord]
+    next_candidate: str
 
 
 @dataclasses.dataclass(frozen=True)
@@ -440,17 +456,21 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
         "stable_tags",
         "tagger_identity_policy",
         "signature_policy",
-        "releases",
+        "current_releases",
+        "historical_releases",
+        "next_candidate",
     }
     stable = payload.get("stable_tags") if isinstance(payload, dict) else None
     taggers = payload.get("tagger_identity_policy") if isinstance(payload, dict) else None
     signatures = payload.get("signature_policy") if isinstance(payload, dict) else None
-    releases = payload.get("releases") if isinstance(payload, dict) else None
+    current_releases = payload.get("current_releases") if isinstance(payload, dict) else None
+    historical_releases = payload.get("historical_releases") if isinstance(payload, dict) else None
+    next_candidate = payload.get("next_candidate") if isinstance(payload, dict) else None
     version_format = payload.get("version_format") if isinstance(payload, dict) else None
     if (
         not isinstance(payload, dict)
         or set(payload) != expected_keys
-        or payload.get("schema_version") != 3
+        or payload.get("schema_version") != 4
         or not isinstance(version_format, str)
         or stable
         != {
@@ -475,7 +495,8 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
             "identities",
             "gate",
         }
-        or not isinstance(releases, list)
+        or not isinstance(current_releases, list)
+        or not isinstance(historical_releases, list)
     ):
         raise HistoryAuditError(f"release policy {RELEASE_POLICY} is invalid")
     try:
@@ -491,6 +512,7 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
         return tuple(int(part) for part in value[1:].split("."))  # type: ignore[return-value]
 
     required_from = version_tuple(signatures.get("required_from"))
+    next_candidate_version = version_tuple(next_candidate)
     historical_exception = signatures.get("historical_unsigned_exception")
     status = signatures.get("status")
     active_identity = signatures.get("active_identity")
@@ -498,6 +520,7 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
     identities_payload = signatures.get("identities")
     if (
         required_from is None
+        or next_candidate_version is None
         or required_from < (1, 0, 1)
         or historical_exception != "v1.0.0"
         or signatures.get("mechanism") != "SSH"
@@ -610,7 +633,7 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
         "published",
         "github_release_id",
     }
-    for item in releases:
+    for item in current_releases:
         if (
             not isinstance(item, dict)
             or set(item) != required_release_keys
@@ -648,6 +671,56 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
         ):
             raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid release record")
         records[item["tag"]] = ReleaseRecord(**item)
+    historical_records: dict[str, HistoricalReleaseRecord] = {}
+    required_historical_keys = {
+        "tag",
+        "status",
+        "former_target_commit",
+        "former_tag_object",
+        "former_github_release_id",
+        "evidence",
+        "evidence_visibility",
+        "public_verification_claim",
+        "expected_ref_present",
+        "tag_name_reuse_status",
+    }
+    for item in historical_releases:
+        if (
+            not isinstance(item, dict)
+            or set(item) != required_historical_keys
+            or not isinstance(item.get("tag"), str)
+            or pattern.fullmatch(item["tag"]) is None
+            or item.get("status") != "WITHDRAWN_DURING_PRIVACY_REMEDIATION"
+            or not isinstance(item.get("former_target_commit"), str)
+            or re.fullmatch(r"[0-9a-f]{40}", item["former_target_commit"]) is None
+            or not isinstance(item.get("former_tag_object"), str)
+            or re.fullmatch(r"[0-9a-f]{40}", item["former_tag_object"]) is None
+            or not isinstance(item.get("former_github_release_id"), int)
+            or isinstance(item.get("former_github_release_id"), bool)
+            or item["former_github_release_id"] < 1
+            or item.get("evidence") != "PRIVATE_VERIFIED_BUNDLE"
+            or item.get("evidence_visibility") != "PRIVATE"
+            or item.get("public_verification_claim") is not False
+            or item.get("expected_ref_present") is not False
+            or item.get("tag_name_reuse_status")
+            != "BLOCKED_BY_IMMUTABLE_RELEASE_RESERVATION"
+            or item["tag"] in historical_records
+        ):
+            raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid historical release record")
+        historical_records[item["tag"]] = HistoricalReleaseRecord(**item)
+    overlap = set(records).intersection(historical_records)
+    if overlap:
+        raise HistoryAuditError(
+            f"release policy {RELEASE_POLICY} declares a tag as both current and historical"
+        )
+    known_versions = [_release_version(tag) for tag in (*records, *historical_records)]
+    if (
+        next_candidate in records
+        or next_candidate in historical_records
+        or next_candidate_version < required_from
+        or (known_versions and next_candidate_version <= max(known_versions))
+    ):
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an incoherent next candidate")
     for identity in signing_identities.values():
         if identity.revoked_on is None:
             continue
@@ -665,7 +738,9 @@ def _load_release_policy(root: Path) -> ReleasePolicy:
         main_ref=stable["target_must_be_ancestor_of"],
         allowed_taggers=frozenset(allowed_taggers),
         signatures=signature_policy,
-        releases=records,
+        current_releases=records,
+        historical_releases=historical_records,
+        next_candidate=next_candidate,
     )
 
 
@@ -1097,9 +1172,18 @@ def _release_version(tag: str) -> tuple[int, int, int]:
 def _release_policy_findings(release_policy: ReleasePolicy) -> list[Finding]:
     findings: list[Finding] = []
     signatures = release_policy.signatures
-    for record in release_policy.releases.values():
+    for record in release_policy.current_releases.values():
         version = _release_version(record.tag)
         is_future = version >= signatures.required_from
+        if is_future and signatures.status != "ACTIVE":
+            findings.append(
+                Finding(
+                    "REVIEW",
+                    "CURRENT_RELEASE_BLOCKED_BY_SIGNATURE_POLICY",
+                    record.tag,
+                    "a current release at or after v1.0.1 requires an active SSH signing policy",
+                )
+            )
         if record.attestation_mode == HISTORICAL_UNSIGNED_ATTESTATION:
             if record.tag != signatures.historical_unsigned_exception:
                 findings.append(
@@ -1236,7 +1320,17 @@ def _release_tag_findings(
     findings: list[Finding] = []
     name = ref["name"]
     tag_name = name.removeprefix("refs/tags/")
-    declared = release_policy.releases.get(tag_name)
+    historical = release_policy.historical_releases.get(tag_name)
+    if historical is not None:
+        return [
+            Finding(
+                "REVIEW",
+                "WITHDRAWN_HISTORICAL_TAG_PRESENT",
+                name,
+                "a release withdrawn during privacy remediation must not have a ref in the canonical repository",
+            )
+        ]
+    declared = release_policy.current_releases.get(tag_name)
     if release_policy.version_pattern.fullmatch(tag_name) is None:
         findings.append(Finding("REVIEW", "INVALID_RELEASE_VERSION", name, "tag name is outside the allowed stable version format"))
     if declared is None:
