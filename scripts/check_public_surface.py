@@ -15,19 +15,10 @@ import subprocess
 from pathlib import Path
 from typing import Iterable, Mapping, NamedTuple, Sequence
 
+from neutral_root_policy import load_registered_surfaces
+
 
 LARGE_FILE_LIMIT = 512 * 1024
-
-# Keep this tuple aligned with scripts/check_neutral_root.py. This complementary
-# check is intentionally root-relative: identically named nested fixtures remain
-# valid historical or test material.
-FORBIDDEN_ROOT_PATHS = (
-    Path("AGENTS.md"),
-    Path("AGENTS.override.md"),
-    Path("CLAUDE.md"),
-    Path("opencode.json"),
-    Path("doctrine/KERNEL.md"),
-)
 
 # A future legitimate large proof must be listed by exact path with a reviewable
 # reason. There are no large-file exceptions in the V1 surface at present.
@@ -143,6 +134,19 @@ def tracked_files(root: Path) -> tuple[Path, ...]:
     )
 
 
+def content_files(root: Path) -> tuple[Path, ...]:
+    """Return source files present in an archive tree without inventing Git metadata."""
+
+    files: list[Path] = []
+    for path in root.rglob("*"):
+        relative = path.relative_to(root)
+        if ".git" in relative.parts or "__pycache__" in relative.parts or path.suffix == ".pyc":
+            continue
+        if path.is_file() or path.is_symlink():
+            files.append(relative)
+    return tuple(sorted(files, key=lambda item: item.as_posix()))
+
+
 def _sensitive_name_reason(relative: Path) -> str | None:
     name = relative.name.lower()
     if name in SAFE_ENV_EXAMPLES:
@@ -242,14 +246,14 @@ def scan_paths(
 
     root = root.resolve()
     violations: list[Violation] = []
-    for forbidden in FORBIDDEN_ROOT_PATHS:
-        target = root / forbidden
+    for surface in load_registered_surfaces(Path(__file__).resolve().parents[1]):
+        target = root / surface.path
         if target.exists() or target.is_symlink():
             violations.append(
                 Violation(
-                    forbidden.as_posix(),
+                    surface.path.as_posix(),
                     "NEUTRAL_ROOT",
-                    "active root path is forbidden by the V1 neutral-root decision",
+                    "known registered active project surface is forbidden by the neutral-root decision",
                 )
             )
 
@@ -323,13 +327,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         help="Git worktree to scan; defaults to the repository containing this script",
     )
+    parser.add_argument(
+        "--content-only",
+        action="store_true",
+        help="scan files present in a source archive without making Git-history claims",
+    )
     arguments = parser.parse_args(argv)
 
     try:
-        root = repository_root(arguments.root)
-        files = tracked_files(root)
+        if arguments.content_only:
+            root = (arguments.root or Path(__file__).resolve().parents[1]).resolve()
+            files = content_files(root)
+        else:
+            root = repository_root(arguments.root)
+            files = tracked_files(root)
     except PublicSurfaceError as error:
-        print(f"Public-surface check could not start: {error}")
+        print(f"Public-surface check could not start: {error}. Use a full Git clone, or --content-only for a source archive.")
         return 2
 
     violations = scan_paths(root, files)
@@ -343,10 +356,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     print(
-        f"Public surface accepted for {root}: {len(files)} tracked files, "
+        f"Public surface accepted for {root}: {len(files)} "
+        f"{'present source' if arguments.content_only else 'tracked'} files, "
         "no blocking heuristic violation."
     )
     print("This result is a bounded heuristic check, not an absolute security guarantee.")
+    print("Neutrality coverage is limited to known active surfaces in governance/neutral-root-surfaces.json.")
     return 0
 
 

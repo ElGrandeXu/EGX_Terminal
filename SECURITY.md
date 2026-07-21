@@ -2,10 +2,10 @@
 
 ## Supported versions
 
-EGX_Terminal has no release yet. Only the latest published commit on `main` will be
-examined. Archived experiments are evidence, not supported versions. After the
-first release, this policy may evolve to cover the latest release and `main`;
-no long-term support is promised.
+The latest stable release (`v1.0.0` at publication time) and `main` for upcoming
+corrective work are examined on a best-effort basis. No long-term-support window
+or backport promise is made. Archived experiments are research evidence, not
+supported products or independently supported versions.
 
 ## Reporting a vulnerability
 

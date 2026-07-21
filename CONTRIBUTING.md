@@ -58,6 +58,9 @@ reuse lint
 The three history modes are designed to run from the current contribution
 branch. They audit `main`, the bounded current branch, and its permitted
 `origin` transport ref without treating that branch as a permanent public root.
+Declared stable tags are additionally checked against
+`governance/release-policy.json`; contributors must not create, move, or replace
+a release tag as part of an ordinary pull request.
 
 ## Archives
 

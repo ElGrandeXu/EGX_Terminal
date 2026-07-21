@@ -40,3 +40,6 @@ directly and record observed versions or commits when relevant.
 - [0010 — Recreate the public repository after email exposure](0010-recreate-public-repository-after-email-exposure.md)
   — accepted; quarantine the former staging repository and recreate the public
   surface from a content-identical `noreply` history
+- [0011 — Record the v1.0.0 release and adopt a tag-aware release policy](0011-record-v1.0.0-release-and-tag-policy.md)
+  — accepted; preserve the immutable first release, audit declared annotated
+  tags, and require a recorded SSH signing identity before `v1.0.1`

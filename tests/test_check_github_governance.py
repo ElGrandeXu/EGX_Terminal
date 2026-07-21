@@ -26,6 +26,9 @@ FIXTURE_FILES = (
     ".github/workflows/validate.yml",
     "governance/github-actions-lock.json",
     "governance/github-publication-plan.json",
+    "governance/requirements-reuse-build-6.2.0.txt",
+    "governance/requirements-reuse-6.2.0.txt",
+    "scripts/check_release_tree.py",
     "REUSE.toml",
 )
 
@@ -102,8 +105,8 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertIn("UNAUTHORIZED_ACTION", self.codes())
 
     def test_13_wrong_reuse_version(self) -> None:
-        self.replace(".github/workflows/validate.yml", "reuse==6.2.0", "reuse==6.1.0")
-        self.assertIn("REUSE_VERSION", self.codes())
+        self.replace("governance/requirements-reuse-6.2.0.txt", "reuse==6.2.0", "reuse==6.1.0")
+        self.assertIn("REUSE_LOCK", self.codes())
 
     def test_14_template_absent(self) -> None:
         (self.root / ".github/pull_request_template.md").unlink()
@@ -155,6 +158,75 @@ class GitHubGovernanceTests(unittest.TestCase):
     def test_22_windows_shell_must_be_bash(self) -> None:
         self.replace(".github/workflows/validate.yml", "shell: bash", "shell: pwsh")
         self.assertIn("WINDOWS_FAIL_FAST_SHELL", self.codes())
+
+    def test_23_release_tag_trigger_is_required(self) -> None:
+        self.replace(".github/workflows/validate.yml", '    tags: ["v*"]\n', "")
+        self.assertIn("TRIGGERS", self.codes())
+
+    def test_24_broad_tag_trigger_is_rejected(self) -> None:
+        self.replace(".github/workflows/validate.yml", 'tags: ["v*"]', 'tags: ["*"]')
+        self.assertIn("TRIGGERS", self.codes())
+
+    def test_25_unhashed_reuse_install_is_rejected(self) -> None:
+        self.replace(".github/workflows/validate.yml", "--require-hashes ", "")
+        self.assertIn("REUSE_INSTALL", self.codes())
+
+    def test_26_reuse_hash_change_is_rejected(self) -> None:
+        self.replace(
+            "governance/requirements-reuse-6.2.0.txt",
+            "4feae057a2334c9a513e6933cdb9be819d8b822f3b5b435a36138bd218897d23",
+            "0" * 64,
+        )
+        self.assertIn("REUSE_LOCK", self.codes())
+
+    def test_27_content_only_mode_needs_no_git_metadata(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--content-only", "--root", str(self.root)],
+            cwd=self.root.parent,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_28_tag_gate_must_checkout_canonical_main(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            "          ref: refs/heads/main\n",
+            "",
+        )
+        self.assertIn("POLICY_CHECKOUT", self.codes())
+
+    def test_29_release_tree_must_checkout_triggering_tag(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            "          ref: ${{ github.ref }}\n          path: _validation/release\n",
+            "          ref: refs/heads/main\n          path: _validation/release\n",
+        )
+        self.assertIn("RELEASE_CHECKOUT_REF", self.codes())
+
+    def test_30_policy_and_release_workspaces_must_be_distinct(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            "working-directory: _validation/release",
+            "working-directory: _validation/policy",
+        )
+        self.assertIn("RELEASE_WORKSPACE", self.codes())
+
+    def test_31_exact_release_tree_checker_is_required(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            '          python scripts/check_release_tree.py --expected-ref "${GITHUB_REF}" --event-sha "${GITHUB_SHA}"\n',
+            "",
+        )
+        self.assertIn("TAG_RELEASE_COMMAND", self.codes())
+
+    def test_32_ordinary_event_checkout_and_validation_are_required(self) -> None:
+        self.replace(
+            ".github/workflows/validate.yml",
+            "        if: ${{ !startsWith(github.ref, 'refs/tags/') }}\n",
+            "",
+        )
+        self.assertIn("EVENT_ISOLATION", self.codes())
 
 
 if __name__ == "__main__":

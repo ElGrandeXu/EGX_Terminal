@@ -18,6 +18,8 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Sequence
 
+from neutral_root_policy import load_registered_surfaces
+
 
 EXPECTED_COPYRIGHT = "2026 Maxime Erard"
 ALLOWED_LICENSES = frozenset({"Apache-2.0", "CC-BY-4.0"})
@@ -34,13 +36,6 @@ EXPECTED_LICENSE_HASHES = {
     "CC-BY-4.0": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94",
 }
 EXPECTED_ARCHIVE_HASH = "c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0"
-FORBIDDEN_ROOT_PATHS = (
-    "AGENTS.md",
-    "AGENTS.override.md",
-    "CLAUDE.md",
-    "opencode.json",
-    "doctrine/KERNEL.md",
-)
 SPDX_TAG = re.compile(
     r"^\s*(?:#|//|/\*|\*|<!--|;)\s*"
     r"(SPDX-(?:License-Identifier|FileCopyrightText)):\s*(.*?)\s*(?:\*/|-->)?\s*$"
@@ -96,6 +91,19 @@ def repository_root(start: Path | None = None) -> Path:
 def tracked_files(root: Path) -> tuple[str, ...]:
     raw = _git(("ls-files", "-z"), cwd=root)
     return tuple(sorted(PurePosixPath(os.fsdecode(item)).as_posix() for item in raw.split(b"\0") if item))
+
+
+def content_files(root: Path) -> tuple[str, ...]:
+    """Return files present in a source archive without simulating a Git index."""
+
+    files: list[str] = []
+    for path in root.rglob("*"):
+        relative = path.relative_to(root)
+        if ".git" in relative.parts or "__pycache__" in relative.parts or path.suffix == ".pyc":
+            continue
+        if path.is_file() or path.is_symlink():
+            files.append(PurePosixPath(*relative.parts).as_posix())
+    return tuple(sorted(files))
 
 
 def sha256_file(path: Path) -> str:
@@ -334,9 +342,16 @@ def audit(root: Path, files: Iterable[str], *, enforce_integrity: bool = True) -
     findings.extend(check_summary(root))
     if (root / ".reuse" / "dep5").exists():
         findings.append(_finding(".reuse/dep5", "DEPRECATED_DEP5", "deprecated metadata is forbidden"))
-    for forbidden in FORBIDDEN_ROOT_PATHS:
-        if (root / Path(*PurePosixPath(forbidden).parts)).exists():
-            findings.append(_finding(forbidden, "NEUTRAL_ROOT", "forbidden doctrinal root path exists"))
+    for surface in load_registered_surfaces(Path(__file__).resolve().parents[1]):
+        target = root / surface.path
+        if target.exists() or target.is_symlink():
+            findings.append(
+                _finding(
+                    surface.path.as_posix(),
+                    "NEUTRAL_ROOT",
+                    "known registered active project surface exists",
+                )
+            )
     for notice in ("NOTICE", "THIRD_PARTY_NOTICES.md"):
         target = root / notice
         if target.exists():
@@ -399,12 +414,18 @@ def format_finding(finding: Finding) -> str:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, help="Git worktree to inspect")
+    parser.add_argument("--content-only", action="store_true", help="inspect files present in a source archive")
     arguments = parser.parse_args(argv)
     try:
-        root = repository_root(arguments.root)
-        report = audit(root, tracked_files(root), enforce_integrity=True)
+        if arguments.content_only:
+            root = (arguments.root or Path(__file__).resolve().parents[1]).resolve()
+            files = content_files(root)
+        else:
+            root = repository_root(arguments.root)
+            files = tracked_files(root)
+        report = audit(root, files, enforce_integrity=True)
     except (LicensingError, OSError) as error:
-        print(f"Licensing check could not start: {error}")
+        print(f"Licensing check could not start: {error}. Use a full Git clone, or --content-only for a source archive.")
         return 2
     if report.findings:
         print(f"Licensing check failed for {root}:")
@@ -413,7 +434,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("This local policy check does not replace the official REUSE linter or legal review.")
         return 1
     print(
-        f"Licensing accepted for {root}: {report.covered} covered files, "
+        f"Licensing accepted for {root} ({'archive content' if arguments.content_only else 'Git index'}): {report.covered} covered files, "
         f"{report.licensed} licensed files, {report.exempt} REUSE-exempt files."
     )
     print("This local policy check complements, but does not replace, reuse lint or legal review.")

@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -73,6 +74,7 @@ class HistoryRepository:
         self.git("config", "user.name", POLICY_NAME)
         self.git("config", "user.email", POLICY_EMAIL)
         self.write_policy()
+        self.write_release_policy()
 
     def write_policy(self, **overrides: object) -> None:
         payload: dict[str, object] = {
@@ -140,6 +142,154 @@ class HistoryRepository:
             "governance/public-commit-identity.json",
             json.dumps(payload, indent=2) + "\n",
         )
+
+    def write_release_policy(
+        self,
+        releases: list[dict[str, object]] | None = None,
+        *,
+        signature_policy: dict[str, object] | None = None,
+    ) -> None:
+        payload = {
+            "schema_version": 3,
+            "version_format": r"^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$",
+            "stable_tags": {
+                "declaration_required": True,
+                "annotated_required": True,
+                "target_must_be_ancestor_of": "refs/heads/main",
+                "unexpected_or_divergent_policy": "REVIEW",
+            },
+            "tagger_identity_policy": {
+                "source": "governance/public-commit-identity.json",
+                "allowed_taggers": [
+                    {
+                        "name": POLICY_NAME,
+                        "email": POLICY_EMAIL,
+                        "classification": "MAINTAINER_GITHUB_NOREPLY",
+                    }
+                ],
+            },
+            "signature_policy": signature_policy or {
+                "required_from": "v1.0.1",
+                "historical_unsigned_exception": "v1.0.0",
+                "mechanism": "SSH",
+                "status": "KEY_SELECTION_REQUIRED",
+                "active_identity": None,
+                "identities": [],
+                "gate": "Select a durable SSH signing key, publish its public key and SHA256 fingerprint, and add the offline allowed-signers record before creating v1.0.1.",
+            },
+            "releases": releases or [],
+        }
+        self.write("governance/release-policy.json", json.dumps(payload, indent=2) + "\n")
+
+    def release_record(
+        self,
+        tag: str,
+        target: str,
+        tag_object: str,
+        *,
+        signed: bool = False,
+        signing_identity: str | None = None,
+    ) -> dict[str, object]:
+        return {
+            "tag": tag,
+            "target_commit": target,
+            "tag_object": tag_object,
+            "immutable": True,
+            "attestation_mode": (
+                "SSH_SIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE"
+                if signed
+                else "HISTORICAL_UNSIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE"
+            ),
+            "signing_identity": signing_identity,
+            "published": True,
+            "github_release_id": 1,
+        }
+
+    def generate_ssh_identity(
+        self,
+        identity_id: str,
+        principal: str,
+        *,
+        revoked_on: str | None = None,
+        last_trusted_release: str | None = None,
+    ) -> tuple[dict[str, object], Path]:
+        if shutil.which("ssh-keygen") is None:
+            raise unittest.SkipTest("ssh-keygen is unavailable")
+        key_dir = self.root / ".git" / "fixture-keys" / identity_id
+        key_dir.mkdir(parents=True, exist_ok=True)
+        private_key = key_dir / "signing_key"
+        process = subprocess.run(
+            ["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-C", identity_id, "-f", str(private_key)],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if process.returncode:
+            detail = (process.stdout + process.stderr).strip()
+            raise unittest.SkipTest(f"ssh-keygen cannot create an ephemeral fixture key: {detail}")
+        fingerprint_result = subprocess.run(
+            ["ssh-keygen", "-lf", str(private_key) + ".pub", "-E", "sha256"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        fingerprint = fingerprint_result.stdout.split()[1]
+        public_parts = Path(str(private_key) + ".pub").read_text(encoding="utf-8").split()
+        allowed_signers = f"governance/release-allowed-signers-{identity_id}"
+        self.write(allowed_signers, f'{principal} namespaces="git" {public_parts[0]} {public_parts[1]}\n')
+        return (
+            {
+                "id": identity_id,
+                "principal": principal,
+                "allowed_signers_file": allowed_signers,
+                "public_key_fingerprint": fingerprint,
+                "activated_on": "2026-07-21",
+                "revoked_on": revoked_on,
+                "last_trusted_release": last_trusted_release,
+            },
+            private_key,
+        )
+
+    @staticmethod
+    def active_signature_policy(
+        identities: list[dict[str, object]],
+        active_identity: str,
+    ) -> dict[str, object]:
+        return {
+            "required_from": "v1.0.1",
+            "historical_unsigned_exception": "v1.0.0",
+            "mechanism": "SSH",
+            "status": "ACTIVE",
+            "active_identity": active_identity,
+            "identities": identities,
+            "gate": "Select and publish a durable SSH release signing identity.",
+        }
+
+    def annotated_tag(
+        self,
+        tag: str,
+        target: str = "HEAD",
+        *,
+        env: dict[str, str] | None = None,
+        message: str = "fixture release",
+    ) -> str:
+        self.git("tag", "-a", tag, target, "-m", message, env=env)
+        return self.git("rev-parse", f"refs/tags/{tag}").stdout.decode("ascii").strip()
+
+    def signed_tag(self, tag: str, private_key: Path, target: str = "HEAD") -> str:
+        self.git(
+            "-c",
+            "gpg.format=ssh",
+            "-c",
+            f"user.signingkey={private_key}",
+            "tag",
+            "-s",
+            tag,
+            target,
+            "-m",
+            "signed fixture release",
+        )
+        return self.git("rev-parse", f"refs/tags/{tag}").stdout.decode("ascii").strip()
 
     def git(
         self,
@@ -1539,6 +1689,527 @@ class GitHistoryTests(unittest.TestCase):
         self.assertIn("EPHEMERAL_GITHUB_PR_MERGE=1", synthetic_output)
         self.assertNotIn("GITHUB_PR_CONTEXT_INVALID", ordinary_output)
         self.assertTrue(all(key not in os.environ for key in GITHUB_ACTIONS_ENV_KEYS))
+
+    def test_104_no_tag_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("UNEXPECTED_TAG", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_105_exact_declared_annotated_tag_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.0", target)
+            repo.write_release_policy([repo.release_record("v1.0.0", target, tag_object)])
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("DECLARED_RELEASE_TAG", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_106_lightweight_declared_tag_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            target = repo.commit()
+            repo.git("tag", "v1.0.0", target)
+            repo.write_release_policy([repo.release_record("v1.0.0", target, target)])
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("LIGHTWEIGHT_RELEASE_TAG", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_107_unknown_non_version_tag_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            repo.annotated_tag("release-candidate")
+            report = CHECK.audit(repo.root)
+        self.assertTrue({"UNEXPECTED_TAG", "INVALID_RELEASE_VERSION"} <= self.categories(report))
+
+    def test_108_undeclared_semver_tag_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            repo.annotated_tag("v1.0.1")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNEXPECTED_TAG", self.categories(report))
+        self.assertNotIn("INVALID_RELEASE_VERSION", self.categories(report))
+
+    def test_109_declared_tag_at_wrong_commit_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("first.txt")
+            declared_target = repo.commit()
+            repo.write("second.txt")
+            actual_target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.0", actual_target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.0", declared_target, tag_object)]
+            )
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("TAG_TARGET_MISMATCH", self.categories(report))
+
+    def test_110_declared_tag_outside_main_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            tree = repo.git("rev-parse", "HEAD^{tree}").stdout.decode("ascii").strip()
+            divergent = repo.commit_tree(tree, message="test: divergent release")
+            tag_object = repo.annotated_tag("v1.0.0", divergent)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.0", divergent, tag_object)]
+            )
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("TAG_TARGET_OUTSIDE_MAIN", self.categories(report))
+
+    def test_111_noncompliant_tagger_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            target = repo.commit()
+            tagger_env = os.environ.copy()
+            tagger_env.update(
+                {
+                    "GIT_COMMITTER_NAME": "Personal Tagger",
+                    "GIT_COMMITTER_EMAIL": "tagger" + "@personal.test",
+                }
+            )
+            tag_object = repo.annotated_tag("v1.0.0", target, env=tagger_env)
+            repo.write_release_policy([repo.release_record("v1.0.0", target, tag_object)])
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("TAGGER_IDENTITY", self.categories(report))
+
+    def test_112_valid_old_tag_on_main_ancestor_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.0", target)
+            repo.write_release_policy([repo.release_record("v1.0.0", target, tag_object)])
+            repo.commit("test: record release")
+            repo.write("later.txt")
+            repo.commit("test: later main change")
+            report = CHECK.audit(repo.root)
+        self.assertIn("DECLARED_RELEASE_TAG", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_113_locked_tag_object_mismatch_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            target = repo.commit()
+            repo.annotated_tag("v1.0.0", target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.0", target, "a" * 40)]
+            )
+            repo.commit("test: record release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("TAG_OBJECT_MISMATCH", self.categories(report))
+
+    def test_114_archive_without_git_gets_intentional_diagnostic(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            code, output = self.capture_main("--root", temporary, "--fail-on-review")
+        self.assertEqual(2, code)
+        self.assertIn("full Git clone with .git metadata is required", output)
+        self.assertNotIn("Traceback", output)
+
+    def test_115_unsigned_future_release_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.1", target)
+            repo.write_release_policy([repo.release_record("v1.0.1", target, tag_object)])
+            repo.commit("test: declare invalid unsigned future release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNSIGNED_FUTURE_RELEASE", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_116_authorized_ssh_signed_future_release_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            identity, private_key = repo.generate_ssh_identity("release-2026", "release@example.invalid")
+            tag_object = repo.signed_tag("v1.0.1", private_key, target)
+            policy = repo.active_signature_policy([identity], "release-2026")
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="release-2026")],
+                signature_policy=policy,
+            )
+            repo.commit("test: declare signed future release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("DECLARED_RELEASE_TAG", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_117_ssh_tag_signed_by_wrong_key_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            allowed, _ = repo.generate_ssh_identity("allowed", "release@example.invalid")
+            _, wrong_key = repo.generate_ssh_identity("wrong", "wrong@example.invalid")
+            tag_object = repo.signed_tag("v1.0.1", wrong_key, target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="allowed")],
+                signature_policy=repo.active_signature_policy([allowed], "allowed"),
+            )
+            repo.commit("test: declare wrong-key release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("SSH_TAG_SIGNATURE", self.categories(report))
+
+    def test_118_altered_ssh_signature_is_rejected_cryptographically(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            identity, private_key = repo.generate_ssh_identity("release-2026", "release@example.invalid")
+            original = repo.signed_tag("v1.0.1", private_key, target)
+            raw = repo.git("cat-file", "tag", original).stdout.decode("utf-8")
+            signature_start = raw.index("-----BEGIN SSH SIGNATURE-----")
+            payload_start = raw.index("\n", signature_start) + 1
+            altered_character = "A" if raw[payload_start] != "A" else "B"
+            altered = raw[:payload_start] + altered_character + raw[payload_start + 1 :]
+            altered_object = repo.git(
+                "hash-object", "-t", "tag", "-w", "--stdin", input_bytes=altered.encode("utf-8")
+            ).stdout.decode("ascii").strip()
+            repo.git("update-ref", "refs/tags/v1.0.1", altered_object)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, altered_object, signed=True, signing_identity="release-2026")],
+                signature_policy=repo.active_signature_policy([identity], "release-2026"),
+            )
+            repo.commit("test: declare altered-signature release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("SSH_TAG_SIGNATURE", self.categories(report))
+
+    def test_119_incorrect_allowed_signers_principal_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            identity, private_key = repo.generate_ssh_identity("release-2026", "release@example.invalid")
+            tag_object = repo.signed_tag("v1.0.1", private_key, target)
+            allowed_path = repo.root / str(identity["allowed_signers_file"])
+            allowed_path.write_text(
+                allowed_path.read_text(encoding="utf-8").replace("release@example.invalid", "other@example.invalid"),
+                encoding="utf-8",
+            )
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="release-2026")],
+                signature_policy=repo.active_signature_policy([identity], "release-2026"),
+            )
+            repo.commit("test: declare wrong-principal release")
+            report = CHECK.audit(repo.root)
+        self.assertIn("SSH_TAG_SIGNATURE", self.categories(report))
+
+    def test_120_pre_revocation_release_remains_valid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release-1.txt")
+            first_target = repo.commit()
+            revoked, revoked_key = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.2",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            first_tag = repo.signed_tag("v1.0.1", revoked_key, first_target)
+            repo.write("release-2.txt")
+            boundary_target = repo.commit("test: prepare boundary release")
+            boundary_tag = repo.signed_tag("v1.0.2", revoked_key, boundary_target)
+            repo.write_release_policy(
+                [
+                    repo.release_record(
+                        "v1.0.1", first_target, first_tag, signed=True, signing_identity="release-old"
+                    ),
+                    repo.release_record(
+                        "v1.0.2", boundary_target, boundary_tag, signed=True, signing_identity="release-old"
+                    ),
+                ],
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current"),
+            )
+            repo.commit("test: declare rotated releases")
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertNotIn("REVOKED_SIGNING_IDENTITY", self.categories(report))
+
+    def test_121_release_at_revocation_boundary_remains_valid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            revoked, revoked_key = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            tag_object = repo.signed_tag("v1.0.1", revoked_key, target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="release-old")],
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current"),
+            )
+            repo.commit("test: declare boundary release")
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_122_release_after_revocation_boundary_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("boundary.txt")
+            boundary_target = repo.commit()
+            revoked, revoked_key = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            boundary_tag = repo.signed_tag("v1.0.1", revoked_key, boundary_target)
+            repo.write("later.txt")
+            later_target = repo.commit("test: prepare disallowed release")
+            later_tag = repo.signed_tag("v1.0.2", revoked_key, later_target)
+            repo.write_release_policy(
+                [
+                    repo.release_record(
+                        "v1.0.1", boundary_target, boundary_tag, signed=True, signing_identity="release-old"
+                    ),
+                    repo.release_record(
+                        "v1.0.2", later_target, later_tag, signed=True, signing_identity="release-old"
+                    ),
+                ],
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current"),
+            )
+            repo.commit("test: declare release beyond boundary")
+            report = CHECK.audit(repo.root)
+        self.assertIn("RELEASE_AFTER_SIGNER_REVOCATION_BOUNDARY", self.categories(report))
+        self.assertNotIn("REVOKED_SIGNING_IDENTITY", self.categories(report))
+
+    def test_123_altered_historical_signature_is_rejected_after_revocation(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            revoked, revoked_key = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            original = repo.signed_tag("v1.0.1", revoked_key, target)
+            raw = repo.git("cat-file", "tag", original).stdout.decode("utf-8")
+            signature_start = raw.index("-----BEGIN SSH SIGNATURE-----")
+            payload_start = raw.index("\n", signature_start) + 1
+            altered_character = "A" if raw[payload_start] != "A" else "B"
+            altered = raw[:payload_start] + altered_character + raw[payload_start + 1 :]
+            altered_object = repo.git(
+                "hash-object", "-t", "tag", "-w", "--stdin", input_bytes=altered.encode("utf-8")
+            ).stdout.decode("ascii").strip()
+            repo.git("update-ref", "refs/tags/v1.0.1", altered_object)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, altered_object, signed=True, signing_identity="release-old")],
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current"),
+            )
+            repo.commit("test: declare altered historical signature")
+            report = CHECK.audit(repo.root)
+        self.assertIn("SSH_TAG_SIGNATURE", self.categories(report))
+        self.assertNotIn("RELEASE_AFTER_SIGNER_REVOCATION_BOUNDARY", self.categories(report))
+
+    def test_124_revoked_identity_without_trust_boundary_is_invalid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old", "old@example.invalid", revoked_on="2026-07-20"
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current")
+            )
+            repo.commit("test: omit revocation boundary")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_125_active_identity_with_trust_boundary_is_invalid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            active, _ = repo.generate_ssh_identity(
+                "release-current", "current@example.invalid", last_trusted_release="v1.0.1"
+            )
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([active], "release-current")
+            )
+            repo.commit("test: add boundary to active identity")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_126_unknown_trust_boundary_release_is_invalid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.9",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current")
+            )
+            repo.commit("test: name unknown boundary release")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_127_boundary_signed_by_another_identity_is_invalid(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            active, active_key = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            tag_object = repo.signed_tag("v1.0.1", active_key, target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="release-current")],
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current"),
+            )
+            repo.commit("test: point boundary to another signer")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_128_revoked_identity_cannot_be_active(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([revoked], "release-old")
+            )
+            repo.commit("test: activate revoked identity")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_129_key_rotation_preserves_old_releases_and_rejects_old_key_reuse(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("old-release.txt")
+            old_target = repo.commit()
+            old, old_key = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="v1.0.1",
+            )
+            current, current_key = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            old_tag = repo.signed_tag("v1.0.1", old_key, old_target)
+            repo.write("current-release.txt")
+            current_target = repo.commit("test: prepare current-key release")
+            current_tag = repo.signed_tag("v1.0.2", current_key, current_target)
+            repo.write("reused-old-key.txt")
+            reused_target = repo.commit("test: prepare old-key reuse")
+            reused_tag = repo.signed_tag("v1.0.3", old_key, reused_target)
+            repo.write_release_policy(
+                [
+                    repo.release_record("v1.0.1", old_target, old_tag, signed=True, signing_identity="release-old"),
+                    repo.release_record(
+                        "v1.0.2", current_target, current_tag, signed=True, signing_identity="release-current"
+                    ),
+                    repo.release_record(
+                        "v1.0.3", reused_target, reused_tag, signed=True, signing_identity="release-old"
+                    ),
+                ],
+                signature_policy=repo.active_signature_policy([old, current], "release-current"),
+            )
+            repo.commit("test: declare key rotation")
+            report = CHECK.audit(repo.root)
+        boundary_findings = [
+            item for item in report.findings if item.category == "RELEASE_AFTER_SIGNER_REVOCATION_BOUNDARY"
+        ]
+        self.assertTrue(boundary_findings)
+        self.assertTrue(all(item.location in {"v1.0.3", "refs/tags/v1.0.3"} for item in boundary_findings))
+        self.assertNotIn("SSH_TAG_SIGNATURE", self.categories(report))
+
+    def test_130_signed_declaration_without_signature_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            identity, _ = repo.generate_ssh_identity("release-2026", "release@example.invalid")
+            tag_object = repo.annotated_tag("v1.0.1", target)
+            repo.write_release_policy(
+                [repo.release_record("v1.0.1", target, tag_object, signed=True, signing_identity="release-2026")],
+                signature_policy=repo.active_signature_policy([identity], "release-2026"),
+            )
+            repo.commit("test: declare unsigned tag as signed")
+            report = CHECK.audit(repo.root)
+        self.assertIn("SSH_TAG_SIGNATURE", self.categories(report))
+
+    def test_131_published_future_release_is_blocked_until_key_selection(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("release.txt")
+            target = repo.commit()
+            tag_object = repo.annotated_tag("v1.0.1", target)
+            record = repo.release_record("v1.0.1", target, tag_object)
+            repo.write_release_policy([record])
+            repo.commit("test: publish before key selection")
+            report = CHECK.audit(repo.root)
+        self.assertIn("PUBLISHED_RELEASE_WITHOUT_ACTIVE_KEY", self.categories(report))
+
+    def test_132_invalid_revocation_date_is_invalid_policy(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-02-30",
+                last_trusted_release="v1.0.1",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current")
+            )
+            repo.commit("test: use invalid revocation date")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_133_non_semver_trust_boundary_is_invalid_policy(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            revoked, _ = repo.generate_ssh_identity(
+                "release-old",
+                "old@example.invalid",
+                revoked_on="2026-07-20",
+                last_trusted_release="release-1",
+            )
+            active, _ = repo.generate_ssh_identity("release-current", "current@example.invalid")
+            repo.write_release_policy(
+                signature_policy=repo.active_signature_policy([revoked, active], "release-current")
+            )
+            repo.commit("test: use invalid revocation boundary")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
 
 
 if __name__ == "__main__":

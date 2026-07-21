@@ -1,0 +1,41 @@
+{
+  "schema_version": 3,
+  "version_format": "^v(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)\\.(?:0|[1-9][0-9]*)$",
+  "stable_tags": {
+    "declaration_required": true,
+    "annotated_required": true,
+    "target_must_be_ancestor_of": "refs/heads/main",
+    "unexpected_or_divergent_policy": "REVIEW"
+  },
+  "tagger_identity_policy": {
+    "source": "governance/public-commit-identity.json",
+    "allowed_taggers": [
+      {
+        "name": "Maxime Erard",
+        "email": "177521250+ElGrandeXu@users.noreply.github.com",
+        "classification": "MAINTAINER_GITHUB_NOREPLY"
+      }
+    ]
+  },
+  "signature_policy": {
+    "required_from": "v1.0.1",
+    "historical_unsigned_exception": "v1.0.0",
+    "mechanism": "SSH",
+    "status": "KEY_SELECTION_REQUIRED",
+    "active_identity": null,
+    "identities": [],
+    "gate": "Select a durable SSH signing key, publish its public key and SHA256 fingerprint, and add the offline allowed-signers record before creating v1.0.1."
+  },
+  "releases": [
+    {
+      "tag": "v1.0.0",
+      "target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
+      "tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
+      "immutable": true,
+      "attestation_mode": "HISTORICAL_UNSIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE",
+      "signing_identity": null,
+      "published": true,
+      "github_release_id": 357471186
+    }
+  ]
+}

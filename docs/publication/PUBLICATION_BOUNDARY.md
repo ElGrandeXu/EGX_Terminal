@@ -4,15 +4,15 @@
 
 La V1 publiée présente un workspace de terminal-agent LLM-agnostique, à racine
 neutre, avec ses principes, recherches, décisions et preuves reproductibles. Le
-repository canonique public est `ElGrandeXu/EGX_Terminal`. Il contient 36 commits,
-zéro tag et zéro release.
+repository canonique public est `ElGrandeXu/EGX_Terminal`. La release stable,
+latest et immuable `v1.0.0` pointe sur le 36e commit nettoyé.
 
 ## Surface incluse
 
 - `README.md`, `docs/` et le quickstart décrivent le projet et sa gouvernance ;
 - `scripts/` et `tests/` fournissent les contrôles locaux actifs ;
-- `governance/` contient la politique d'identité publique, les locks et le plan
-  de publication ;
+- `governance/` contient les politiques d'identité et de release, le registre
+  des surfaces actives, les locks et le plan de publication ;
 - `REUSE.toml`, `LICENSE`, `LICENSES/` et `licensing/license-lock.json` portent la
   gouvernance de licences ;
 - `experiments/kernel-v1/` et `experiments/kernel-micro-v1/` conservent les deux
@@ -26,8 +26,8 @@ d'exécution de la V1.
 
 La surface exclut les secrets, credentials, configurations de machine,
 transcripts privés, caches, sorties temporaires, modèles, poids et binaires
-locaux. Une release et les capacités avancées restent hors périmètre sans
-autorisation séparée.
+locaux. Les capacités avancées et toute release postérieure à `v1.0.0` restent
+hors périmètre sans autorisation séparée.
 
 Les bundles de récupération et la capture de l'incident sont des
 **`PRIVATE_RECOVERY_ARTIFACT`** hors repository. Le repository de staging
@@ -107,7 +107,9 @@ réservé à la récupération.
 
 ## État
 
-**`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`**
+**`PUBLIC_V1_RELEASED`**
 
-Aucun tag ni aucune release n'existe. Le prochain gate est une décision explicite
-et séparée sur `v1.0.0` ; ce statut ne l'autorise pas.
+`v1.0.0` est publiée et immuable au commit
+`870964a48fc07ff39d65c46255f189d25658ff2c`, avec l'objet tag annoté
+`a5668506f38dfc73ec6d8236de00a6adad095e25`. `main` prépare `v1.0.1` après
+audit post-release ; cette version corrective n'est pas publiée.

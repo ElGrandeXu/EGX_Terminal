@@ -1,21 +1,26 @@
 # Quickstart
 
-This guide validates the public V1 workspace without network access, a model, or
-an agent runtime. Run every command from the repository root.
+This guide validates the public V1 workspace without a model or agent runtime.
+Run every command from the repository root. A full Git clone and a GitHub source
+archive provide different evidence and are not interchangeable.
 
 ## Prerequisites
 
 - Python 3, available as `python`.
-- Git, available as `git`, inside a cloned Git worktree.
+- Git, available as `git`, for the canonical clone audit.
 
 This quickstart was verified with Python 3.11.9 and Git 2.54.0. The repository
 does not declare lower minimum versions. The active scripts use only the Python
 standard library.
 
-## Validate the workspace
+## Canonical full-clone validation
 
-Confirm that none of the five forbidden harness-instruction paths is active at
-the root:
+A complete clone contains `.git`, refs, commit and tag objects, and identity
+metadata. It can therefore prove history, ref topology, tag ancestry, annotated
+tag identity, and the exact locked `v1.0.0` object.
+
+Confirm that none of the known active project surfaces in the machine-readable
+neutral-root registry is present:
 
 ```console
 python scripts/check_neutral_root.py
@@ -40,6 +45,7 @@ expose a full private address:
 
 ```console
 python scripts/check_git_history.py
+python scripts/check_git_history.py --all-refs
 python scripts/check_git_history.py --fail-on-review
 python scripts/check_markdown_links.py
 python scripts/check_github_governance.py
@@ -51,9 +57,33 @@ This command runs the active tests under `tests/`. Historical experimental suite
 remain part of their archived evidence and are intentionally outside the active
 V1 test total.
 
-The two GitHub governance checks use only the standard library and make no
-network requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification
-3.3; REUSE is installed temporarily in CI and is not a project runtime dependency.
+The governance checks use only the standard library and make no network
+requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification 3.3; CI
+builds it from the official sdist using the dedicated hashed build and runtime
+locks. It is not a project runtime dependency.
+
+## GitHub source archive: content-only validation
+
+A generated `.zip` or `.tar.gz` source archive has no `.git` directory. It can
+check only the content present: registered neutral-root surfaces, publication
+heuristics, file-scoped licensing, Markdown links, workflow governance, and
+REUSE metadata. It cannot prove history, refs, commit identities, the tag object,
+or the tag's relationship to `main`.
+
+Run only this bounded sequence in an extracted source archive:
+
+```console
+python scripts/check_neutral_root.py
+python scripts/check_public_surface.py --content-only --root .
+python scripts/check_licensing.py --content-only --root .
+python scripts/check_markdown_links.py --content-only --root .
+python scripts/check_github_governance.py --content-only --root .
+reuse lint
+```
+
+Do not run `check_git_history.py` there. If invoked, it exits with an intentional
+diagnostic stating that a full Git clone is required; it never reconstructs or
+simulates missing history.
 
 ## Recommended reading path
 
@@ -81,7 +111,7 @@ parsing them is evidence inspection; it does not reproduce a runtime observation
 **Inspect existing evidence.** Read the tracked reports, protocols, manifests,
 and metrics. This is the default path and has no runtime or network cost.
 
-**Reproduce local V1 validation.** Run the canonical commands above. They verify
+**Reproduce local V1 validation.** Run the full-clone commands above. They verify
 the current neutral root, tracked public surface, file-scoped licensing,
 reachable Git history, links, GitHub governance, the strict public identity
 policy, and active distribution checks on your machine. They do not re-evaluate a kernel. The

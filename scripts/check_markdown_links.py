@@ -63,6 +63,16 @@ def tracked_markdown(root: Path) -> tuple[str, ...]:
     return tuple(sorted(item.decode("utf-8") for item in result.stdout.split(b"\0") if item))
 
 
+def content_markdown(root: Path) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            path.relative_to(root).as_posix()
+            for path in root.rglob("*.md")
+            if ".git" not in path.relative_to(root).parts and "__pycache__" not in path.relative_to(root).parts
+        )
+    )
+
+
 def _visible_lines(text: str) -> list[tuple[int, str]]:
     visible: list[tuple[int, str]] = []
     fence: str | None = None
@@ -204,13 +214,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--json", type=Path, metavar="PATH", help="write a deterministic JSON report")
     parser.add_argument("--include-external", action="store_true", help="explicitly validate HTTP(S) links over the network")
     parser.add_argument("--root", type=Path, help=argparse.SUPPRESS)
+    parser.add_argument("--content-only", action="store_true", help="check Markdown present in a source archive")
     arguments = parser.parse_args(argv)
     try:
-        root = repository_root(arguments.root)
-        files = tracked_markdown(root)
+        if arguments.content_only:
+            root = (arguments.root or Path(__file__).resolve().parents[1]).resolve()
+            files = content_markdown(root)
+        else:
+            root = repository_root(arguments.root)
+            files = tracked_markdown(root)
         findings = audit(root, files, include_external=arguments.include_external)
     except (OSError, RuntimeError) as error:
-        print(f"Markdown link check could not start: {error}")
+        print(f"Markdown link check could not start: {error}. Use a full Git clone, or --content-only for a source archive.")
         return 2
     report = {"root": str(root), "files_checked": len(files), "findings": [asdict(item) for item in findings]}
     if arguments.json:
@@ -221,7 +236,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         for item in findings:
             print(f"  - {item.path}:{item.line} [{item.code}] {item.target}: {item.message}")
         return 1
-    print(f"Markdown links accepted for {root}: {len(files)} tracked Markdown files, network={'enabled' if arguments.include_external else 'disabled'}.")
+    print(f"Markdown links accepted for {root}: {len(files)} {'present' if arguments.content_only else 'tracked'} Markdown files, network={'enabled' if arguments.include_external else 'disabled'}.")
     return 0
 
 

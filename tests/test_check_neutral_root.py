@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import importlib.util
 import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -12,6 +13,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPOSITORY_ROOT / "scripts" / "check_neutral_root.py"
+sys.path.insert(0, str(SCRIPT_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("check_neutral_root", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Cannot load {SCRIPT_PATH}")
@@ -20,13 +22,37 @@ SPEC.loader.exec_module(CHECK)
 
 
 class NeutralRootTests(unittest.TestCase):
+    def test_codex_sources_are_precise_official_pages(self) -> None:
+        payload = json.loads(
+            (REPOSITORY_ROOT / "governance/neutral-root-surfaces.json").read_text(encoding="utf-8")
+        )
+        codex = {
+            source["url"]: set(source["observed_surfaces"])
+            for source in payload["sources"]
+            if source["harness"] == "Codex"
+        }
+        self.assertEqual(
+            {
+                "https://developers.openai.com/codex/config-basic": {
+                    ".codex/config.toml",
+                    "project-local hooks and rules under .codex/",
+                },
+                "https://developers.openai.com/codex/guides/agents-md": {
+                    "AGENTS.md",
+                    "AGENTS.override.md",
+                },
+            },
+            codex,
+        )
+
     def test_compliant_root(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             self.assertEqual((), CHECK.find_forbidden_paths(root))
 
     def test_detects_each_forbidden_path(self) -> None:
-        for relative in CHECK.FORBIDDEN_PATHS:
+        for surface in CHECK.registered_surfaces():
+            relative = surface.path
             with self.subTest(path=relative.as_posix()):
                 with tempfile.TemporaryDirectory() as temporary:
                     root = Path(temporary)
@@ -43,6 +69,37 @@ class NeutralRootTests(unittest.TestCase):
                     finally:
                         CHECK.repository_root = original_repository_root
                     self.assertIn(relative.as_posix(), output.getvalue())
+
+    def test_detects_registered_directories(self) -> None:
+        directory_surfaces = [
+            surface for surface in CHECK.registered_surfaces() if surface.kind == "path_prefix"
+        ]
+        for surface in directory_surfaces:
+            with self.subTest(path=surface.path.as_posix()):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    (root / surface.path).mkdir(parents=True)
+                    self.assertEqual(
+                        (surface.path,),
+                        CHECK.find_forbidden_paths(root, (surface,)),
+                    )
+
+    def test_detects_symlink_when_supported(self) -> None:
+        surface = CHECK.registered_surfaces()[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "fixture-target"
+            target.write_text("fixture\n", encoding="utf-8")
+            link = root / surface.path
+            link.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                link.symlink_to(target)
+            except OSError as error:
+                self.skipTest(f"symlinks unavailable: {error}")
+            self.assertEqual(
+                (surface.path,),
+                CHECK.find_forbidden_paths(root, (surface,)),
+            )
 
     def test_ignores_nested_fixture_agents_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

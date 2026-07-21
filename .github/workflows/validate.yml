@@ -3,6 +3,7 @@ name: Validate
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -20,9 +21,31 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Check out full history
+      - name: Check out ordinary validation ref
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Check out canonical release policy
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          path: _validation/policy
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Check out exact release tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          path: _validation/release
           fetch-depth: 0
           persist-credentials: false
           submodules: false
@@ -31,7 +54,8 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Validate repository
+      - name: Validate ordinary repository event
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           python scripts/check_neutral_root.py
           python scripts/check_public_surface.py
@@ -39,6 +63,16 @@ jobs:
           python scripts/check_git_history.py --fail-on-review
           python scripts/check_markdown_links.py
           python scripts/check_github_governance.py
+          python -m unittest discover -s tests -v
+      - name: Validate tag authorization from canonical main
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/policy
+        run: python scripts/check_git_history.py --fail-on-review
+      - name: Validate exact tagged release tree
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/release
+        run: |
+          python scripts/check_release_tree.py --expected-ref "${GITHUB_REF}" --event-sha "${GITHUB_SHA}"
           python -m unittest discover -s tests -v
 
   repository-windows:
@@ -49,9 +83,31 @@ jobs:
       run:
         shell: bash
     steps:
-      - name: Check out full history
+      - name: Check out ordinary validation ref
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Check out canonical release policy
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: refs/heads/main
+          path: _validation/policy
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Check out exact release tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          path: _validation/release
           fetch-depth: 0
           persist-credentials: false
           submodules: false
@@ -60,7 +116,8 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Validate repository
+      - name: Validate ordinary repository event
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: |
           python scripts/check_neutral_root.py
           python scripts/check_public_surface.py
@@ -69,15 +126,37 @@ jobs:
           python scripts/check_markdown_links.py
           python scripts/check_github_governance.py
           python -m unittest discover -s tests -v
+      - name: Validate tag authorization from canonical main
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/policy
+        run: python scripts/check_git_history.py --fail-on-review
+      - name: Validate exact tagged release tree
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/release
+        run: |
+          python scripts/check_release_tree.py --expected-ref "${GITHUB_REF}" --event-sha "${GITHUB_SHA}"
+          python -m unittest discover -s tests -v
 
   licensing-reuse:
     name: licensing / reuse
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Check out repository
+      - name: Check out ordinary validation ref
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Check out exact release tag
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.ref }}
+          path: _validation/release
           fetch-depth: 0
           persist-credentials: false
           submodules: false
@@ -86,7 +165,21 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.11"
-      - name: Install REUSE
-        run: python -m pip install --disable-pip-version-check reuse==6.2.0
-      - name: Validate REUSE metadata
+      - name: Install REUSE from ordinary-event hashed locks
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r governance/requirements-reuse-build-6.2.0.txt
+          python -m pip install --disable-pip-version-check --require-hashes --no-build-isolation -r governance/requirements-reuse-6.2.0.txt
+      - name: Install REUSE from tagged-tree hashed locks
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/release
+        run: |
+          python -m pip install --disable-pip-version-check --require-hashes -r governance/requirements-reuse-build-6.2.0.txt
+          python -m pip install --disable-pip-version-check --require-hashes --no-build-isolation -r governance/requirements-reuse-6.2.0.txt
+      - name: Validate ordinary REUSE metadata
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: reuse lint
+      - name: Validate tagged-tree REUSE metadata
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        working-directory: _validation/release
         run: reuse lint

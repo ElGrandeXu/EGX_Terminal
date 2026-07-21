@@ -57,12 +57,32 @@ anonymous validation.
   zero required approvals, resolved conversations, linear history, and deletion
   and force-push protection.
 
-## Release
+## Historical v1.0.0 release
 
-- [ ] A release is separately authorized.
-- [ ] A release commit and notes describe only validated evidence.
-- [ ] A release source archive passes the applicable checks.
-- [ ] An annotated tag and GitHub release are created.
+- [x] The release was separately and explicitly authorized after commit
+  `870964a48fc07ff39d65c46255f189d25658ff2c`.
+- [x] The release target and notes describe only the validated V1 evidence and
+  preserve the existing compatibility limits.
+- [x] Annotated tag object `a5668506f38dfc73ec6d8236de00a6adad095e25`
+  and immutable GitHub release `357471186` were created for `v1.0.0`.
+- [ ] A generated GitHub source archive was validated after publication using a
+  documented archive-only sequence. This was not recorded for `v1.0.0`.
+- [ ] CI ran from the tag-push event. The workflow did not yet have that trigger,
+  so this proof is intentionally not claimed for `v1.0.0`.
 
-No release or tag exists. The next gate is a separate explicit decision on
-`v1.0.0`; the completed repository checks do not authorize it.
+## Policy prepared on main for v1.0.1
+
+- [x] The exact historical tag and release are declared in the release policy.
+- [x] Unknown, lightweight, moved, divergent, or mismatched tags fail review.
+- [x] The validation workflow has a narrow `v*` tag-push trigger and retains its
+  three names, read-only permissions, SHA-pinned actions, and Windows gate.
+- [x] The future tag gate separately validates authorization from canonical
+  `main` and all applicable content from the exact triggering tag target.
+- [x] The history checker supports an `ACTIVE` SSH policy and verifies signed
+  tags cryptographically with Git and a repository-owned allowed-signers file.
+- [x] REUSE 6.2.0 and its Python 3.11/Ubuntu dependency chain install from
+  dedicated SHA256-hashed locks.
+- [ ] A durable SSH signing public key, fingerprint, principal, and offline
+  allowed-signers record are selected and published.
+- [ ] A `v1.0.1` tag or GitHub release is created. This consolidation PR does not
+  authorize or perform either action.

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "guarantee": "KNOWN_REGISTERED_ACTIVE_PROJECT_SURFACES",
+  "verified_on": "2026-07-21",
+  "sources": [
+    {
+      "harness": "Codex",
+      "url": "https://developers.openai.com/codex/config-basic",
+      "observed_surfaces": [".codex/config.toml", "project-local hooks and rules under .codex/"]
+    },
+    {
+      "harness": "Codex",
+      "url": "https://developers.openai.com/codex/guides/agents-md",
+      "observed_surfaces": ["AGENTS.md", "AGENTS.override.md"]
+    },
+    {
+      "harness": "Claude Code",
+      "url": "https://code.claude.com/docs/en/settings",
+      "observed_surfaces": ["CLAUDE.md", ".claude/CLAUDE.md", "CLAUDE.local.md", ".claude/", ".mcp.json"]
+    },
+    {
+      "harness": "OpenCode",
+      "url": "https://opencode.ai/docs/rules/",
+      "observed_surfaces": ["AGENTS.md", "CLAUDE.md", "opencode.json", "opencode.jsonc"]
+    },
+    {
+      "harness": "OpenCode",
+      "url": "https://opencode.ai/docs/config/",
+      "observed_surfaces": [".opencode/"]
+    }
+  ],
+  "surfaces": [
+    {"path": "AGENTS.md", "kind": "path", "owners": ["Codex", "OpenCode"]},
+    {"path": "AGENTS.override.md", "kind": "path", "owners": ["Codex"]},
+    {"path": ".codex", "kind": "path_prefix", "owners": ["Codex"]},
+    {"path": "CLAUDE.md", "kind": "path", "owners": ["Claude Code", "OpenCode"]},
+    {"path": "CLAUDE.local.md", "kind": "path", "owners": ["Claude Code"]},
+    {"path": ".claude", "kind": "path_prefix", "owners": ["Claude Code"]},
+    {"path": ".mcp.json", "kind": "path", "owners": ["Claude Code"]},
+    {"path": "opencode.json", "kind": "path", "owners": ["OpenCode"]},
+    {"path": "opencode.jsonc", "kind": "path", "owners": ["OpenCode"]},
+    {"path": ".opencode", "kind": "path_prefix", "owners": ["OpenCode"]},
+    {"path": "doctrine/KERNEL.md", "kind": "path", "owners": ["EGX_Terminal historical surface"]}
+  ]
+}

@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "remote_settings_status": "APPLIED",
   "identity": {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"},
   "visibility_strategy": {
@@ -41,6 +41,8 @@
     "fork_workflow_write_tokens": false,
     "allowed_actions": ["actions/checkout", "actions/setup-python"],
     "full_sha_pinning_required": true,
+    "sha_pinning_verified_on": "2026-07-21",
+    "sha_pinning_endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions",
     "automatic_approval_for_untrusted_workflow_changes": false,
     "status": "APPLIED"
   },
@@ -89,12 +91,19 @@
     "status": "APPLIED"
   },
   "release": {
-    "candidate": "v1.0.0",
-    "tag_created": false,
-    "release_created": false,
-    "notes": "DEFERRED_UNTIL_SEPARATE_AUTHORIZATION",
-    "profile_pin": "ONLY_AFTER_SUCCESSFUL_RELEASE",
-    "status": "DEFERRED"
+    "version": "v1.0.0",
+    "target_commit": "870964a48fc07ff39d65c46255f189d25658ff2c",
+    "tag_object": "a5668506f38dfc73ec6d8236de00a6adad095e25",
+    "annotated_tag": true,
+    "immutable": true,
+    "github_release_id": 357471186,
+    "published_at": "2026-07-21T16:06:25Z",
+    "published": true,
+    "latest": true,
+    "prerelease": false,
+    "tag_push_ci": "NOT_RUN_FOR_V1.0.0",
+    "next_candidate": "v1.0.1",
+    "status": "APPLIED"
   },
   "publication_verification": {
     "private_staging_ci": "APPLIED",
@@ -119,8 +128,8 @@
     "functional_content_changed": false,
     "old_object_imported": false,
     "email_privacy_setting": "EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE",
-    "tag_created": false,
-    "release_created": false,
+    "tag_existed_at_incident": false,
+    "release_existed_at_incident": false,
     "status": "APPLIED"
   }
 }

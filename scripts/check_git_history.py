@@ -16,13 +16,18 @@ that publication is legally safe. It never prints a matched sensitive value.
 from __future__ import annotations
 
 import argparse
+import base64
+import binascii
 import dataclasses
+import hashlib
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 from collections import defaultdict
+from datetime import date
 from pathlib import Path, PurePosixPath
 from typing import Iterable, Mapping, Sequence
 
@@ -42,6 +47,13 @@ EXPECTED_PUBLIC_REF = "refs/heads/main"
 EXPECTED_REMOTE_MAIN = "refs/remotes/origin/main"
 EXPECTED_REMOTE_HEAD = "refs/remotes/origin/HEAD"
 PUBLIC_IDENTITY_POLICY = Path("governance/public-commit-identity.json")
+RELEASE_POLICY = Path("governance/release-policy.json")
+HISTORICAL_UNSIGNED_ATTESTATION = (
+    "HISTORICAL_UNSIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE"
+)
+SSH_SIGNED_ATTESTATION = (
+    "SSH_SIGNED_ANNOTATED_TAG_WITH_IMMUTABLE_GITHUB_RELEASE"
+)
 GITHUB_WEB_COMMITTER_NAME = "GitHub"
 GITHUB_WEB_COMMITTER_EMAIL = "noreply@github.com"
 EMAIL_PATTERN = re.compile(
@@ -138,6 +150,49 @@ class PublicIdentityPolicy:
 
 
 @dataclasses.dataclass(frozen=True)
+class ReleaseRecord:
+    tag: str
+    target_commit: str
+    tag_object: str
+    immutable: bool
+    attestation_mode: str
+    signing_identity: str | None
+    published: bool
+    github_release_id: int | None
+
+
+@dataclasses.dataclass(frozen=True)
+class SigningIdentity:
+    identity_id: str
+    principal: str
+    allowed_signers_file: str
+    public_key_fingerprint: str
+    activated_on: str
+    revoked_on: str | None
+    last_trusted_release: str | None
+
+
+@dataclasses.dataclass(frozen=True)
+class SignaturePolicy:
+    required_from: tuple[int, int, int]
+    historical_unsigned_exception: str
+    mechanism: str
+    status: str
+    active_identity: str | None
+    identities: Mapping[str, SigningIdentity]
+    gate: str
+
+
+@dataclasses.dataclass(frozen=True)
+class ReleasePolicy:
+    version_pattern: re.Pattern[str]
+    main_ref: str
+    allowed_taggers: frozenset[tuple[str, str, str]]
+    signatures: SignaturePolicy
+    releases: Mapping[str, ReleaseRecord]
+
+
+@dataclasses.dataclass(frozen=True)
 class CommitRecord:
     oid: str
     author: Identity
@@ -215,7 +270,12 @@ def repository_root(start: Path | None = None) -> Path:
     """Resolve a Git worktree without depending on the current directory."""
 
     anchor = start if start is not None else Path(__file__).resolve().parent
-    raw = _git(("rev-parse", "--show-toplevel"), cwd=anchor)
+    try:
+        raw = _git(("rev-parse", "--show-toplevel"), cwd=anchor)
+    except HistoryAuditError as error:
+        raise HistoryAuditError(
+            "a full Git clone with .git metadata is required to audit history, refs, tag objects, and identities"
+        ) from error
     return Path(os.fsdecode(raw).strip()).resolve()
 
 
@@ -363,6 +423,249 @@ def _load_identity_policy(root: Path) -> PublicIdentityPolicy:
         accepted_committer_classes=frozenset(committer_classes),
         accepted_trailer_classes=frozenset(trailer_classes),
         github_pr_required_evidence=GITHUB_PR_REQUIRED_EVIDENCE,
+    )
+
+
+def _load_release_policy(root: Path) -> ReleasePolicy:
+    path = root / RELEASE_POLICY
+    if not path.is_file():
+        raise HistoryAuditError(f"required release policy {RELEASE_POLICY} is absent")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} is invalid") from error
+    expected_keys = {
+        "schema_version",
+        "version_format",
+        "stable_tags",
+        "tagger_identity_policy",
+        "signature_policy",
+        "releases",
+    }
+    stable = payload.get("stable_tags") if isinstance(payload, dict) else None
+    taggers = payload.get("tagger_identity_policy") if isinstance(payload, dict) else None
+    signatures = payload.get("signature_policy") if isinstance(payload, dict) else None
+    releases = payload.get("releases") if isinstance(payload, dict) else None
+    version_format = payload.get("version_format") if isinstance(payload, dict) else None
+    if (
+        not isinstance(payload, dict)
+        or set(payload) != expected_keys
+        or payload.get("schema_version") != 3
+        or not isinstance(version_format, str)
+        or stable
+        != {
+            "declaration_required": True,
+            "annotated_required": True,
+            "target_must_be_ancestor_of": EXPECTED_PUBLIC_REF,
+            "unexpected_or_divergent_policy": "REVIEW",
+        }
+        or not isinstance(taggers, dict)
+        or set(taggers) != {"source", "allowed_taggers"}
+        or taggers.get("source") != PUBLIC_IDENTITY_POLICY.as_posix()
+        or not isinstance(taggers.get("allowed_taggers"), list)
+        or not taggers["allowed_taggers"]
+        or not isinstance(signatures, dict)
+        or set(signatures)
+        != {
+            "required_from",
+            "historical_unsigned_exception",
+            "mechanism",
+            "status",
+            "active_identity",
+            "identities",
+            "gate",
+        }
+        or not isinstance(releases, list)
+    ):
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} is invalid")
+    try:
+        pattern = re.compile(version_format)
+    except re.error as error:
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid version format") from error
+    if pattern.pattern != r"^v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$":
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an unsupported version format")
+
+    def version_tuple(value: object) -> tuple[int, int, int] | None:
+        if not isinstance(value, str) or pattern.fullmatch(value) is None:
+            return None
+        return tuple(int(part) for part in value[1:].split("."))  # type: ignore[return-value]
+
+    required_from = version_tuple(signatures.get("required_from"))
+    historical_exception = signatures.get("historical_unsigned_exception")
+    status = signatures.get("status")
+    active_identity = signatures.get("active_identity")
+    gate = signatures.get("gate")
+    identities_payload = signatures.get("identities")
+    if (
+        required_from is None
+        or required_from < (1, 0, 1)
+        or historical_exception != "v1.0.0"
+        or signatures.get("mechanism") != "SSH"
+        or status not in {"KEY_SELECTION_REQUIRED", "ACTIVE"}
+        or not isinstance(gate, str)
+        or not gate.strip()
+        or not isinstance(identities_payload, list)
+        or (active_identity is not None and not isinstance(active_identity, str))
+    ):
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid signature policy")
+
+    signing_identities: dict[str, SigningIdentity] = {}
+    identity_keys = {
+        "id",
+        "principal",
+        "allowed_signers_file",
+        "public_key_fingerprint",
+        "activated_on",
+        "revoked_on",
+        "last_trusted_release",
+    }
+    for item in identities_payload:
+        allowed_value = item.get("allowed_signers_file") if isinstance(item, dict) else None
+        allowed_path = PurePosixPath(allowed_value) if isinstance(allowed_value, str) else None
+        if (
+            not isinstance(item, dict)
+            or set(item) != identity_keys
+            or not isinstance(item.get("id"), str)
+            or re.fullmatch(r"[a-z0-9][a-z0-9._-]*", item["id"]) is None
+            or not isinstance(item.get("principal"), str)
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._@+-]*", item["principal"]) is None
+            or not isinstance(item.get("allowed_signers_file"), str)
+            or allowed_path is None
+            or allowed_path.is_absolute()
+            or ".." in allowed_path.parts
+            or not allowed_path.parts
+            or allowed_path.parts[0] != "governance"
+            or not isinstance(item.get("public_key_fingerprint"), str)
+            or re.fullmatch(r"SHA256:[A-Za-z0-9+/]{43}", item["public_key_fingerprint"]) is None
+            or not isinstance(item.get("activated_on"), str)
+            or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", item["activated_on"]) is None
+            or (
+                item.get("revoked_on") is not None
+                and (
+                    not isinstance(item.get("revoked_on"), str)
+                    or re.fullmatch(r"[0-9]{4}-[0-9]{2}-[0-9]{2}", item["revoked_on"]) is None
+                )
+            )
+            or (
+                item.get("revoked_on") is None
+                and item.get("last_trusted_release") is not None
+            )
+            or (
+                item.get("revoked_on") is not None
+                and version_tuple(item.get("last_trusted_release")) is None
+            )
+            or item["id"] in signing_identities
+        ):
+            raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid signing identity")
+        try:
+            date.fromisoformat(item["activated_on"])
+            if item["revoked_on"] is not None:
+                date.fromisoformat(item["revoked_on"])
+        except ValueError as error:
+            raise HistoryAuditError(
+                f"release policy {RELEASE_POLICY} has an invalid signing identity date"
+            ) from error
+        signing_identities[item["id"]] = SigningIdentity(
+            identity_id=item["id"],
+            principal=item["principal"],
+            allowed_signers_file=item["allowed_signers_file"],
+            public_key_fingerprint=item["public_key_fingerprint"],
+            activated_on=item["activated_on"],
+            revoked_on=item["revoked_on"],
+            last_trusted_release=item["last_trusted_release"],
+        )
+    if status == "KEY_SELECTION_REQUIRED" and active_identity is not None:
+        raise HistoryAuditError(f"release policy {RELEASE_POLICY} cannot activate an identity while key selection is blocked")
+    if status == "ACTIVE":
+        selected = signing_identities.get(active_identity or "")
+        if selected is None or selected.revoked_on is not None:
+            raise HistoryAuditError(f"release policy {RELEASE_POLICY} has no non-revoked active signing identity")
+    signature_policy = SignaturePolicy(
+        required_from=required_from,
+        historical_unsigned_exception=historical_exception,
+        mechanism="SSH",
+        status=status,
+        active_identity=active_identity,
+        identities=signing_identities,
+        gate=gate,
+    )
+    allowed_taggers: set[tuple[str, str, str]] = set()
+    for item in taggers["allowed_taggers"]:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"name", "email", "classification"}
+            or not all(isinstance(item.get(key), str) and item[key] for key in item)
+            or item["classification"] != "MAINTAINER_GITHUB_NOREPLY"
+        ):
+            raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid tagger")
+        allowed_taggers.add((item["name"], item["email"], item["classification"]))
+    records: dict[str, ReleaseRecord] = {}
+    required_release_keys = {
+        "tag",
+        "target_commit",
+        "tag_object",
+        "immutable",
+        "attestation_mode",
+        "signing_identity",
+        "published",
+        "github_release_id",
+    }
+    for item in releases:
+        if (
+            not isinstance(item, dict)
+            or set(item) != required_release_keys
+            or not isinstance(item.get("tag"), str)
+            or pattern.fullmatch(item["tag"]) is None
+            or not isinstance(item.get("target_commit"), str)
+            or re.fullmatch(r"[0-9a-f]{40}", item["target_commit"]) is None
+            or not isinstance(item.get("tag_object"), str)
+            or re.fullmatch(r"[0-9a-f]{40}", item["tag_object"]) is None
+            or not isinstance(item.get("immutable"), bool)
+            or item.get("attestation_mode") not in {HISTORICAL_UNSIGNED_ATTESTATION, SSH_SIGNED_ATTESTATION}
+            or (
+                item.get("attestation_mode") == HISTORICAL_UNSIGNED_ATTESTATION
+                and item.get("signing_identity") is not None
+            )
+            or (
+                item.get("attestation_mode") == SSH_SIGNED_ATTESTATION
+                and (not isinstance(item.get("signing_identity"), str) or not item["signing_identity"])
+            )
+            or not isinstance(item.get("published"), bool)
+            or (
+                item.get("published") is True
+                and (
+                    item.get("immutable") is not True
+                    or not isinstance(item.get("github_release_id"), int)
+                    or isinstance(item.get("github_release_id"), bool)
+                    or item["github_release_id"] < 1
+                )
+            )
+            or (
+                item.get("published") is False
+                and (item.get("immutable") is not False or item.get("github_release_id") is not None)
+            )
+            or item["tag"] in records
+        ):
+            raise HistoryAuditError(f"release policy {RELEASE_POLICY} has an invalid release record")
+        records[item["tag"]] = ReleaseRecord(**item)
+    for identity in signing_identities.values():
+        if identity.revoked_on is None:
+            continue
+        boundary = records.get(identity.last_trusted_release or "")
+        if (
+            boundary is None
+            or boundary.signing_identity != identity.identity_id
+            or boundary.attestation_mode != SSH_SIGNED_ATTESTATION
+        ):
+            raise HistoryAuditError(
+                f"release policy {RELEASE_POLICY} has an invalid last trusted release"
+            )
+    return ReleasePolicy(
+        version_pattern=pattern,
+        main_ref=stable["target_must_be_ancestor_of"],
+        allowed_taggers=frozenset(allowed_taggers),
+        signatures=signature_policy,
+        releases=records,
     )
 
 
@@ -773,10 +1076,255 @@ def _reachable_commit_oids(root: Path, refs: Sequence[str]) -> frozenset[str]:
     return frozenset(raw.decode("ascii", errors="strict").splitlines())
 
 
+def _is_ancestor(root: Path, ancestor: str, descendant: str) -> bool:
+    process = subprocess.run(
+        ["git", "-C", str(root), "merge-base", "--is-ancestor", ancestor, descendant],
+        check=False,
+        capture_output=True,
+    )
+    if process.returncode == 0:
+        return True
+    if process.returncode == 1:
+        return False
+    detail = process.stderr.decode("utf-8", errors="replace").strip()
+    raise HistoryAuditError(detail or "git merge-base --is-ancestor failed")
+
+
+def _release_version(tag: str) -> tuple[int, int, int]:
+    return tuple(int(part) for part in tag[1:].split("."))  # type: ignore[return-value]
+
+
+def _release_policy_findings(release_policy: ReleasePolicy) -> list[Finding]:
+    findings: list[Finding] = []
+    signatures = release_policy.signatures
+    for record in release_policy.releases.values():
+        version = _release_version(record.tag)
+        is_future = version >= signatures.required_from
+        if record.attestation_mode == HISTORICAL_UNSIGNED_ATTESTATION:
+            if record.tag != signatures.historical_unsigned_exception:
+                findings.append(
+                    Finding(
+                        "REVIEW",
+                        "UNSIGNED_RELEASE_EXCEPTION",
+                        record.tag,
+                        "only the exact historical v1.0.0 exception may use an unsigned attestation",
+                    )
+                )
+            if is_future:
+                findings.append(
+                    Finding(
+                        "REVIEW",
+                        "UNSIGNED_FUTURE_RELEASE",
+                        record.tag,
+                        "stable releases from v1.0.1 onward require an SSH-signed annotated tag",
+                    )
+                )
+        elif record.attestation_mode == SSH_SIGNED_ATTESTATION:
+            identity = signatures.identities.get(record.signing_identity or "")
+            if signatures.status != "ACTIVE":
+                findings.append(
+                    Finding(
+                        "REVIEW",
+                        "RELEASE_SIGNATURE_GATE",
+                        record.tag,
+                        signatures.gate,
+                    )
+                )
+            if identity is None:
+                findings.append(
+                    Finding("REVIEW", "UNKNOWN_SIGNING_IDENTITY", record.tag, "release names no declared signing identity")
+                )
+            elif (
+                identity.revoked_on is not None
+                and _release_version(record.tag) > _release_version(identity.last_trusted_release or "")
+            ):
+                findings.append(
+                    Finding(
+                        "REVIEW",
+                        "RELEASE_AFTER_SIGNER_REVOCATION_BOUNDARY",
+                        record.tag,
+                        f"release exceeds {identity.last_trusted_release}, the signer's canonical trust boundary",
+                    )
+                )
+        if is_future and record.published and signatures.status != "ACTIVE":
+            findings.append(
+                Finding(
+                    "REVIEW",
+                    "PUBLISHED_RELEASE_WITHOUT_ACTIVE_KEY",
+                    record.tag,
+                    "a release at or after v1.0.1 cannot be published before SSH key selection is active",
+                )
+            )
+    return findings
+
+
+def _allowed_signers_key(root: Path, identity: SigningIdentity) -> tuple[str | None, str | None]:
+    path = root / PurePosixPath(identity.allowed_signers_file)
+    tracked = subprocess.run(
+        ["git", "-C", str(root), "ls-files", "--error-unmatch", "--", identity.allowed_signers_file],
+        check=False,
+        capture_output=True,
+    )
+    if tracked.returncode:
+        return None, "allowed-signers file is not repository-owned and tracked"
+    try:
+        lines = [line.strip() for line in path.read_text(encoding="utf-8").splitlines() if line.strip() and not line.lstrip().startswith("#")]
+    except (OSError, UnicodeError):
+        return None, "repository-owned allowed-signers file is absent or unreadable"
+    if len(lines) != 1:
+        return None, "allowed-signers file must contain exactly one active signer record"
+    try:
+        fields = shlex.split(lines[0])
+    except ValueError:
+        return None, "allowed-signers record is malformed"
+    if len(fields) < 4 or fields[0] != identity.principal or fields[1] != "namespaces=git":
+        return None, "allowed-signers principal or namespace differs from the release policy"
+    key_type, encoded_key = fields[2], fields[3]
+    if not (key_type.startswith("ssh-") or key_type.startswith("sk-ssh-")):
+        return None, "allowed-signers record does not contain an SSH public key"
+    try:
+        key_blob = base64.b64decode(encoded_key, validate=True)
+    except (ValueError, binascii.Error):
+        return None, "allowed-signers SSH public key is not valid base64"
+    fingerprint = "SHA256:" + base64.b64encode(hashlib.sha256(key_blob).digest()).decode("ascii").rstrip("=")
+    if fingerprint != identity.public_key_fingerprint:
+        return None, "allowed-signers public key fingerprint differs from the release policy"
+    return fingerprint, None
+
+
+def _verify_ssh_tag(root: Path, tag_object: str, identity: SigningIdentity) -> tuple[bool, str]:
+    fingerprint, error = _allowed_signers_key(root, identity)
+    if error is not None:
+        return False, error
+    allowed_signers = (root / PurePosixPath(identity.allowed_signers_file)).resolve()
+    environment = os.environ.copy()
+    environment.update({"LC_ALL": "C", "LANG": "C"})
+    process = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "gpg.format=ssh",
+            "-c",
+            f"gpg.ssh.allowedSignersFile={allowed_signers}",
+            "verify-tag",
+            tag_object,
+        ],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=environment,
+    )
+    output = process.stdout + process.stderr
+    if process.returncode != 0:
+        return False, "Git SSH signature verification failed"
+    if f"for {identity.principal} with" not in output or fingerprint not in output:
+        return False, "Git verified a signature but not the declared principal and fingerprint"
+    return True, ""
+
+
+def _release_tag_findings(
+    root: Path,
+    ref: dict[str, str],
+    release_policy: ReleasePolicy,
+    identity_policy: PublicIdentityPolicy,
+    main_ref: str | None,
+) -> list[Finding]:
+    findings: list[Finding] = []
+    name = ref["name"]
+    tag_name = name.removeprefix("refs/tags/")
+    declared = release_policy.releases.get(tag_name)
+    if release_policy.version_pattern.fullmatch(tag_name) is None:
+        findings.append(Finding("REVIEW", "INVALID_RELEASE_VERSION", name, "tag name is outside the allowed stable version format"))
+    if declared is None:
+        findings.append(Finding("REVIEW", "UNEXPECTED_TAG", name, "tag is not declared by governance/release-policy.json"))
+    if ref["object_type"] != "tag":
+        findings.append(Finding("REVIEW", "LIGHTWEIGHT_RELEASE_TAG", name, "release tags must be annotated tag objects"))
+        return findings
+    try:
+        raw = _git(("cat-file", "tag", ref["oid"]), cwd=root).decode("utf-8", errors="replace")
+    except HistoryAuditError:
+        findings.append(Finding("REVIEW", "UNREADABLE_TAG_OBJECT", name, "annotated tag object cannot be inspected"))
+        return findings
+    header, separator, message = raw.partition("\n\n")
+    fields: dict[str, str] = {}
+    for line in header.splitlines():
+        key, space, value = line.partition(" ")
+        if space and key not in fields:
+            fields[key] = value
+    target = fields.get("object", "")
+    if fields.get("type") != "commit" or re.fullmatch(r"[0-9a-f]{40}", target) is None:
+        findings.append(Finding("REVIEW", "INVALID_TAG_TARGET", name, "annotated release tag must directly target a commit"))
+        target = ""
+    if fields.get("tag") != tag_name:
+        findings.append(Finding("REVIEW", "TAG_NAME_MISMATCH", name, "tag object name does not match its ref"))
+    raw_tagger = fields.get("tagger", "")
+    tagger_match = IDENTITY_PATTERN.match(raw_tagger)
+    if tagger_match is None:
+        findings.append(Finding("REVIEW", "TAGGER_IDENTITY", name, "tag object has no valid tagger identity"))
+    else:
+        tagger_name, tagger_email, tagger_date = (part.strip() for part in tagger_match.groups())
+        classification = classify_identity(tagger_name, tagger_email, "committer", identity_policy)
+        if re.fullmatch(r"[0-9]+ [+-][0-9]{4}", tagger_date) is None:
+            findings.append(Finding("REVIEW", "INVALID_TAGGER_METADATA", name, "tagger timestamp or timezone is invalid"))
+        if (tagger_name, tagger_email, classification) not in release_policy.allowed_taggers:
+            findings.append(
+                Finding(
+                    "REVIEW",
+                    "TAGGER_IDENTITY",
+                    name,
+                    f"tagger {tagger_name} <{mask_email(tagger_email)}> is not an authorized release tagger",
+                )
+            )
+    if declared is not None:
+        if ref["oid"] != declared.tag_object:
+            findings.append(Finding("REVIEW", "TAG_OBJECT_MISMATCH", name, "tag object differs from the locked release record"))
+        if target and target != declared.target_commit:
+            findings.append(Finding("REVIEW", "TAG_TARGET_MISMATCH", name, "tag target differs from the declared release commit"))
+        signed = "-----BEGIN PGP SIGNATURE-----" in message or "-----BEGIN SSH SIGNATURE-----" in message
+        if declared.attestation_mode == HISTORICAL_UNSIGNED_ATTESTATION and signed:
+            findings.append(Finding("REVIEW", "TAG_ATTESTATION_MISMATCH", name, "historical release record declares an unsigned annotated tag"))
+        elif declared.attestation_mode == SSH_SIGNED_ATTESTATION:
+            identity = release_policy.signatures.identities.get(declared.signing_identity or "")
+            if release_policy.signatures.status != "ACTIVE":
+                findings.append(Finding("REVIEW", "RELEASE_SIGNATURE_GATE", name, release_policy.signatures.gate))
+            if identity is None:
+                findings.append(Finding("REVIEW", "UNKNOWN_SIGNING_IDENTITY", name, "release names no declared signing identity"))
+            else:
+                verified, detail = _verify_ssh_tag(root, ref["oid"], identity)
+                if not verified:
+                    findings.append(Finding("REVIEW", "SSH_TAG_SIGNATURE", name, detail))
+                if (
+                    identity.revoked_on is not None
+                    and _release_version(declared.tag) > _release_version(identity.last_trusted_release or "")
+                ):
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "RELEASE_AFTER_SIGNER_REVOCATION_BOUNDARY",
+                            name,
+                            f"release exceeds {identity.last_trusted_release}, the signer's canonical trust boundary",
+                        )
+                    )
+    if target:
+        if main_ref is None:
+            findings.append(Finding("REVIEW", "MAIN_REF_MISSING", name, "canonical main ref is unavailable for tag ancestry validation"))
+        elif not _is_ancestor(root, target, main_ref):
+            findings.append(Finding("REVIEW", "TAG_TARGET_OUTSIDE_MAIN", name, "tag target is not in the canonical main history"))
+    if not findings:
+        findings.append(Finding("INFO", "DECLARED_RELEASE_TAG", name, "annotated release tag matches the locked policy and canonical main history"))
+    return findings
+
+
 def _ref_findings(
     root: Path,
     refs: tuple[dict[str, str], ...],
     github_context: GitHubPullRequestContext,
+    release_policy: ReleasePolicy,
+    identity_policy: PublicIdentityPolicy,
 ) -> list[Finding]:
     """Classify publishable refs separately from transport refs and HEAD.
 
@@ -789,6 +1337,13 @@ def _ref_findings(
     """
     findings: list[Finding] = []
     by_name = {ref["name"]: ref for ref in refs}
+    canonical_main_ref = (
+        EXPECTED_PUBLIC_REF
+        if EXPECTED_PUBLIC_REF in by_name
+        else EXPECTED_REMOTE_MAIN
+        if EXPECTED_REMOTE_MAIN in by_name
+        else None
+    )
     current_branch = _current_branch(root)
     detached = current_branch is None
     contribution_ref = (
@@ -952,7 +1507,16 @@ def _ref_findings(
                 )
             continue
         if name.startswith("refs/tags/"):
-            category = "UNEXPECTED_TAG"
+            findings.extend(
+                _release_tag_findings(
+                    root,
+                    ref,
+                    release_policy,
+                    identity_policy,
+                    canonical_main_ref,
+                )
+            )
+            continue
         elif name.startswith("refs/heads/"):
             category = "UNEXPECTED_BRANCH"
         elif name.startswith("refs/notes/"):
@@ -976,6 +1540,7 @@ def audit(
         raise HistoryAuditError("--max-blob-bytes must be a positive integer")
     root = repository_root(root)
     policy = _load_identity_policy(root)
+    release_policy = _load_release_policy(root)
     refs = _all_refs(root)
     github_context = _github_pr_context(root, refs, os.environ if environment is None else environment)
     selected = _selected_refs(root, refs, all_refs)
@@ -991,7 +1556,8 @@ def audit(
                 "ephemeral merge exception rejected: " + ", ".join(github_context.failures),
             )
         )
-    findings.extend(_ref_findings(root, refs, github_context))
+    findings.extend(_release_policy_findings(release_policy))
+    findings.extend(_ref_findings(root, refs, github_context, release_policy, policy))
 
     paths_by_blob: dict[str, set[str]] = defaultdict(set)
     introduction: dict[str, str] = {}

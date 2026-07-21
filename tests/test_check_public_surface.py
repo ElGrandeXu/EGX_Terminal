@@ -13,6 +13,7 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPOSITORY_ROOT / "scripts" / "check_public_surface.py"
+sys.path.insert(0, str(SCRIPT_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("check_public_surface", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
     raise RuntimeError(f"Cannot load {SCRIPT_PATH}")
@@ -154,6 +155,34 @@ class PublicSurfaceTests(unittest.TestCase):
             self.write(root, relative.as_posix(), "intentional nested fixture\n")
             self.assertEqual((), CHECK.scan_paths(root, (relative,)))
 
+    def test_each_registered_active_surface_is_rejected(self) -> None:
+        surfaces = CHECK.load_registered_surfaces(REPOSITORY_ROOT)
+        for surface in surfaces:
+            with self.subTest(path=surface.path.as_posix()):
+                with tempfile.TemporaryDirectory() as temporary:
+                    root = Path(temporary)
+                    target = root / surface.path
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    if surface.kind == "path_prefix":
+                        target.mkdir()
+                    else:
+                        target.write_text("fixture\n", encoding="utf-8")
+                    self.assertIn("NEUTRAL_ROOT", self.categories(CHECK.scan_paths(root, ())))
+
+    def test_registered_surface_symlink_is_rejected_when_supported(self) -> None:
+        surface = CHECK.load_registered_surfaces(REPOSITORY_ROOT)[0]
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            target = root / "fixture-target"
+            target.write_text("fixture\n", encoding="utf-8")
+            link = root / surface.path
+            link.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                link.symlink_to(target)
+            except OSError as error:
+                self.skipTest(f"symlinks unavailable: {error}")
+            self.assertIn("NEUTRAL_ROOT", self.categories(CHECK.scan_paths(root, ())))
+
     def test_cli_is_independent_of_current_working_directory(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             completed = subprocess.run(
@@ -198,6 +227,16 @@ class PublicSurfaceTests(unittest.TestCase):
         self.assertIn("[PERSONAL_PATH]", diagnostic)
         self.assertIn("absolute Windows user-home path", diagnostic)
         self.assertNotIn(personal, diagnostic)
+
+    def test_content_only_mode_accepts_archive_without_git(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.write(root, "README.md", "archive content\n")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                result = CHECK.main(("--content-only", "--root", str(root)))
+        self.assertEqual(0, result, output.getvalue())
+        self.assertIn("present source files", output.getvalue())
 
 
 if __name__ == "__main__":

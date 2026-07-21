@@ -30,9 +30,11 @@ V1 contains:
 - local verification scripts and their applicable tests; and
 - a neutral repository root.
 
-A clone does not automatically inject project-owned behavioral instructions into
-Codex, Claude Code, OpenCode, or another harness. No kernel, adapter, or behavioral
-payload is active at the root.
+A clone exposes none of the known active Codex, Claude Code, or OpenCode project
+surfaces recorded in
+[`neutral-root-surfaces.json`](governance/neutral-root-surfaces.json). No kernel,
+adapter, or behavioral payload is active at the root. This is a bounded registry
+of current conventions, not a claim about every future harness convention.
 
 The published Git history has been audited and remediated. After GitHub selected
 a personal author address for the first squash merge, the former public staging
@@ -44,6 +46,12 @@ GitHub web committer used for squash merges, without accepting personal email
 addresses or undeclared bots; see the [identity remediation
 report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
+
+The stable, latest, immutable release is
+[`v1.0.0`](https://github.com/ElGrandeXu/EGX_Terminal/releases/tag/v1.0.0).
+Its annotated tag object `a5668506f38dfc73ec6d8236de00a6adad095e25`
+targets commit `870964a48fc07ff39d65c46255f189d25658ff2c`. `main`
+now prepares the post-release `v1.0.1` consolidation; `v1.0.1` is not published.
 
 ## Key V1 decision
 
@@ -107,8 +115,9 @@ effectiveness. Claude Code was not installed and was not validated.
 
 ## Quickstart
 
-The local validation path requires Python 3 and Git. It was verified with Python
-3.11.9 and Git 2.54.0; the repository does not declare lower minimum versions.
+The canonical local validation path requires Python 3 and a full Git clone. It
+was verified with Python 3.11.9 and Git 2.54.0; the repository does not declare
+lower minimum versions.
 The checks use only the Python standard library and require no network, model, or
 agent runtime.
 
@@ -128,16 +137,18 @@ reuse lint
 Then read the [charter](docs/CHARTER.md), [status](docs/STATUS.md), [decision
 register](docs/decisions/README.md), [experimental archives](experiments/), and
 [publication boundary](docs/publication/PUBLICATION_BOUNDARY.md), in that order.
-The [detailed quickstart](docs/QUICKSTART.md) explains how to inspect existing
-evidence without relaunching a benchmark.
+The [detailed quickstart](docs/QUICKSTART.md) distinguishes the complete clone
+audit from the smaller content-only sequence available in a GitHub source
+archive, and explains how to inspect evidence without relaunching a benchmark.
 
 ## Community and publication
 
 See [contribution guidelines](CONTRIBUTING.md), [governance](GOVERNANCE.md), and
 the [security policy](SECURITY.md). The SHA-pinned, read-only
 [validation workflow](.github/workflows/validate.yml) defines the public checks.
-The [GitHub publication record](docs/publication/GITHUB_PUBLICATION_PLAN.md)
-keeps repository publication and any future release separate.
+The [GitHub publication record](docs/publication/GITHUB_PUBLICATION_PLAN.md) and
+[release policy](docs/publication/RELEASE_POLICY.md) distinguish repository
+publication, immutable releases, tag signatures, and future release gates.
 
 ## What is intentionally deferred
 
@@ -173,10 +184,10 @@ canonical repository was created privately from the cleaned 36-commit history,
 passed all three required CI checks, and was then validated by anonymous access
 and cloning. The former staging repository remains private and quarantined.
 Private Vulnerability Reporting, secret scanning, push protection, read-only
-Actions permissions, the documented merge policy, and the active
-`main-protection` ruleset are applied. No release or tag has been created. The
-repository status is `PUBLIC_V1_READY_FOR_RELEASE_REVIEW`; the next gate is a
-separate explicit decision on `v1.0.0`.
+Actions permissions, required full-SHA pinning, the documented merge policy, and
+the active `main-protection` ruleset are applied. `v1.0.0` is published, stable,
+latest, and immutable at the commit and tag object recorded above. `main`
+prepares `v1.0.1` after the post-release audit; no `v1.0.1` tag or release exists.
 
 ## License
 

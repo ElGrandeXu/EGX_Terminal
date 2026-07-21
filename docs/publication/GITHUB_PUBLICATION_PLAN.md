@@ -2,7 +2,11 @@
 
 This record translates the machine-readable
 [`github-publication-plan.json`](../../governance/github-publication-plan.json)
-into the observed publication sequence. It does not authorize a tag or release.
+into the observed publication sequence. It does not by itself authorize a future
+tag or release.
+Historical staging statements below describe their state at the time. Current
+release authorization and tag acceptance are governed separately by the
+[release policy](RELEASE_POLICY.md).
 
 ## Local and private staging validation
 
@@ -47,6 +51,15 @@ Actions is enabled for only `actions/checkout` and `actions/setup-python`.
 Repository policy requires full SHA pinning, the default `GITHUB_TOKEN` access
 is read-only, and workflows cannot approve pull requests. The workflow itself
 declares only `contents: read` and persists no checkout credentials.
+
+The post-release audit reproduced `sha_pinning_required: false` through
+`GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions`, despite the earlier
+machine-readable `APPLIED` claim. The official PUT endpoint changed it to
+`true`. Because that mutation temporarily broadened `github_owned_allowed`, the
+selected-actions endpoint immediately restored the exact prior allowlist:
+`actions/checkout@*` and `actions/setup-python@*`, with verified actions still
+disabled. A final read confirmed full-SHA pinning, the exact allowlist, read-only
+workflow tokens, and disabled PR approval.
 
 ## Public transition and security
 
@@ -117,6 +130,25 @@ The GitHub account email-privacy setting is not API-verifiable and is recorded a
 `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`. Future web operations require it to
 remain enabled; no personal address is accepted.
 
-The public status is `PUBLIC_V1_READY_FOR_RELEASE_REVIEW`. No release or tag has
-been created. The next gate is a separate explicit decision on `v1.0.0`, and any
-future release must not claim compatibility beyond the preserved evidence.
+## v1.0.0 release and v1.0.1 consolidation
+
+`v1.0.0` was separately authorized and published after commit
+`870964a48fc07ff39d65c46255f189d25658ff2c`. Its annotated tag object is
+`a5668506f38dfc73ec6d8236de00a6adad095e25`; GitHub release `357471186` is
+stable, latest, and immutable. The tag and release remain unchanged.
+
+The post-release audit found that repository documents still described the
+pre-release gate, the history checker rejected every tag, and CI had no tag-push
+trigger. The `v1.0.1` consolidation records the release, admits only declared
+annotated tags in canonical `main`, adds the narrow `v*` push trigger, and hash-
+locks the REUSE installation. The tag-push CI gate did not run for `v1.0.0` and
+is not claimed retroactively. `v1.0.1` is not published, and future compatibility
+claims remain bounded by the preserved evidence.
+
+For future tag pushes, each existing repository job uses isolated policy and
+release worktrees. Canonical `main` performs the strict declaration, ancestry,
+identity, object, and SSH-signature audit. The exact triggering tag target then
+runs content-only repository checks, structured-file validation, the unit suite,
+and Git integrity checks. The REUSE job installs exclusively from the locks in
+that tagged tree before linting it. A checkout of `main` cannot substitute for
+the exact release-tree proof.

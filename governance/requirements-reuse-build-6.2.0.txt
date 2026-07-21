@@ -1,0 +1,5 @@
+# Build prerequisite for the PyPI reuse 6.2.0 sdist on CPython 3.11/Ubuntu.
+# Regenerate only in an empty environment after resolving the sdist's
+# pyproject.toml, then verify the wheel digest against the PyPI JSON API.
+poetry-core==2.2.1 \
+    --hash=sha256:bdfce710edc10bfcf9ab35041605c480829be4ab23f5bc01202cfe5db8f125ab
