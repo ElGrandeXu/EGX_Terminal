@@ -5,7 +5,7 @@
 La V1 prévue présente un workspace de terminal-agent LLM-agnostique, à racine
 neutre, avec ses principes, ses recherches, ses décisions et ses preuves
 reproductibles. Ce document décrit une publication future : le repository n'est
-pas annoncé comme déjà public ou déjà licencié.
+pas annoncé comme déjà public ou publié.
 
 ## Surface incluse
 
@@ -18,6 +18,8 @@ La composition publique prévue est la suivante :
   présente frontière ;
 - `scripts/` contient des contrôles locaux, déterministes et sans réseau ;
 - `tests/` vérifie les contrôles actifs de la distribution ;
+- `REUSE.toml`, `LICENSE`, `LICENSES/` et `licensing/license-lock.json` rendent la
+  gouvernance de licences lisible et machine-readable ;
 - `experiments/kernel-v1/` et `experiments/kernel-micro-v1/` conservent les deux
   campagnes doctrinales rejetées comme preuves historiques inactives ;
 - `.gitignore` empêche le suivi accidentel des secrets, configurations locales,
@@ -40,8 +42,7 @@ La surface prévue exclut :
 - modèles, poids, données privées et binaires locaux ;
 - dépendance obligatoire à un fournisseur, un modèle ou un service réseau ;
 - kernel, adaptateur, hook, skill, mémoire, routing ou injection active ;
-- packaging, CI nouvelle, remote, release et publication effective ;
-- choix de licence et fichier `LICENSE`, différés à une décision de Maxime.
+- packaging, CI nouvelle, remote, release et publication effective.
 
 ## Preuves historiques et exceptions documentées
 
@@ -82,6 +83,13 @@ validation de provenance, ni un audit spécialisé de secrets. Il peut manquer u
 format inconnu, une donnée encodée ou un secret dans un binaire ; inversement,
 chaque diagnostic doit être classé avant de supprimer une preuve légitime.
 
+`scripts/check_licensing.py` contrôle hors ligne la cartographie par fichier, les
+textes de licence verrouillés, les conflits SPDX et l'intégrité des archives. Le
+linter officiel `reuse 6.2.0` a également produit `PASS` le 2026-07-21 pour REUSE
+Specification 3.3. Ces outils ne remplacent ni la revue de provenance ni un avis
+juridique. Aucun contenu tiers substantiel et aucune exception tierce n'ont été
+identifiés ; aucun fichier `NOTICE` n'est requis.
+
 ## Gate avant remote et premier push
 
 Avant tout ajout de remote ou premier push, il faut au minimum :
@@ -93,16 +101,16 @@ Avant tout ajout de remote ou premier push, il faut au minimum :
 5. confirmer l'absence de secret, donnée privée, sortie locale et dépendance de
    machine dans les changements depuis cette inspection ;
 6. conserver au vert la gate désormais passée du README public et du quickstart ;
-7. faire choisir explicitement la licence par Maxime et seulement alors ajouter
-   le fichier correspondant ;
+7. conserver au vert `python scripts/check_licensing.py` et `reuse lint` ;
 8. obtenir une décision explicite avant la création du remote et le push.
 
 ## État
 
-**`READY_WITH_DOCUMENTED_EXCEPTIONS`**
+**`READY_FOR_FINAL_PUBLICATION_REVIEW`**
 
 La surface active ne contient aucun bloqueur observé et les contrôles passent.
-Les exceptions sont uniquement les faits historiques et reproductibles conservés
-dans les archives immuables. La gate du README public et du quickstart est passée.
-La prochaine gate est le choix explicite de licence par Maxime. Aucun remote ou
-push n'est autorisé par ce statut.
+Les faits historiques et reproductibles conservés dans les archives immuables ne
+sont pas des exceptions de licence. La gate du README public, du quickstart et de
+la gouvernance de licences est passée. La prochaine gate est la préparation
+finale de gouvernance et de publication GitHub. Aucun remote ou push n'est
+autorisé par ce statut.

@@ -106,6 +106,7 @@ From the repository root:
 ```console
 python scripts/check_neutral_root.py
 python scripts/check_public_surface.py
+python scripts/check_licensing.py
 python -m unittest discover -s tests -v
 ```
 
@@ -145,13 +146,23 @@ These are documented project principles, not an automatically injected payload.
 
 EGX_Terminal is in V1 pre-publication. The root is neutral, the public surface has
 been inspected, and no blocking violation was observed. The boundary is
-classified [`READY_WITH_DOCUMENTED_EXCEPTIONS`](docs/publication/PUBLICATION_BOUNDARY.md);
-the exceptions are legitimate historical evidence in the immutable archives.
-No public remote exists at the time of writing. The remaining publication gate
-is an explicit license choice.
+classified
+[`READY_FOR_FINAL_PUBLICATION_REVIEW`](docs/publication/PUBLICATION_BOUNDARY.md).
+Historical runtime facts in the immutable archives remain documented evidence,
+not licensing exceptions. No public remote exists and no push has occurred. The
+remaining gate is final governance review and GitHub publication preparation.
 
 ## License
 
-No license is included in this pre-publication workspace. Do not infer permission
-to reuse the material until a license is added. This section will be replaced
-after Maxime explicitly chooses the license.
+Licensing is determined per file: original code and functional artifacts use
+[Apache-2.0](LICENSES/Apache-2.0.txt), while original documentation and research
+use [CC-BY-4.0](LICENSES/CC-BY-4.0.txt). This is not a choice between two licenses
+for the same file. See the short [license summary](LICENSE), machine-readable
+[REUSE metadata](REUSE.toml), and detailed [licensing
+policy](docs/publication/LICENSING.md).
+
+Validate the complete local mapping offline with:
+
+```console
+python scripts/check_licensing.py
+```

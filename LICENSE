@@ -1,0 +1,11 @@
+EGX_Terminal uses file-scoped licensing. It is not a dual-license choice for
+the same material.
+
+Original code and functional artifacts are licensed under Apache-2.0. Original
+documentation and research are licensed under CC-BY-4.0. REUSE.toml is the
+machine-readable authority that assigns one license to each covered file; full
+license texts are in LICENSES/.
+
+Third-party material, if any, remains subject to its own rights and licenses.
+Nothing here grants rights in third-party names, trademarks, or other rights.
+See docs/publication/LICENSING.md for the detailed policy.

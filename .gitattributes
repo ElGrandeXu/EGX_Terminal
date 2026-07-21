@@ -1,0 +1,2 @@
+# Preserve the byte-stable license-lock hashes on every platform.
+LICENSES/*.txt text eol=lf

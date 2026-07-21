@@ -38,7 +38,7 @@ than to a replaceable provider or model.
 - Reopening the choice of an always-on behavioral doctrine for V1.
 - Building skills, hooks, subagents, MCP integrations, memory automation, routing,
   compression, installation tooling, or other advanced capabilities.
-- Selecting a license or publishing a remote repository.
+- Publishing a remote repository or creating a release.
 - Activating a provider-specific adapter or hidden instruction injection.
 
 ## Voluntary mission protocol

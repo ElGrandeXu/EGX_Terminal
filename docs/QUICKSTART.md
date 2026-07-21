@@ -27,15 +27,31 @@ Inspect tracked files for the documented public-surface blockers:
 python scripts/check_public_surface.py
 ```
 
+Validate the file-scoped license mapping and locked official texts without
+network access:
+
+```console
+python scripts/check_licensing.py
+```
+
 Run the tests applicable to the neutral-root V1 distribution:
 
 ```console
 python -m unittest discover -s tests -v
 ```
 
-This command runs the 19 tests under `tests/`. Historical experimental suites
+This command runs the active tests under `tests/`. Historical experimental suites
 remain part of their archived evidence and are intentionally outside the active
 V1 test total.
+
+When the official REUSE tool is available, run this additional standards check:
+
+```console
+reuse lint
+```
+
+`reuse lint` validates REUSE Specification 3.3. It is not a prerequisite for
+offline inspection of the repository and is not a permanent project dependency.
 
 ## Recommended reading path
 
@@ -63,9 +79,9 @@ parsing them is evidence inspection; it does not reproduce a runtime observation
 **Inspect existing evidence.** Read the tracked reports, protocols, manifests,
 and metrics. This is the default path and has no runtime or network cost.
 
-**Reproduce local V1 validation.** Run the three commands above. They verify the
-current neutral root, tracked public surface, and active distribution checks on
-your machine. They do not re-evaluate a kernel.
+**Reproduce local V1 validation.** Run the four local commands above. They verify
+the current neutral root, tracked public surface, file-scoped licensing, and
+active distribution checks on your machine. They do not re-evaluate a kernel.
 
 **Rerun a benchmark or runtime-dependent validation.** Historical commands under
 `experiments/` can require exact software versions, local models, substantial

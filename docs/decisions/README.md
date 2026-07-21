@@ -27,3 +27,5 @@ directly and record observed versions or commits when relevant.
   — `REJECT_MICRO`; no always-on doctrine and no further V1 doctrine benchmark
 - [0005 — Publication de la V1 avec une racine neutre](0005-ship-v1-with-neutral-root.md)
   — accepted; no automatically discovered root instructions in V1
+- [0006 — Adopter des licences Apache et CC par fichier](0006-adopt-file-scoped-apache-and-cc-licensing.md)
+  — accepted; exhaustive file-scoped Apache-2.0 and CC-BY-4.0 governance

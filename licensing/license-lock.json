@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "licenses": [
+    {
+      "spdx_id": "Apache-2.0",
+      "file": "LICENSES/Apache-2.0.txt",
+      "source_url": "https://www.apache.org/licenses/LICENSE-2.0.txt",
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+      "retrieved": "2026-07-21",
+      "encoding": "UTF-8",
+      "second_source_comparison": {
+        "source_url": "https://spdx.org/licenses/Apache-2.0.txt",
+        "status": "MATCHES_SPDX_ID; SPDX uses normalized spacing and omits the ASF appendix"
+      }
+    },
+    {
+      "spdx_id": "CC-BY-4.0",
+      "file": "LICENSES/CC-BY-4.0.txt",
+      "source_url": "https://creativecommons.org/licenses/by/4.0/legalcode.txt",
+      "sha256": "9e5f1b3c610b9c2da5c313bf81d577a7d1acec686bdb0384edefa6df0f90cd94",
+      "retrieved": "2026-07-21",
+      "encoding": "UTF-8",
+      "second_source_comparison": {
+        "source_url": "https://spdx.org/licenses/CC-BY-4.0.txt",
+        "status": "MATCHES_SPDX_ID; SPDX uses typographic and matching-template normalization"
+      }
+    }
+  ]
+}

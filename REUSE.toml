@@ -1,0 +1,15 @@
+version = 1
+
+[[annotations]]
+path = ["README.md", "docs/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Maxime Erard"
+SPDX-License-Identifier = "CC-BY-4.0"
+SPDX-FileComment = "Original documentation, research, audits, decisions, and explanatory text. Facts, names, URLs, hashes, versions, and attributed short quotations are not relicensed third-party works."
+
+[[annotations]]
+path = [".gitattributes", ".gitignore", "scripts/**", "tests/**", "experiments/**", "licensing/**"]
+precedence = "override"
+SPDX-FileCopyrightText = "2026 Maxime Erard"
+SPDX-License-Identifier = "Apache-2.0"
+SPDX-FileComment = "Original functional and technical artifacts. Experimental directories are licensed as single reusable bundles, including their README files and payloads; this external annotation preserves the immutable archives."

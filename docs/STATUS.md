@@ -19,17 +19,23 @@
   has no observed blocking violation; the public-surface and neutral-root checks
   pass. Historical runtime, model, loopback, hash, and machine-capacity facts in
   the immutable archives are documented exceptions, not active dependencies.
-- **Publication status:** **`READY_WITH_DOCUMENTED_EXCEPTIONS`** for the inspected
-  repository contents. This is a bounded heuristic result, not an absolute
-  guarantee that no sensitive data can exist.
+- **Licensing:** [Decision 0006](decisions/0006-adopt-file-scoped-apache-and-cc-licensing.md)
+  is accepted. Original functional artifacts use Apache-2.0; original
+  documentation and research use CC-BY-4.0. `REUSE.toml` covers every tracked,
+  non-exempt file with exactly one effective license and no third-party exception.
+- **License validation:** the dependency-free local control and the official
+  `reuse 6.2.0` linter pass on 2026-07-21 against REUSE Specification 3.3.
+- **Publication status:** **`READY_FOR_FINAL_PUBLICATION_REVIEW`** for the
+  inspected repository contents. The security result remains a bounded
+  heuristic, not an absolute guarantee that no sensitive data can exist.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
 - **Public preparation:** there is still no Git remote and no push has occurred.
-  The next gate is Maxime's explicit license choice; repository creation and
-  publication remain separate work.
+  The next gate is final governance review and GitHub publication preparation;
+  repository creation and publication remain separate work.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase records Maxime's explicit license choice without reactivating a
-doctrine or expanding optional capabilities.
+The next phase performs final governance review and prepares GitHub publication
+without reactivating a doctrine or expanding optional capabilities.
