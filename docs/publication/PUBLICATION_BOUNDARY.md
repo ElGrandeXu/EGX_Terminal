@@ -90,6 +90,12 @@ Specification 3.3. Ces outils ne remplacent ni la revue de provenance ni un avis
 juridique. Aucun contenu tiers substantiel et aucune exception tierce n'ont été
 identifiés ; aucun fichier `NOTICE` n'est requis.
 
+`scripts/check_git_history.py` inspecte les objets atteignables depuis `main`,
+les métadonnées de commit et l'inventaire complet des refs. Le
+[rapport d'historique](HISTORY_AUDIT.md) n'observe aucun blocker de contenu, mais
+classe l'unique adresse auteur/committer non-`noreply` en `REVIEW_REQUIRED`. Le
+mode `--all-refs` confirme le même périmètre avec l'unique ref actuelle.
+
 ## Gate avant remote et premier push
 
 Avant tout ajout de remote ou premier push, il faut au minimum :
@@ -102,15 +108,17 @@ Avant tout ajout de remote ou premier push, il faut au minimum :
    machine dans les changements depuis cette inspection ;
 6. conserver au vert la gate désormais passée du README public et du quickstart ;
 7. conserver au vert `python scripts/check_licensing.py` et `reuse lint` ;
-8. obtenir une décision explicite avant la création du remote et le push.
+8. obtenir de Maxime une acceptation explicite de l'adresse historique masquée,
+   ou ouvrir séparément une décision de remédiation ;
+9. obtenir une décision explicite avant la création du remote et le push.
 
 ## État
 
-**`READY_FOR_FINAL_PUBLICATION_REVIEW`**
+**`HISTORY_REVIEW_REQUIRED_BEFORE_PUBLICATION`**
 
-La surface active ne contient aucun bloqueur observé et les contrôles passent.
-Les faits historiques et reproductibles conservés dans les archives immuables ne
-sont pas des exceptions de licence. La gate du README public, du quickstart et de
-la gouvernance de licences est passée. La prochaine gate est la préparation
-finale de gouvernance et de publication GitHub. Aucun remote ou push n'est
-autorisé par ce statut.
+La surface active et le contenu historique ne contiennent aucun bloqueur observé
+et les contrôles passent. Les faits historiques et reproductibles conservés dans
+les archives immuables ne sont pas des exceptions de licence. La gate d'identité
+reste toutefois en revue : une adresse non-`noreply` atteignable sera publiée
+avec les commits et Maxime doit accepter cette exposition. Aucun remote ou push
+n'est autorisé par ce statut.

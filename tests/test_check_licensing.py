@@ -271,6 +271,26 @@ SPDX-FileComment = "PROVENANCE_UNCLEAR"
         self.assertEqual((), report.findings)
         self.assertEqual(before, after)
 
+    def test_experimental_hash_inputs_force_lf_checkouts(self) -> None:
+        paths = tuple(
+            path
+            for path in CHECK.tracked_files(REPOSITORY_ROOT)
+            if path.startswith("experiments/")
+            and (path.endswith((".md", ".py", ".json")) or path.endswith("/.gitattributes"))
+        )
+        completed = subprocess.run(
+            ["git", "-C", str(REPOSITORY_ROOT), "check-attr", "eol", "--", *paths],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, completed.returncode, completed.stdout + completed.stderr)
+        self.assertTrue(paths)
+        self.assertTrue(
+            all(line.endswith(": eol: lf") for line in completed.stdout.splitlines()),
+            completed.stdout,
+        )
+
     def test_diagnostic_and_return_code(self) -> None:
         with self.fixture() as temporary:
             root = Path(temporary)

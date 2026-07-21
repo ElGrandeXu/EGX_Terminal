@@ -1,2 +1,8 @@
 # Preserve the byte-stable license-lock hashes on every platform.
 LICENSES/*.txt text eol=lf
+
+# Preserve immutable experiment and Mission 24 hashes when core.autocrlf=true.
+experiments/**/*.md text eol=lf
+experiments/**/*.py text eol=lf
+experiments/**/*.json text eol=lf
+experiments/**/.gitattributes text eol=lf

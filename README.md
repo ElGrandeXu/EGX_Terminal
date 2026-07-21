@@ -107,6 +107,7 @@ From the repository root:
 python scripts/check_neutral_root.py
 python scripts/check_public_surface.py
 python scripts/check_licensing.py
+python scripts/check_git_history.py
 python -m unittest discover -s tests -v
 ```
 
@@ -144,13 +145,14 @@ These are documented project principles, not an automatically injected payload.
 
 ## Current status
 
-EGX_Terminal is in V1 pre-publication. The root is neutral, the public surface has
-been inspected, and no blocking violation was observed. The boundary is
-classified
-[`READY_FOR_FINAL_PUBLICATION_REVIEW`](docs/publication/PUBLICATION_BOUNDARY.md).
-Historical runtime facts in the immutable archives remain documented evidence,
-not licensing exceptions. No public remote exists and no push has occurred. The
-remaining gate is final governance review and GitHub publication preparation.
+EGX_Terminal is in V1 pre-publication. The root is neutral, and no content,
+licensing, or provenance blocker was observed in the tracked surface or reachable
+history. The [history audit](docs/publication/HISTORY_AUDIT.md) nevertheless
+classifies the sole non-`noreply` commit identity as `REVIEW_REQUIRED`; the
+[publication boundary](docs/publication/PUBLICATION_BOUNDARY.md) therefore remains
+blocked pending Maxime's explicit privacy decision. Historical runtime facts in
+the immutable archives remain documented evidence, not licensing exceptions. No
+public remote exists and no push has occurred.
 
 ## License
 

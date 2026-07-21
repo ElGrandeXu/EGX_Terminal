@@ -25,17 +25,22 @@
   non-exempt file with exactly one effective license and no third-party exception.
 - **License validation:** the dependency-free local control and the official
   `reuse 6.2.0` linter pass on 2026-07-21 against REUSE Specification 3.3.
-- **Publication status:** **`READY_FOR_FINAL_PUBLICATION_REVIEW`** for the
-  inspected repository contents. The security result remains a bounded
-  heuristic, not an absolute guarantee that no sensitive data can exist.
+- **Git history:** all commits, trees, blobs, refs, messages, and identities
+  reachable from `main` have been inspected. No content blocker was observed,
+  but the [history audit](publication/HISTORY_AUDIT.md) classifies the sole
+  non-`noreply` author/committer address as **`REVIEW_REQUIRED`**.
+- **Publication status:** **`HISTORY_REVIEW_REQUIRED_BEFORE_PUBLICATION`**. The
+  content, licensing, and provenance gates are clear; Maxime must explicitly
+  accept the masked historical email exposure before final governance review.
+  The security result remains a bounded heuristic, not an absolute guarantee.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
 - **Public preparation:** there is still no Git remote and no push has occurred.
-  The next gate is final governance review and GitHub publication preparation;
-  repository creation and publication remain separate work.
+  The next gate is the explicit history-identity decision. Final governance
+  review and GitHub publication preparation remain separate later work.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase performs final governance review and prepares GitHub publication
-without reactivating a doctrine or expanding optional capabilities.
+The next phase records Maxime's decision on the historical and future commit
+identity, without rewriting history or beginning publication in this phase.
