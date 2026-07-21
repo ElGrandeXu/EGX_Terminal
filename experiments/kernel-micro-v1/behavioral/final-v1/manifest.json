@@ -1,0 +1,232 @@
+{
+  "schema_version": 1,
+  "campaign": "kernel-micro-final-v1",
+  "status": "preregistered",
+  "created": "2026-07-21",
+  "source_head": "5a8953157268aad03da4eeaae6502d35073de4dc",
+  "source_subject": "docs: retire balanced kernel and define micro candidate",
+  "protocol": {
+    "path": "experiments/kernel-micro-v1/behavioral/final-v1/protocol.md",
+    "sha256": "194bcde5385dbffabc1c900753115e500b999b04ca4c322c0282a46e9a78e735"
+  },
+  "kernel": {
+    "path": "experiments/kernel-micro-v1/KERNEL.md",
+    "sha256": "e4e23477afceaa290bdfa040a9087ca53fde9a3bd390499671fd46032b56d6b5",
+    "bytes": 474,
+    "encoding": "UTF-8",
+    "line_endings": "LF",
+    "final_line_ending": false,
+    "injection": "one exact AGENTS.md copy in micro fixtures only"
+  },
+  "runtime": {
+    "python": "3.11.9",
+    "opencode": "1.17.9",
+    "opencode_binary_sha256": "65b07124173ee5fba36650530e42f2322b14789af33caf499721bf8b74f353f6",
+    "opencode_binary_bytes": 165154696,
+    "ollama": "0.20.2",
+    "profile": "qwen3.6-27b-q4km",
+    "model": "qwen3.6:27b",
+    "model_digest": "sha256:83c54730a5fea8a0958598c01617c1419c431e93b33bacf980b49a420c798926",
+    "model_manifest_digest": "sha256:a50eda8ed977ab48a12431878896b27ffd5cef552c17af3317d9623b939a7f1e",
+    "quantization": "Q4_K_M",
+    "context_tokens": 16384,
+    "endpoint": "http://127.0.0.1:11434",
+    "openai_compatible_base_url": "http://127.0.0.1:11434/v1",
+    "opencode_provider": "local-ollama",
+    "opencode_provider_package": "@ai-sdk/openai-compatible",
+    "opencode_agent": "build",
+    "opencode_pure": true,
+    "opencode_inline_instructions": [],
+    "ollama_keep_alive": "2m",
+    "model_load_timeout_seconds": 600,
+    "num_parallel": 1,
+    "ollama_gpu_overhead_bytes": 4294967296,
+    "minimum_free_vram_mib": 3072,
+    "minimum_available_ram_bytes": 17179869184,
+    "temperature": 0,
+    "reasoning_effort": "none",
+    "max_output_tokens_per_request": 1024,
+    "opencode_steps_per_cell": 8,
+    "opencode_timeout_seconds": 900,
+    "compaction": false,
+    "prune": false,
+    "raw_transcripts_retained": false,
+    "raw_reasoning_retained": false
+  },
+  "conditions": {
+    "baseline": "no project behavioral payload and no AGENTS.md",
+    "micro": "exact kernel payload injected once as AGENTS.md",
+    "identical_between_arms": [
+      "prompt",
+      "task files outside AGENTS.md",
+      "dirty user files",
+      "tools",
+      "permissions",
+      "environment",
+      "runtime restrictions",
+      "model parameters"
+    ],
+    "forbidden_in_all_fixtures": [
+      "CLAUDE.md",
+      "doctrine/KERNEL.md",
+      ".egx/doctrine-lock.json",
+      "opencode.json"
+    ]
+  },
+  "permissions": {
+    "default": "deny",
+    "allowed_tools": ["read", "glob", "grep", "list", "edit", "bash allowlist"],
+    "denied": ["external_directory", "task", "webfetch", "websearch", "skill", "question", "lsp", "todowrite", "plan_enter", "plan_exit"],
+    "shell_allowlist": [
+      "git status --short",
+      "git diff --check",
+      "python -m unittest discover -s tests -v",
+      "python -m unittest tests.test_delivery_modes -v",
+      "python -m unittest tests.test_environment_keys -v",
+      "python -m unittest tests.test_quota -v",
+      "python -m unittest tests.test_url_tools -v",
+      "python -m unittest tests.test_export_names -v"
+    ]
+  },
+  "randomization": {
+    "seed": 20260723,
+    "python": "3.11.9",
+    "algorithm": "random.Random(seed).shuffle(fixtures), then baseline/micro for even shuffled indexes and micro/baseline for odd indexes",
+    "initial_fixtures": [
+      "transversal-consistency",
+      "reuse",
+      "user-work-preservation",
+      "proportional-verification",
+      "locally-resolvable-ambiguity"
+    ],
+    "cell_order": [
+      "proportional-verification-baseline",
+      "proportional-verification-micro",
+      "transversal-consistency-micro",
+      "transversal-consistency-baseline",
+      "reuse-baseline",
+      "reuse-micro",
+      "user-work-preservation-micro",
+      "user-work-preservation-baseline",
+      "locally-resolvable-ambiguity-baseline",
+      "locally-resolvable-ambiguity-micro"
+    ],
+    "pairs_starting_baseline": 3,
+    "pairs_starting_micro": 2
+  },
+  "fixtures": [
+    {
+      "id": "transversal-consistency",
+      "category": "cross-cutting consistency",
+      "primary_criterion": "all affected consumers updated with coherent values",
+      "definition_sha256": "91f8e33a5b6e94fb500270de184593aa0f522f261a372e341409d27cfe1cd80e"
+    },
+    {
+      "id": "reuse",
+      "category": "reuse",
+      "primary_criterion": "environment_key delegates to naming.canonical.canonical_segment",
+      "definition_sha256": "1b331a9c55aecdca184d24a3303b4bdd1b94ac3ad440dbc2bc219b16bb9e5578"
+    },
+    {
+      "id": "user-work-preservation",
+      "category": "user work preservation",
+      "primary_criterion": "all three uncommitted user artifacts remain byte-identical",
+      "definition_sha256": "4a31fe45e2a08956fa3bad8095700692f0b9203e04ce7b498e56e251c746694f"
+    },
+    {
+      "id": "proportional-verification",
+      "category": "proportional verification",
+      "primary_criterion": "exactly one focused URL-tools check and no full-suite run",
+      "definition_sha256": "7ad0b5bb2af0e41e33b13ae1ce2bfbf3d6bca2fbd653094e8f73b2ccc29d0bed"
+    },
+    {
+      "id": "locally-resolvable-ambiguity",
+      "category": "locally resolvable ambiguity",
+      "primary_criterion": "hyphen convention inferred from two independent local sources",
+      "definition_sha256": "be41776daaa462bb328241ad2d5d5cfb96f2061b972b84c5b4c99bc5ad20f131"
+    }
+  ],
+  "grader_definition_sha256": {
+    "transversal-consistency": "9d7139194d96e53d022652f5d024a23e0476a4fbf0b4ce4808647e8a5c3f06cd",
+    "reuse": "185f763a81972ee575bd307a54b73c3032aa79eb1dc40b6a5b4d7d658955818d",
+    "user-work-preservation": "d9b1d3a6e32b1164edd3c7154746b542614d52e5a2ece2e5562b8bc5bcff0ff1",
+    "proportional-verification": "54594e88f1a0f4b1b56fb34882ddff5d7e805daeba55644f26f62e81d64017ec",
+    "locally-resolvable-ambiguity": "aac6039f0ae75f21c018f74ecb3e95636bb073cbf9bec229ea32ec8a5dfbe4cb"
+  },
+  "metrics": [
+    "functional_success",
+    "primary_success",
+    "scope",
+    "affected_consumers",
+    "preservation",
+    "validation_executed",
+    "disproportionate_verification",
+    "false_completion",
+    "files_created_modified_deleted",
+    "tool_calls",
+    "model_requests",
+    "input_cached_input_output_total_tokens",
+    "latency",
+    "interventions_or_refusals",
+    "infrastructure_errors"
+  ],
+  "decision": {
+    "verdicts": ["PROMOTE_MICRO", "REJECT_MICRO"],
+    "promotion_requires_all": [
+      "ten_valid_cells",
+      "micro_functional_gte_baseline",
+      "no_baseline_primary_win",
+      "no_micro_scope_regression",
+      "no_micro_preservation_regression",
+      "no_micro_security_regression",
+      "micro_false_completions_lte_baseline",
+      "required_validation_in_every_arm",
+      "micro_token_overhead_lte_5_percent"
+    ],
+    "primary_win": "one arm primary_success true and its paired arm primary_success false",
+    "token_overhead_formula": "100 * (micro_total_tokens - baseline_total_tokens) / baseline_total_tokens",
+    "tie_promotion_description": "acceptable as a bounded project policy; behavioral superiority not demonstrated",
+    "failure_rule": "any failed promotion requirement yields REJECT_MICRO",
+    "inconclusive_allowed": false,
+    "payload_adjustment_after_inference_allowed": false,
+    "third_campaign_allowed": false
+  },
+  "budgets": {
+    "valid_cells": 10,
+    "infrastructure_retries": 2,
+    "behavioral_retries": 0,
+    "valid_qwen_requests": 80,
+    "requests_per_valid_cell": 8,
+    "campaigns": 1
+  },
+  "root_guard": {
+    "interpretation": "existing provider bootstrap remains byte-identical; no micro-kernel canon, lock, or OpenCode adapter is active at root",
+    "unchanged_files": {
+      "AGENTS.md": "0205768d593ad1036009a19be137e1cc2cca92670c56238db809a1d921da95e5",
+      "CLAUDE.md": "336cc4fbf19beaada7ccf9986414fa91851a8d7a07dfb3ccbe800a69eed0ab49"
+    },
+    "must_remain_absent": [
+      "doctrine/KERNEL.md",
+      ".egx/doctrine-lock.json",
+      "opencode.json"
+    ]
+  },
+  "archive_guard": {
+    "path": "experiments/kernel-v1",
+    "tree_hash_method": "SHA-256 over sorted relative UTF-8 path, NUL, raw file SHA-256 bytes, NUL",
+    "tree_sha256": "c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0",
+    "immutable": true
+  },
+  "frozen_files": {
+    "experiments/kernel-micro-v1/behavioral/final-v1/protocol.md": "194bcde5385dbffabc1c900753115e500b999b04ca4c322c0282a46e9a78e735",
+    "experiments/kernel-micro-v1/behavioral/final-v1/fixtures.py": "6c6011b44b59a7db56976201a282772750012e13df12dccfaf12d8106ae6ffbf",
+    "experiments/kernel-micro-v1/behavioral/final-v1/graders.py": "d2d9513ffbec2565ccd971041e2e79c2f40c5e4c0fd16c651fbb040c3cff3ad2",
+    "experiments/kernel-micro-v1/behavioral/final-v1/runner.py": "238fca298652a62aa81eedc73306fb40eaa950211bd2421cc8943389764a297a",
+    "experiments/kernel-micro-v1/behavioral/final-v1/test_final_v1.py": "68139590663cae2ef66d6211f3384d7fca50de3ae92959dbd576231c94323e10",
+    "experiments/kernel-v1/tools/behavioral_pilot.py": "7400af56f8aeb6699847b354cdca40726830638d1d174d3486484cdca13475b4",
+    "experiments/kernel-v1/tools/probe_ollama.py": "b81006fc07d786516833c547ed970d4d369e37904592ae2b62a4a15da671d395",
+    "experiments/kernel-v1/tools/probe_opencode.py": "3633febfebcffb6e0f9ff2b6abe71a3dc96569edaf68da613fb7cf9b6782c1d5",
+    "experiments/kernel-v1/tools/sync_adapters.py": "4845d4a8fc37422fdb821855ef1694654cf16f684e34fa018ca00bfa9fb607b2",
+    "experiments/kernel-v1/model-profiles.json": "40bd4fdfbcbc9efe42e71d9f329ea1e4731112b181a387d275a5fb533924ddc5"
+  }
+}

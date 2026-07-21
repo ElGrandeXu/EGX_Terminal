@@ -5,8 +5,12 @@
 Ce répertoire contient un candidat statique **expérimental, inactif et non
 validé comportementalement**. Son payload autoritatif est [`KERNEL.md`](KERNEL.md).
 Il n'est ni une doctrine promue, ni un remplacement actif du
-[kernel équilibré rejeté](../../docs/decisions/0003-balanced-kernel-rejection.md),
-ni le début d'une campagne comportementale.
+[kernel équilibré rejeté](../../docs/decisions/0003-balanced-kernel-rejection.md).
+
+L'[évaluation finale](behavioral/final-v1/protocol.md) est désormais
+pré-enregistrée : cinq fixtures nouvelles, dix cellules contrebalancées et une
+décision mécanique strictement binaire. Aucun modèle, runtime ou benchmark n'a
+été lancé pour cette pré-inscription et aucun résultat n'existe encore.
 
 ## Mesures mécaniques
 
@@ -41,5 +45,11 @@ comportementale n'est démontrée par cette définition statique.
 
 - aucune activation ou distribution par adaptateur ;
 - aucune modification des points d'entrée racine ;
-- aucun protocole comportemental dans ce répertoire ;
+- protocole final gelé, sans activation ni inférence à ce stade ;
 - aucune revendication de promotion ou de validation.
+
+## Prochaine mission
+
+Exécuter exactement la campagne `behavioral/final-v1` sans modifier le payload,
+les fixtures, les graders, l'ordre, les critères ou les budgets, puis appliquer
+son verdict unique `PROMOTE_MICRO` ou `REJECT_MICRO`.

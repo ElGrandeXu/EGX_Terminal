@@ -65,8 +65,13 @@
   [Decision 0003](decisions/0003-balanced-kernel-rejection.md) now closes that
   exact balanced payload as rejected and preserves `experiments/kernel-v1/` as
   an immutable historical archive. `experiments/kernel-micro-v1/` defines a
-  substantively distinct static candidate only: it is inactive, unpromoted and
-  behaviorally unvalidated. No doctrine is promoted and the active root remains
-  unchanged.
-- **Next step:** pre-register a distinct evaluation for the micro candidate in a
-  separate mission; do not rerun, repair or promote the balanced payload.
+  substantively distinct static candidate only. It remains unchanged, inactive,
+  unpromoted and behaviorally unvalidated. Its
+  [final protocol](../experiments/kernel-micro-v1/behavioral/final-v1/protocol.md)
+  is now pre-registered with five new fixtures, ten cells, frozen hashes,
+  automated scoring and a strictly binary verdict. No inference, runtime or
+  benchmark has been launched, and no micro behavioral result exists. No
+  doctrine is promoted and the active root remains unchanged.
+- **Next step:** execute exactly the frozen micro campaign without adjusting the
+  payload or protocol, then apply its terminal `PROMOTE_MICRO` or `REJECT_MICRO`
+  verdict.
