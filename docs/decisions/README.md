@@ -22,3 +22,5 @@ directly and record observed versions or commits when relevant.
   — accepted architecture, no behavioral activation
 - [0003 — Rejet du kernel équilibré](0003-balanced-kernel-rejection.md) — rejected
   balanced payload; archived evidence; inactive static micro candidate
+- [0004 — Évaluation finale du micro-kernel](0004-micro-kernel-final-evaluation.md)
+  — `REJECT_MICRO`; no always-on doctrine and no further V1 doctrine benchmark

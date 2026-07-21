@@ -1,7 +1,7 @@
 # Status
 
-- **Phase:** architecture formalized; balanced kernel rejected and archived;
-  static micro candidate experimental and inactive.
+- **Phase:** architecture formalized; balanced and micro kernels rejected;
+  behavioral doctrine inactive; public-workspace preparation next.
 - **Research corpus:** five independent audits and cross-repository synthesis
   complete.
 - **Synthesis:** `docs/research/synthesis/` contains the decision dossier.
@@ -65,13 +65,20 @@
   [Decision 0003](decisions/0003-balanced-kernel-rejection.md) now closes that
   exact balanced payload as rejected and preserves `experiments/kernel-v1/` as
   an immutable historical archive. `experiments/kernel-micro-v1/` defines a
-  substantively distinct static candidate only. It remains unchanged, inactive,
-  unpromoted and behaviorally unvalidated. Its
-  [final protocol](../experiments/kernel-micro-v1/behavioral/final-v1/protocol.md)
-  is now pre-registered with five new fixtures, ten cells, frozen hashes,
-  automated scoring and a strictly binary verdict. No inference, runtime or
-  benchmark has been launched, and no micro behavioral result exists. No
-  doctrine is promoted and the active root remains unchanged.
-- **Next step:** execute exactly the frozen micro campaign without adjusting the
-  payload or protocol, then apply its terminal `PROMOTE_MICRO` or `REJECT_MICRO`
-  verdict.
+  substantively distinct static candidate only. Its unique
+  [final campaign](../experiments/kernel-micro-v1/behavioral/final-v1/results.md)
+  completed ten valid cells over five pairs with zero behavioral retry. Baseline
+  and micro both achieved 5/5 functional successes, 4/5 primary successes, zero
+  primary win and zero false completion, with no micro regression of scope,
+  preservation or security. The micro used 247 972 tokens against 229 923 for
+  baseline: **+7,850019354305572 %**, above the frozen 5 % ceiling. The binary
+  verdict is therefore **REJECT_MICRO**. Two pre-cell infrastructure incidents
+  were resolved within the authorized limit; the digest correction is
+  regression-tested and did not alter payload, fixture, grader, prompt, criteria,
+  budget, order or scoring. [Decision 0004](decisions/0004-micro-kernel-final-evaluation.md)
+  rejects the micro as V1 always-on doctrine and forbids a third variant or
+  doctrine campaign. No doctrine is promoted; the active root and balanced
+  archive remain unchanged.
+- **Next step:** prepare the public workspace directly, retaining a neutral root
+  and keeping principles in documentation or on-demand protocols; do not run
+  another doctrine benchmark.

@@ -405,6 +405,12 @@ def _read_ollama_log(runtime: Any, session: Any) -> str:
     return runtime._read_ollama_log(session)
 
 
+def _validate_loaded_model_digest(loaded: dict[str, Any], manifest: dict[str, Any]) -> None:
+    expected = manifest["runtime"]["model_manifest_digest"].removeprefix("sha256:")
+    if loaded["digest"] != expected:
+        raise FinalEvaluationError("loaded model digest drift")
+
+
 def _cell_metrics(call: dict[str, Any], request_count: int) -> dict[str, Any]:
     behavior = call["behavior"]
     tokens = behavior["tokens"]
@@ -469,8 +475,7 @@ def run_campaign(output_value: str) -> dict[str, Any]:
         )
         session.refresh_owned_children()
         loaded = runtime.OLLAMA.require_context(runtime.OLLAMA.parse_running_models(runtime.OLLAMA._api_request("/api/ps")))
-        if loaded["digest"] != MODEL_DIGEST.removeprefix("sha256:"):
-            raise FinalEvaluationError("loaded model digest drift")
+        _validate_loaded_model_digest(loaded, preflight["manifest"])
         resources_loaded = runtime.OLLAMA.resource_snapshot()
         runtime.OPENCODE.guard_loaded_resources(resources_loaded)
         summary["runtime"] = {"server_starts": session.server_starts, "model_loads": 1, "loaded_model": loaded, "resources_after_load": resources_loaded}

@@ -305,6 +305,14 @@ class FinalV1Tests(unittest.TestCase):
                 resolved = (document.parent / target.split("#", 1)[0]).resolve()
                 self.assertTrue(resolved.exists(), f"broken link in {document}: {target}")
 
+    def test_16_loaded_model_uses_manifest_digest(self) -> None:
+        manifest = runner._load_manifest()
+        manifest_digest = manifest["runtime"]["model_manifest_digest"].removeprefix("sha256:")
+        runner._validate_loaded_model_digest({"digest": manifest_digest}, manifest)
+        layer_digest = manifest["runtime"]["model_digest"].removeprefix("sha256:")
+        with self.assertRaises(runner.FinalEvaluationError):
+            runner._validate_loaded_model_digest({"digest": layer_digest}, manifest)
+
 
 if __name__ == "__main__":
     unittest.main()

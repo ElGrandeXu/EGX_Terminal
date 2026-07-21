@@ -2,15 +2,19 @@
 
 ## Statut
 
-Ce répertoire contient un candidat statique **expérimental, inactif et non
-validé comportementalement**. Son payload autoritatif est [`KERNEL.md`](KERNEL.md).
-Il n'est ni une doctrine promue, ni un remplacement actif du
+Ce répertoire conserve un candidat statique **rejeté, inactif et non promu**.
+Son payload autoritatif est [`KERNEL.md`](KERNEL.md). Il n'est ni une doctrine,
+ni un remplacement actif du
 [kernel équilibré rejeté](../../docs/decisions/0003-balanced-kernel-rejection.md).
 
-L'[évaluation finale](behavioral/final-v1/protocol.md) est désormais
-pré-enregistrée : cinq fixtures nouvelles, dix cellules contrebalancées et une
-décision mécanique strictement binaire. Aucun modèle, runtime ou benchmark n'a
-été lancé pour cette pré-inscription et aucun résultat n'existe encore.
+L'[évaluation finale](behavioral/final-v1/results.md) a exécuté les cinq paires et
+dix cellules pré-enregistrées. Baseline et micro réussissent fonctionnellement
+5/5, obtiennent chacun 4/5 réussites primaires et zéro primary win. Le micro
+consomme toutefois 247 972 tokens contre 229 923, soit **+7,850019354305572 %**,
+au-dessus du plafond gelé de 5 %. Le verdict mécanique terminal est
+**`REJECT_MICRO`** ; la
+[décision 0004](../../docs/decisions/0004-micro-kernel-final-evaluation.md)
+interdit une troisième variante ou campagne doctrinale dans la V1.
 
 ## Mesures mécaniques
 
@@ -45,11 +49,12 @@ comportementale n'est démontrée par cette définition statique.
 
 - aucune activation ou distribution par adaptateur ;
 - aucune modification des points d'entrée racine ;
-- protocole final gelé, sans activation ni inférence à ce stade ;
-- aucune revendication de promotion ou de validation.
+- protocole final exécuté une fois, preuves conservées sans activation ;
+- aucune revendication de promotion ou de supériorité comportementale ;
+- aucune troisième variante ni campagne doctrinale dans la V1.
 
 ## Prochaine mission
 
-Exécuter exactement la campagne `behavioral/final-v1` sans modifier le payload,
-les fixtures, les graders, l'ordre, les critères ou les budgets, puis appliquer
-son verdict unique `PROMOTE_MICRO` ou `REJECT_MICRO`.
+Préparer directement le workspace public avec une racine neutre et les principes
+disponibles dans la documentation ou les protocoles à la demande. Aucun autre
+benchmark doctrinal n'est prévu.
