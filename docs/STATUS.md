@@ -15,12 +15,19 @@
 - **Historical evidence:** `experiments/kernel-v1/` and
   `experiments/kernel-micro-v1/` are immutable experimental archives; neither is
   active doctrine.
-- **Public preparation:** in progress. There is no Git remote and no push has
-  occurred. The license is not yet chosen, and the final public README,
-  repository creation, and publication remain separate work.
+- **Publication boundary:** inspected and documented. The active tracked surface
+  has no observed blocking violation; the public-surface and neutral-root checks
+  pass. Historical runtime, model, loopback, hash, and machine-capacity facts in
+  the immutable archives are documented exceptions, not active dependencies.
+- **Publication status:** **`READY_WITH_DOCUMENTED_EXCEPTIONS`** for the inspected
+  repository contents. This is a bounded heuristic result, not an absolute
+  guarantee that no sensitive data can exist.
+- **Public preparation:** there is still no Git remote and no push has occurred.
+  The next phase is the final public README and Maxime's license choice;
+  repository creation and publication remain separate work.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase prepares the public distribution without reactivating a doctrine
-or expanding optional capabilities.
+The next phase finalizes the public README and records Maxime's license choice
+without reactivating a doctrine or expanding optional capabilities.
