@@ -30,17 +30,24 @@
   remediation commit brings `main` to 31 commits, one identity, zero merge, and
   zero private commit identity. The [history audit](publication/HISTORY_AUDIT.md)
   and [remediation report](publication/IDENTITY_REMEDIATION.md) record the checks.
-- **Publication status:** **`READY_FOR_FINAL_GOVERNANCE_REVIEW`**. Content,
-  licensing, provenance, identity, history, and clean-clone gates pass. The
-  security result remains a bounded heuristic, not an absolute guarantee.
+- **Governance commit:** the final local governance commit brings `main` to 32
+  commits while retaining the same single author and committer identity.
+- **Local governance:** PASS. Community files, deterministic link and GitHub
+  governance controls, the action lock, publication plan, and hardened workflow
+  are complete.
+- **CI definition:** syntax validated with actionlint 1.7.12; it has not yet run
+  on GitHub. Its three planned checks cover Windows, Ubuntu, and REUSE.
+- **Publication status:** **`READY_FOR_PRIVATE_REMOTE_STAGING`**. Content,
+  licensing, provenance, identity, history, governance, and clean-clone gates
+  pass. The security result remains a bounded heuristic, not an absolute guarantee.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
-- **Public preparation:** there is still no Git remote and no push has occurred.
-  Final governance review is the remaining gate; GitHub publication remains a
-  separate, explicitly authorized later action.
+- **Public preparation:** there is still no Git remote, target repository, or
+  push. The next gate is explicit authorization to create the empty private
+  repository and push `main` for remote staging.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase is final governance review. No publication action is authorized
-by this status.
+The next phase is private remote staging. No remote action is authorized by this
+status alone.

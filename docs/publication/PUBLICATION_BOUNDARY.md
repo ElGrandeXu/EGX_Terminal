@@ -25,8 +25,9 @@ d'exécution de la V1.
 
 La surface exclut les secrets, credentials, configurations de machine,
 transcripts privés, caches, sorties temporaires, modèles, poids et binaires
-locaux. Packaging, CI, remote, release, publication effective et capacités
-avancées restent hors périmètre sans autorisation séparée.
+locaux. La définition CI est incluse mais n'a pas encore été exécutée par GitHub.
+Remote, release, publication effective et capacités avancées restent hors
+périmètre sans autorisation séparée.
 
 Le bundle de récupération de l'identité est un
 **`PRIVATE_RECOVERY_ARTIFACT`** hors repository. Il contient l'ancien historique,
@@ -59,8 +60,13 @@ contenu tiers substantiel ni exception tierce n'a été identifié.
 [`public-commit-identity.json`](../../governance/public-commit-identity.json),
 inspecte l'historique atteignable et exige l'identité publique exacte pour
 chaque auteur et committer. Les modes `--all-refs` et `--fail-on-review` passent
-sur les 31 commits. Le [rapport](HISTORY_AUDIT.md) et la
+sur les 32 commits finaux. Le [rapport](HISTORY_AUDIT.md) et la
 [remédiation](IDENTITY_REMEDIATION.md) documentent la transformation.
+
+`scripts/check_markdown_links.py` valide hors ligne les liens Markdown suivis.
+`scripts/check_github_governance.py` vérifie les fichiers communautaires, la CI,
+le lock d'actions et le plan distant. Le workflow a été validé syntaxiquement
+avec actionlint 1.7.12 mais n'a pas été exécuté sur GitHub.
 
 ## Gate avant remote et premier push
 
@@ -72,13 +78,13 @@ Avant toute création de remote ou tout premier push :
 4. vérifier les JSON, TOML, liens Markdown, textes de licence et archives ;
 5. confirmer l'intégrité des résultats de Mission 24 ;
 6. confirmer zéro secret, donnée privée ou dépendance au workspace source ;
-7. effectuer la revue finale de gouvernance ;
-8. obtenir une autorisation explicite séparée avant remote et push.
+7. valider la gouvernance et le workflow ;
+8. obtenir une autorisation explicite séparée avant création du remote et push.
 
 ## État
 
-**`READY_FOR_FINAL_GOVERNANCE_REVIEW`**
+**`READY_FOR_PRIVATE_REMOTE_STAGING`**
 
-Les gates de contenu, identité, historique, licences et clone propre passent. La
-revue finale de gouvernance reste nécessaire. Ce statut n'autorise ni remote,
-ni push, ni tag, ni publication GitHub.
+Les gates de contenu, identité, historique, licences, gouvernance, workflow et
+clone propre passent. Le prochain gate est l'autorisation explicite de staging
+privé. Ce statut n'autorise ni remote, ni push, ni tag, ni publication GitHub.

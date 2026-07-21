@@ -41,26 +41,19 @@ expose a full private address:
 ```console
 python scripts/check_git_history.py
 python scripts/check_git_history.py --fail-on-review
-```
-
-Run the tests applicable to the neutral-root V1 distribution:
-
-```console
+python scripts/check_markdown_links.py
+python scripts/check_github_governance.py
 python -m unittest discover -s tests -v
+reuse lint
 ```
 
 This command runs the active tests under `tests/`. Historical experimental suites
 remain part of their archived evidence and are intentionally outside the active
 V1 test total.
 
-When the official REUSE tool is available, run this additional standards check:
-
-```console
-reuse lint
-```
-
-`reuse lint` validates REUSE Specification 3.3. It is not a prerequisite for
-offline inspection of the repository and is not a permanent project dependency.
+The two GitHub governance checks use only the standard library and make no
+network requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification
+3.3; REUSE is installed temporarily in CI and is not a project runtime dependency.
 
 ## Recommended reading path
 
@@ -88,10 +81,10 @@ parsing them is evidence inspection; it does not reproduce a runtime observation
 **Inspect existing evidence.** Read the tracked reports, protocols, manifests,
 and metrics. This is the default path and has no runtime or network cost.
 
-**Reproduce local V1 validation.** Run the six local commands above. They verify
+**Reproduce local V1 validation.** Run the canonical commands above. They verify
 the current neutral root, tracked public surface, file-scoped licensing,
-reachable Git history, the strict public identity policy, and active distribution
-checks on your machine. They do not re-evaluate a kernel. The
+reachable Git history, links, GitHub governance, the strict public identity
+policy, and active distribution checks on your machine. They do not re-evaluate a kernel. The
 `--fail-on-review` invocation is required before publication.
 
 **Rerun a benchmark or runtime-dependent validation.** Historical commands under

@@ -214,10 +214,12 @@ def is_exempt(root: Path, path: str) -> bool:
 
 
 def expected_license(path: str) -> str | None:
-    if path == "README.md" or path.startswith("docs/"):
+    if path in {"README.md", "GOVERNANCE.md", "CONTRIBUTING.md", "SECURITY.md", ".github/pull_request_template.md"} or path.startswith(
+        ("docs/", ".github/ISSUE_TEMPLATE/")
+    ):
         return "CC-BY-4.0"
     if path in {".gitattributes", ".gitignore"} or path.startswith(
-        ("scripts/", "tests/", "experiments/", "governance/", "licensing/")
+        (".github/workflows/", "scripts/", "tests/", "experiments/", "governance/", "licensing/")
     ):
         return "Apache-2.0"
     return None

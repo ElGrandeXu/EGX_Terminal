@@ -1,0 +1,102 @@
+{
+  "schema_version": 1,
+  "remote_settings_status": "PLANNED_NOT_APPLIED",
+  "identity": {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"},
+  "visibility_strategy": {
+    "initial_visibility": "private",
+    "target_visibility": "public",
+    "reason": "Validate the first push, CI, repository settings, and a clean remote clone before public exposure.",
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "metadata": {
+    "description": "Evidence-led research for inspectable, LLM-agnostic terminal environments.",
+    "homepage": "",
+    "topics": ["llm", "developer-tools", "cli", "llm-agnostic", "ai-governance", "reproducible-research", "opencode", "ollama", "qwen", "open-source"],
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "features": {
+    "issues": true,
+    "projects": false,
+    "wiki": false,
+    "discussions": false,
+    "sponsorship": "NOT_CONFIGURED",
+    "pages": false,
+    "releases_allowed": true,
+    "release_before_remote_validation": false,
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "merge_policy": {
+    "squash_merge": true,
+    "merge_commits": false,
+    "rebase_merge": false,
+    "delete_merged_branches": true,
+    "auto_merge": false,
+    "linear_history": true,
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "actions_policy": {
+    "github_token_default": "read",
+    "fork_workflow_write_tokens": false,
+    "allowed_actions": ["actions/checkout", "actions/setup-python"],
+    "full_sha_pinning_required": true,
+    "automatic_approval_for_untrusted_workflow_changes": false,
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "security": {
+    "private_vulnerability_reporting": "ENABLE_BEFORE_PUBLIC",
+    "secret_scanning": "ENABLE_IF_AVAILABLE",
+    "push_protection": "ENABLE_IF_AVAILABLE",
+    "security_alerts": "ENABLE_WHEN_APPLICABLE",
+    "personal_security_address_published": false,
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "main_ruleset": {
+    "name": "main-protection",
+    "target": "main",
+    "enforcement": "active",
+    "activation_condition": "After the first successful CI run has created all required check names.",
+    "rules": {
+      "prevent_deletion": true,
+      "prevent_force_push": true,
+      "require_linear_history": true,
+      "require_pull_request": true,
+      "required_approvals": 0,
+      "require_conversation_resolution": true,
+      "require_branch_up_to_date": false,
+      "require_signed_commits": false,
+      "require_code_owner_review": false,
+      "required_status_checks": ["repository / ubuntu", "repository / windows", "licensing / reuse"]
+    },
+    "administrative_bypass": {
+      "planned": true,
+      "scope": "Repository administrator",
+      "reason": "Permit recovery by the sole maintainer while retaining pull-request and status-check defaults for ordinary changes.",
+      "ordinary_use": false
+    },
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "community_profile": {
+    "readme": "PRESENT",
+    "license": "PRESENT",
+    "contributing": "PRESENT",
+    "issue_templates": "PRESENT",
+    "pull_request_template": "PRESENT",
+    "security": "PRESENT",
+    "code_of_conduct": "DEFERRED_UNTIL_ENFORCEABLE",
+    "profile_completion_claim": "NOT_CLAIMED",
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "release": {
+    "candidate": "v1.0.0",
+    "tag_created": false,
+    "release_created": false,
+    "notes": "GENERATE_AFTER_REMOTE_VALIDATION",
+    "profile_pin": "ONLY_AFTER_SUCCESSFUL_PUBLICATION",
+    "status": "PLANNED_NOT_APPLIED"
+  },
+  "pre_creation_verifiability": {
+    "desired_settings_documented": true,
+    "applied_settings": [],
+    "not_yet_verifiable": ["GitHub Actions execution", "repository features and metadata", "security feature availability", "main-protection ruleset", "anonymous public access"]
+  }
+}

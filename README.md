@@ -112,9 +112,11 @@ From the repository root:
 python scripts/check_neutral_root.py
 python scripts/check_public_surface.py
 python scripts/check_licensing.py
-python scripts/check_git_history.py
 python scripts/check_git_history.py --fail-on-review
+python scripts/check_markdown_links.py
+python scripts/check_github_governance.py
 python -m unittest discover -s tests -v
+reuse lint
 ```
 
 Then read the [charter](docs/CHARTER.md), [status](docs/STATUS.md), [decision
@@ -122,6 +124,14 @@ register](docs/decisions/README.md), [experimental archives](experiments/), and
 [publication boundary](docs/publication/PUBLICATION_BOUNDARY.md), in that order.
 The [detailed quickstart](docs/QUICKSTART.md) explains how to inspect existing
 evidence without relaunching a benchmark.
+
+## Community and publication
+
+See [contribution guidelines](CONTRIBUTING.md), [governance](GOVERNANCE.md), and
+the [security policy](SECURITY.md). The SHA-pinned, read-only
+[validation workflow](.github/workflows/validate.yml) defines the future public
+checks. The [GitHub publication plan](docs/publication/GITHUB_PUBLICATION_PLAN.md)
+keeps private staging, public visibility, and the first release separate.
 
 ## What is intentionally deferred
 
@@ -152,10 +162,10 @@ These are documented project principles, not an automatically injected payload.
 ## Current status
 
 EGX_Terminal is in V1 pre-publication and is
-**`READY_FOR_FINAL_GOVERNANCE_REVIEW`**. The neutral root, content, licensing,
-history, identity, and clean-clone gates pass. Historical runtime facts in the
-immutable archives remain documented evidence, not licensing exceptions. No
-remote exists and no push has occurred.
+**`READY_FOR_PRIVATE_REMOTE_STAGING`**. Local governance, workflow syntax,
+content, licensing, history, identity, and clean-clone gates pass. GitHub CI has
+not run, remote settings remain planned, no remote exists, and no push has
+occurred.
 
 ## License
 

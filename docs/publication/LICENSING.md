@@ -14,14 +14,18 @@ licence applicable à chaque chemin.
 
 ## Frontière
 
-- `README.md` et `docs/**` relèvent de CC-BY-4.0.
-- `.gitattributes`, `.gitignore`, `scripts/**`, `tests/**`, `governance/**`,
-  `licensing/**` et les autres artefacts techniques couverts relèvent
+- `README.md`, les politiques communautaires racine, les templates Markdown
+  GitHub et `docs/**` relèvent de CC-BY-4.0.
+- `.gitattributes`, `.gitignore`, le workflow GitHub Actions, `scripts/**`,
+  `tests/**`, `governance/**`, `licensing/**` et les autres artefacts techniques couverts relèvent
   d'Apache-2.0. Cela inclut la politique d'identité publique et la cartographie
   technique de réécriture.
 - `experiments/**` relève entièrement d'Apache-2.0, y compris les README,
   protocoles, fixtures, graders, résultats et payloads. Une expérience forme
   ainsi un bundle fonctionnel réutilisable sous une licence unique.
+
+Les actions distantes sont seulement référencées par repository, release et SHA.
+Leur contenu n'est ni copié dans le repository ni relicencié.
 
 Les deux archives expérimentales restent immuables. Leur attribution est
 externe dans `REUSE.toml` : aucun en-tête, octet ou retour à la ligne n'a été

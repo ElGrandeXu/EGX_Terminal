@@ -32,3 +32,5 @@ directly and record observed versions or commits when relevant.
 - [0007 — Remédier l'identité publique des commits](0007-remediate-public-commit-identity.md)
   — accepted; one controlled pre-publication rewrite to the approved ID-based
   GitHub `noreply` identity
+- [0008 — Finalize public repository governance](0008-finalize-public-repository-governance.md)
+  — accepted; maintainer-led community files, hardened CI, and private staging

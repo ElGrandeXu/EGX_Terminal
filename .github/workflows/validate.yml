@@ -1,0 +1,89 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repository-ubuntu:
+    name: repository / ubuntu
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Validate repository
+        run: |
+          python scripts/check_neutral_root.py
+          python scripts/check_public_surface.py
+          python scripts/check_licensing.py
+          python scripts/check_git_history.py --fail-on-review
+          python scripts/check_markdown_links.py
+          python scripts/check_github_governance.py
+          python -m unittest discover -s tests -v
+
+  repository-windows:
+    name: repository / windows
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Validate repository
+        run: |
+          python scripts/check_neutral_root.py
+          python scripts/check_public_surface.py
+          python scripts/check_licensing.py
+          python scripts/check_git_history.py --fail-on-review
+          python scripts/check_markdown_links.py
+          python scripts/check_github_governance.py
+          python -m unittest discover -s tests -v
+
+  licensing-reuse:
+    name: licensing / reuse
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+          lfs: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - name: Install REUSE
+        run: python -m pip install --disable-pip-version-check reuse==6.2.0
+      - name: Validate REUSE metadata
+        run: reuse lint
