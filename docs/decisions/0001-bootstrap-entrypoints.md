@@ -1,6 +1,6 @@
 # 0001 — Bootstrap entrypoints
 
-- **Status:** provisional
+- **Status:** superseded by [Decision 0005](0005-ship-v1-with-neutral-root.md)
 - **Date:** 2026-07-20
 
 ## Context

@@ -4,23 +4,28 @@ EGX_Terminal explores how a terminal-agent workspace can keep its behavior,
 knowledge, project state, and methods in the repository while allowing the active
 LLM, provider, or terminal harness to be replaced.
 
-The project is experimental. Its architecture is not stabilized, and no broad
-agent capability is claimed yet.
+The project is LLM-agnostic. Its V1 will ship with a neutral root: it does not
+install any automatically discovered behavioral instruction for Codex, Claude
+Code, OpenCode, or another compatible harness, and it imposes no always-on
+behavioral doctrine.
 
-The current method is deliberately sequential:
+The five external-repository audits and the architecture synthesis are complete.
+Two candidate kernels were then evaluated independently and rejected as V1
+always-on doctrine:
 
-1. audit five external repositories independently;
-2. extract evidenced principles from each;
-3. compare and synthesize only after all audits are complete;
-4. design an architecture from the resulting evidence.
+- [`experiments/kernel-v1/`](experiments/kernel-v1/) archives the rejected
+  balanced candidate and its evidence;
+- [`experiments/kernel-micro-v1/`](experiments/kernel-micro-v1/) archives the
+  rejected micro candidate and its final `REJECT_MICRO` result.
 
-Context efficiency is central: keep the automatically loaded behavioral kernel
-small, disclose context progressively, and add mechanisms only when their utility
-justifies their context and maintenance cost.
+Project principles remain available in documentation and may be used through
+explicitly selected, on-demand protocols. Advanced capabilities such as memory,
+hooks, skills, routing, and compression remain optional and unimplemented unless
+a demonstrated need and a separate decision justify them.
 
-This is not a collection of skills, a Codex wrapper, or a clone of any provider's
-configuration. The initial provider entrypoints are compatibility choices, not
-the final internal architecture.
+Preparation of the public distribution is in progress. The final public README,
+license choice, remote repository, and publication are separate future steps.
 
 See [the charter](docs/CHARTER.md) for the project boundaries and
-[the current status](docs/STATUS.md) before starting work.
+[the current status](docs/STATUS.md) for the latest project state. Consequential
+choices are recorded in the [decision register](docs/decisions/README.md).
