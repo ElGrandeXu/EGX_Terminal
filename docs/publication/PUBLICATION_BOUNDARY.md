@@ -11,7 +11,9 @@ pas annoncé comme déjà public ou déjà licencié.
 
 La composition publique prévue est la suivante :
 
-- `README.md` présente le projet et oriente vers son état et ses décisions ;
+- `README.md` présente le projet et oriente vers son état, son quickstart et ses
+  décisions ;
+- `docs/QUICKSTART.md` fournit le parcours local, déterministe et sans runtime ;
 - `docs/` porte la charte, l'état, les décisions, les audits, la synthèse et la
   présente frontière ;
 - `scripts/` contient des contrôles locaux, déterministes et sans réseau ;
@@ -39,8 +41,7 @@ La surface prévue exclut :
 - dépendance obligatoire à un fournisseur, un modèle ou un service réseau ;
 - kernel, adaptateur, hook, skill, mémoire, routing ou injection active ;
 - packaging, CI nouvelle, remote, release et publication effective ;
-- choix de licence et fichier `LICENSE`, différés à une décision de Maxime ;
-- réécriture éditoriale finale du README, également différée.
+- choix de licence et fichier `LICENSE`, différés à une décision de Maxime.
 
 ## Preuves historiques et exceptions documentées
 
@@ -91,7 +92,7 @@ Avant tout ajout de remote ou premier push, il faut au minimum :
 4. confirmer l'intégrité des deux archives et des résultats de Mission 24 ;
 5. confirmer l'absence de secret, donnée privée, sortie locale et dépendance de
    machine dans les changements depuis cette inspection ;
-6. finaliser le README public ;
+6. conserver au vert la gate désormais passée du README public et du quickstart ;
 7. faire choisir explicitement la licence par Maxime et seulement alors ajouter
    le fichier correspondant ;
 8. obtenir une décision explicite avant la création du remote et le push.
@@ -102,5 +103,6 @@ Avant tout ajout de remote ou premier push, il faut au minimum :
 
 La surface active ne contient aucun bloqueur observé et les contrôles passent.
 Les exceptions sont uniquement les faits historiques et reproductibles conservés
-dans les archives immuables. Le repository n'est pas encore prêt pour un push :
-le README public final et le choix de licence restent des gates de release.
+dans les archives immuables. La gate du README public et du quickstart est passée.
+La prochaine gate est le choix explicite de licence par Maxime. Aucun remote ou
+push n'est autorisé par ce statut.

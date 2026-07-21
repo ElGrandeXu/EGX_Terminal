@@ -22,12 +22,14 @@
 - **Publication status:** **`READY_WITH_DOCUMENTED_EXCEPTIONS`** for the inspected
   repository contents. This is a bounded heuristic result, not an absolute
   guarantee that no sensitive data can exist.
+- **Public entrypoint:** the root README is finalized and the local, deterministic
+  [quickstart](QUICKSTART.md) has been created and validated.
 - **Public preparation:** there is still no Git remote and no push has occurred.
-  The next phase is the final public README and Maxime's license choice;
-  repository creation and publication remain separate work.
+  The next gate is Maxime's explicit license choice; repository creation and
+  publication remain separate work.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase finalizes the public README and records Maxime's license choice
-without reactivating a doctrine or expanding optional capabilities.
+The next phase records Maxime's explicit license choice without reactivating a
+doctrine or expanding optional capabilities.
