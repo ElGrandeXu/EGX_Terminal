@@ -6,7 +6,7 @@
     "initial_visibility": "private",
     "target_visibility": "public",
     "observed_visibility": "public",
-    "reason": "Validate the first push, CI, repository settings, and a clean remote clone before public exposure.",
+    "reason": "Create a new canonical object database, validate the cleaned first push, CI, repository settings, and a clean remote clone before public exposure.",
     "status": "APPLIED"
   },
   "metadata": {
@@ -56,7 +56,7 @@
     "name": "main-protection",
     "target": "main",
     "enforcement": "active",
-    "activation_condition": "Applied after the 34th documentation commit passed all three public CI jobs.",
+    "activation_condition": "Applied after the 36th remediation documentation commit passed all three private CI jobs and anonymous public validation.",
     "rules": {
       "prevent_deletion": true,
       "prevent_force_push": true,
@@ -102,6 +102,25 @@
     "anonymous_public_clone": "APPLIED",
     "security_activation": "APPLIED",
     "second_public_ci": "APPLIED",
-    "main_ruleset": "APPLIED"
+    "main_ruleset": "APPLIED",
+    "metadata_incident_detected": "APPLIED",
+    "former_repository_quarantined": "APPLIED",
+    "canonical_repository_recreated": "APPLIED",
+    "clean_history_private_ci": "APPLIED",
+    "old_object_absent": "APPLIED"
+  },
+  "incident_remediation": {
+    "decision": "RECREATE_CANONICAL_REPOSITORY",
+    "commits_before_decision": 35,
+    "final_commit_count": 36,
+    "former_repository_visibility": "private",
+    "former_repository_name_published": false,
+    "former_repository_must_remain_private": true,
+    "functional_content_changed": false,
+    "old_object_imported": false,
+    "email_privacy_setting": "EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE",
+    "tag_created": false,
+    "release_created": false,
+    "status": "APPLIED"
   }
 }

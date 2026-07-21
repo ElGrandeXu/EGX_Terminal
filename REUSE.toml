@@ -5,7 +5,7 @@ path = ["README.md", "GOVERNANCE.md", "CONTRIBUTING.md", "SECURITY.md", ".github
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Maxime Erard"
 SPDX-License-Identifier = "CC-BY-4.0"
-SPDX-FileComment = "Original documentation, research, audits, decisions, and explanatory text. Facts, names, URLs, hashes, versions, and attributed short quotations are not relicensed third-party works."
+SPDX-FileComment = "Original documentation, research, audits, incident records, decisions, and explanatory text. Facts, names, URLs, hashes, versions, and attributed short quotations are not relicensed third-party works."
 
 [[annotations]]
 path = [".gitattributes", ".gitignore", ".github/workflows/**", "scripts/**", "tests/**", "experiments/**", "governance/**", "licensing/**"]

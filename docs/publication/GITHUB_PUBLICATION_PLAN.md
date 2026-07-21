@@ -78,6 +78,45 @@ first fully protected pull request. The policy accepts attributable GitHub
 check audits a bounded current contribution branch and detached Actions checkout
 without treating arbitrary refs as permanent publication roots.
 
+## Public metadata incident and repository recreation
+
+The first squash merge left the former public repository with 35 commits and a
+personal author address on its HEAD. The policy correctly failed
+`--fail-on-review`; Ubuntu and Windows failed while `licensing / reuse` passed.
+The tree, parent, message, dates, diff, paths, modes, and contents were otherwise
+correct. There were no tags, releases, or observed public forks.
+
+The repository was made private before any other remote mutation. Anonymous
+requests for the repository, commit, and pull request returned `404`, and an
+anonymous clone failed. The repository was then renamed to a private quarantine
+whose name is intentionally excluded from public records. It remains unarchived
+and retains the original object, pull request, runs, settings, and protections as
+private evidence.
+
+The affected commit was reconstructed locally with the same functional
+properties and dates, using only the approved ID-based `noreply` identity. Local
+contribution refs, transport refs, reflogs, and unreachable objects were purged.
+The old object no longer resolves locally, while verified recovery artifacts
+remain outside the repository.
+
+A new empty private `ElGrandeXu/EGX_Terminal` received only the cleaned `main`
+branch by a non-force push. The remediation documentation is the 36th commit.
+The complete local suite now contains 188 tests and passes alongside REUSE
+6.2.0, actionlint 1.7.12, JSON and TOML parsing, locks, Git integrity, Markdown
+links, the locked archive hash, and Mission 24 frozen-result checks in both the
+source and a no-hardlink clean clone.
+
+The new private repository passed `repository / ubuntu`, `repository / windows`,
+and `licensing / reuse` before publication. The validated metadata, feature,
+merge, Actions, security, and branch-protection settings were reapplied. After
+the visibility change, anonymous browsing and cloning validated all 36 commits;
+the affected object and former pull request are absent from the canonical
+repository, while the quarantined repository remains inaccessible anonymously.
+
+The GitHub account email-privacy setting is not API-verifiable and is recorded as
+`EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`. Future web operations require it to
+remain enabled; no personal address is accepted.
+
 The public status is `PUBLIC_V1_READY_FOR_RELEASE_REVIEW`. No release or tag has
 been created. The next gate is a separate explicit decision on `v1.0.0`, and any
 future release must not claim compatibility beyond the preserved evidence.

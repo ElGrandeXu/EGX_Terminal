@@ -34,12 +34,15 @@ A clone does not automatically inject project-owned behavioral instructions into
 Codex, Claude Code, OpenCode, or another harness. No kernel, adapter, or behavioral
 payload is active at the root.
 
-The published Git history has been audited and remediated. The 34 commits that
-predate the first protected pull request use the maintainer's approved GitHub
-ID-based `noreply` identity. The active policy also accepts attributable GitHub
-`noreply` contributors and the exact GitHub web committer used for squash
-merges, without accepting personal email addresses or undeclared bots; see the
-[identity remediation report](docs/publication/IDENTITY_REMEDIATION.md) and run
+The published Git history has been audited and remediated. After GitHub selected
+a personal author address for the first squash merge, the former public staging
+repository was quarantined privately and the canonical repository was recreated
+from a content-identical history. All 36 commits use approved GitHub `noreply`
+metadata, and the affected public object was not imported. The active policy
+continues to accept attributable GitHub `noreply` contributors and the exact
+GitHub web committer used for squash merges, without accepting personal email
+addresses or undeclared bots; see the [identity remediation
+report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
 
 ## Key V1 decision
@@ -165,16 +168,15 @@ These are documented project principles, not an automatically injected payload.
 ## Current status
 
 EGX_Terminal is publicly available at
-[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). Private
-staging passed all three required CI checks before the visibility change; public
-anonymous access, cloning, history, identity, licensing, tests, and frozen
-archives were then verified. Private Vulnerability Reporting, secret scanning,
-push protection, read-only Actions permissions, and the documented merge policy
-are active. The second public CI passed all three required checks and the active
-`main-protection` ruleset requires the protected pull-request path. No release or
-tag has been created. The repository status is
-`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`; the next gate is a separate explicit
-decision on `v1.0.0`.
+[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). This
+canonical repository was created privately from the cleaned 36-commit history,
+passed all three required CI checks, and was then validated by anonymous access
+and cloning. The former staging repository remains private and quarantined.
+Private Vulnerability Reporting, secret scanning, push protection, read-only
+Actions permissions, the documented merge policy, and the active
+`main-protection` ruleset are applied. No release or tag has been created. The
+repository status is `PUBLIC_V1_READY_FOR_RELEASE_REVIEW`; the next gate is a
+separate explicit decision on `v1.0.0`.
 
 ## License
 

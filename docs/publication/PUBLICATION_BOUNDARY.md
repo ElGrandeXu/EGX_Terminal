@@ -4,15 +4,15 @@
 
 La V1 publiée présente un workspace de terminal-agent LLM-agnostique, à racine
 neutre, avec ses principes, recherches, décisions et preuves reproductibles. Le
-repository public est `ElGrandeXu/EGX_Terminal`. Aucun tag et aucune release ne
-sont déclarés.
+repository canonique public est `ElGrandeXu/EGX_Terminal`. Il contient 36 commits,
+zéro tag et zéro release.
 
 ## Surface incluse
 
 - `README.md`, `docs/` et le quickstart décrivent le projet et sa gouvernance ;
 - `scripts/` et `tests/` fournissent les contrôles locaux actifs ;
-- `governance/` contient la politique d'identité publique et la cartographie
-  technique de la réécriture prépublication ;
+- `governance/` contient la politique d'identité publique, les locks et le plan
+  de publication ;
 - `REUSE.toml`, `LICENSE`, `LICENSES/` et `licensing/license-lock.json` portent la
   gouvernance de licences ;
 - `experiments/kernel-v1/` et `experiments/kernel-micro-v1/` conservent les deux
@@ -26,89 +26,88 @@ d'exécution de la V1.
 
 La surface exclut les secrets, credentials, configurations de machine,
 transcripts privés, caches, sorties temporaires, modèles, poids et binaires
-locaux. La définition CI est incluse et exécutée par GitHub. Une release et les
-capacités avancées restent hors périmètre sans autorisation séparée.
+locaux. Une release et les capacités avancées restent hors périmètre sans
+autorisation séparée.
 
-Le bundle de récupération de l'identité est un
-**`PRIVATE_RECOVERY_ARTIFACT`** hors repository. Il contient l'ancien historique,
-est interdit de publication et n'appartient jamais à la surface publique.
+Les bundles de récupération et la capture de l'incident sont des
+**`PRIVATE_RECOVERY_ARTIFACT`** hors repository. Le repository de staging
+antérieur, son nom de quarantaine, ses runs, sa pull request, ses réglages et son
+objet exposé sont également hors de la surface publique. Ce repository reste
+privé, non archivé pendant la migration, conservé comme preuve, et ne doit jamais
+redevenir public.
 
 ## Preuves historiques et archives
 
 Les archives conservent légitimement versions, hashes, mesures de capacité,
-protocoles, résultats et endpoints loopback nécessaires à l'audit. Aucun fichier
-d'archive n'a été modifié pendant la remédiation d'identité. Douze anciens SHA
-internes restent dans ces preuves et se résolvent via la
-[cartographie](../../governance/history-rewrite-map.json).
+protocoles, résultats et endpoints loopback nécessaires à l'audit. Les douze
+anciens SHA de la première réécriture restent dans ces preuves et se résolvent
+via la [cartographie](../../governance/history-rewrite-map.json).
 
 Les contrôles d'intégrité confirment l'archive `kernel-v1`, l'archive
-`kernel-micro-v1` et les dix résultats gelés de Mission 24 octet-identiques. Ces
-faits historiques sont des exceptions documentaires, pas des exceptions de
-licence ni de sécurité.
+`kernel-micro-v1` et les dix résultats gelés de Mission 24 octet-identiques. La
+recréation du repository n'a modifié aucun fichier expérimental et n'a relancé
+aucun benchmark.
+
+## Historique et identité
+
+La première remédiation contrôlée a réécrit 30 commits prépublication. Les quatre
+commits suivants ont conservé la même identité canonique. Le 35e commit, issu du
+premier squash merge, avait un contenu correct mais GitHub lui avait attribué une
+adresse personnelle comme auteur. La politique v2 l'a classé `REVIEW` et le gate
+`--fail-on-review` a bloqué la CI comme prévu.
+
+Un force-push ne pouvait pas exclure les références GitHub associées à la pull
+request fusionnée. Le dépôt antérieur a donc été placé en quarantaine privée et
+le commit a été reconstruit localement avec le même tree, parent, message complet,
+sujet, dates, diff, chemins, modes et contenu. Seuls son enveloppe d'identité et
+son SHA ont changé. Le 36e commit documente cette décision. Tous les commits du
+nouveau repository utilisent une identité GitHub `noreply`, et aucun objet du
+repository canonique n'a contenu l'ancienne métadonnée.
+
+Le [rapport d'historique](HISTORY_AUDIT.md), la [remédiation
+d'identité](IDENTITY_REMEDIATION.md) et la [décision
+0010](../decisions/0010-recreate-public-repository-after-email-exposure.md)
+documentent les deux opérations distinctes.
 
 ## Contrôles automatisés
 
-`scripts/check_neutral_root.py` vérifie les cinq chemins doctrinaux interdits.
-`scripts/check_public_surface.py` inspecte la surface suivie. Le contrôle reste
-heuristique et ne remplace pas une revue contextuelle spécialisée.
+`scripts/check_neutral_root.py`, `scripts/check_public_surface.py`,
+`scripts/check_licensing.py`, les trois modes de `scripts/check_git_history.py`,
+`scripts/check_markdown_links.py`, `scripts/check_github_governance.py`, les 188
+tests, `reuse 6.2.0`, actionlint 1.7.12, les parsers JSON et TOML, les locks,
+`git diff --check` et `git fsck --full` passent dans la source et dans un clone
+indépendant sans hardlinks.
 
-`scripts/check_licensing.py` vérifie la cartographie, les textes verrouillés et
-l'intégrité des archives. `reuse 6.2.0` vérifie REUSE Specification 3.3. Aucun
-contenu tiers substantiel ni exception tierce n'a été identifié.
+Les recherches d'objets et de refs confirment que l'ancien commit et l'ancienne
+identité ne sont pas présents. Le hash agrégé verrouillé de `kernel-v1` reste
+`c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`.
 
-`scripts/check_git_history.py` lit la politique
-[`public-commit-identity.json`](../../governance/public-commit-identity.json),
-inspecte l'historique atteignable et applique le schéma 2 selon le rôle auteur,
-committer ou trailer. Les contributeurs humains GitHub `noreply` sont acceptés ;
-le committer web exact de GitHub est borné au rôle committer ; les adresses
-personnelles et automatisations non déclarées restent `REVIEW`. Les 34 commits
-antérieurs à la première pull request protégée conservent l'identité canonique du
-mainteneur, sans réécriture supplémentaire. Les trois modes passent depuis une
-branche de contribution et la classent `INFO CONTRIBUTION_REF`, sans en faire
-une racine publique permanente. Le [rapport](HISTORY_AUDIT.md) et la
-[remédiation](IDENTITY_REMEDIATION.md) documentent la transformation initiale et
-la politique active.
+## Recréation et publication
 
-`scripts/check_markdown_links.py` valide hors ligne les liens Markdown suivis.
-`scripts/check_github_governance.py` vérifie les fichiers communautaires, la CI,
-le lock d'actions et le plan distant. Le workflow a été validé syntaxiquement
-avec actionlint 1.7.12 ; sa première exécution GitHub est consignée ci-dessous.
+Le nouveau repository canonique a été créé vide et privé, sans initialisation.
+Seule la branche `main` nettoyée a été poussée, sans force, tag, release ni pull
+request. Les jobs privés `repository / ubuntu`, `repository / windows` et
+`licensing / reuse` ont tous réussi avant le changement de visibilité.
 
-## Staging privé et publication
+Les réglages validés ont été réappliqués : description, dix topics, issues,
+projets/wiki/discussions/Pages désactivés, squash-only, suppression des branches
+fusionnées, Actions en lecture seule et limitées aux actions épinglées, absence
+d'approbation automatique, PVR lorsque disponible, secret scanning, push
+protection et alertes de vulnérabilité.
 
-Le repository privé `ElGrandeXu/EGX_Terminal` a été créé vide, puis `main` a été
-poussé. Le premier run a révélé un tri d'archive dépendant de la plateforme, une
-classification incorrecte de `origin/main` et l'absence de fail-fast sous
-PowerShell. La correction conserve le hash verrouillé, distingue les refs de
-transport et exécute Windows sous Bash.
+Après passage public, la navigation et le clone anonymes ont retrouvé les 36
+commits et passé la suite complète. L'ancien commit et l'ancienne pull request ne
+sont pas accessibles dans le repository canonique, et le staging quarantiné
+reste inaccessible anonymement.
 
-Le commit correctif a été amendé une seule fois pour construire la fixture
-`AUTHENTICATED_URL` uniquement dans le repository temporaire du test. L'unique
-force-push a utilisé la lease explicite attendue. Le run amendé a passé
-`repository / ubuntu`, `repository / windows` et `licensing / reuse`, y compris
-Windows sous Bash `-e -o pipefail` et le contrôle historique avec les refs
-Actions. Les deux anciens runs de staging échoués ont ensuite été supprimés ; le
-run vert a été conservé.
-
-Les réglages distants documentés ont été appliqués avant le changement de
-visibilité. Après autorisation explicite, le repository est devenu public. PVR,
-secret scanning, push protection et alertes de vulnérabilité sont actifs. Un
-clone HTTPS anonyme sans credentials a retrouvé 33 commits, la seule identité
-autorisée, les hashes gelés, zéro ancien SHA amendé et zéro URL authentifiée
-dans les blobs publiés. Tous les contrôles et tests y ont passé, puis le clone
-temporaire a été supprimé.
-
-La seconde CI publique sur le 34e commit a passé `repository / ubuntu`,
-`repository / windows` et `licensing / reuse`. Le ruleset `main-protection` est
-actif : il exige la pull request, la résolution des conversations, l'historique
-linéaire et les trois checks, et interdit suppression et force-push de `main`.
-La correction d'état et de politique est livrée par le premier workflow de pull
-request réellement protégé, sans bypass administrateur.
+Le ruleset `main-protection` est actif sur `main` : pull request requise, zéro
+approbation obligatoire, conversations résolues, historique linéaire, trois
+checks requis, suppression et force-push interdits. Le bypass administrateur est
+réservé à la récupération.
 
 ## État
 
 **`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`**
 
-La visibilité publique, les protections de sécurité et le ruleset sont actifs.
 Aucun tag ni aucune release n'existe. Le prochain gate est une décision explicite
 et séparée sur `v1.0.0` ; ce statut ne l'autorise pas.

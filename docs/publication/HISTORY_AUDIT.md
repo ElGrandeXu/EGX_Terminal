@@ -6,51 +6,44 @@
 - **Ref publiable :** `refs/heads/main` uniquement.
 - **Historique :** **`PASS`**.
 - **Identité :** **`PASS`**.
-- **Clone propre :** **`PASS`**.
-- **Commits de référence avant la première PR protégée :** 34, dont 30 commits
-  historiques remédiés et quatre commits de remédiation, gouvernance,
-  correction de staging et publication.
-- **Merges :** 0.
-- **Identités auteur sur ces 34 commits :** 1.
-- **Identités committer sur ces 34 commits :** 1.
+- **Clone propre et clone anonyme :** **`PASS`**.
+- **Commits avant la décision de remédiation publique :** 35.
+- **Commits finaux :** 36.
+- **Merges dans l'historique canonique :** 0.
+- **Tags et releases :** 0.
 - **Identités privées :** 0.
 - **Politique active :** schéma 2, contributions GitHub `noreply` et committer
   web GitHub borné.
 
-Un audit antérieur a déclenché la remédiation parce que les métadonnées des 30
-commits utilisaient une adresse personnelle. Cette adresse n'est jamais affichée
-ici. Aucun secret de contenu ou autre bloqueur de publication n'avait été trouvé.
+Le premier audit prépublication avait remédié 30 commits. Un incident distinct a
+ensuite concerné l'identité d'auteur choisie par GitHub pour le premier squash
+merge public. Le scanner a détecté cette adresse personnelle sans l'afficher et
+a fait échouer `--fail-on-review`. Aucun secret de contenu ni autre bloqueur
+fonctionnel n'a été trouvé.
 
-## Identité publique
+## Identité publique finale
 
-Les 34 commits qui précèdent la première pull request protégée utilisent
-exactement, comme auteur et committer :
+Les 34 premiers commits utilisent l'identité canonique du mainteneur. Le 35e
+commit reconstruit utilise `ElGrandeXu` comme auteur et `Maxime Erard` comme
+committer. Le 36e commit de documentation utilise l'identité canonique. Toutes
+ces identités emploient l'adresse GitHub ID-based `noreply` approuvée :
 
 ```text
-Maxime Erard <177521250+ElGrandeXu@users.noreply.github.com>
+177521250+ElGrandeXu@users.noreply.github.com
 ```
 
-Le schéma 2 de la politique
+La politique
 [`public-commit-identity.json`](../../governance/public-commit-identity.json)
-conserve cette identité canonique du mainteneur, dont l'ID `177521250` et le
-login `ElGrandeXu` sont inspectables dans l'adresse. Il accepte aussi les auteurs
-et committers humains utilisant une adresse GitHub ID-based ou username-only
-`noreply`. Une variation du nom d'affichage associée à l'adresse exacte du
-mainteneur reste classée comme compte `ElGrandeXu`.
+accepte aussi les auteurs et committers humains utilisant une adresse GitHub
+ID-based ou username-only `noreply`. Le committer système exact
+`GitHub <noreply@github.com>` est borné au rôle committer d'un merge web. Une
+adresse personnelle, une identité invalide, un faux système ou un bot non
+déclaré reste `REVIEW` et fait échouer `--fail-on-review`.
 
-Le committer système exact `GitHub <noreply@github.com>` est accepté uniquement
-dans le rôle committer créé par le squash merge web. Il n'est jamais accepté
-comme auteur. Une adresse personnelle, une identité invalide, un faux système
-ou un bot non déclaré reste `REVIEW` et fait échouer `--fail-on-review`. Plusieurs
-identités conformes sont normales et ne constituent plus un finding.
+## Première réécriture contrôlée
 
-Cette évolution ne réécrit aucun commit. Elle protège la confidentialité et la
-provenance inspectable sans imposer une uniformité artificielle des auteurs.
-
-## Réécriture contrôlée
-
-`git-filter-repo` 2.47.0 a réécrit uniquement `refs/heads/main`. La comparaison
-ordinale des 30 commits a produit :
+`git-filter-repo` 2.47.0 avait réécrit uniquement `refs/heads/main`. La
+comparaison ordinale des 30 commits avait produit :
 
 | Propriété | Résultat |
 | --- | ---: |
@@ -61,56 +54,79 @@ ordinale des 30 commits a produit :
 | Dates committer identiques | 30/30 |
 | Nombres de parents identiques | 30/30 |
 | Diffs et chemins modifiés identiques | 30/30 |
-| Noms auteur remédiés | 30/30 |
-| Emails auteur remédiés | 30/30 |
-| Noms committer remédiés | 30/30 |
-| Emails committer remédiés | 30/30 |
+| Noms et emails auteur remédiés | 30/30 |
+| Noms et emails committer remédiés | 30/30 |
 
-La [cartographie exhaustive](../../governance/history-rewrite-map.json) contient
-30 entrées ordonnées. Une référence active à un ancien SHA a été actualisée.
-Douze occurrences dans les archives restent volontairement inchangées et se
-résolvent par cette cartographie.
+La [cartographie exhaustive](../../governance/history-rewrite-map.json) reste
+inchangée. Douze occurrences dans les archives expérimentales restent
+volontairement exprimées avec les SHA historiques afin de préserver les preuves.
 
-## Contenu historique
+## Incident du premier squash merge
 
-Le scan des commits, arbres, blobs, messages et chemins atteignables n'a observé :
+Avant toute mutation distante, le dépôt public avait 35 commits, aucun tag,
+aucune release et aucun fork observé. Son `main`, le tree, le parent et le message
+du commit concerné correspondaient aux valeurs gelées. Le tree était également
+identique au tip de la branche de contribution.
 
-- aucun secret ou credential plausible ;
-- aucune clé privée PEM ;
-- aucun chemin personnel ou transcript privé ;
-- aucun fichier `.env` historique ;
-- aucun contenu tiers substantiel ou provenance ambiguë ;
-- aucun blob supérieur à 512 KiB ;
-- aucun pointeur Git LFS ni submodule ;
-- aucune signature de commit, merge, note, tag ou ref inattendue.
+La mise en privé a précédé toute autre mutation distante. La page du dépôt, le
+commit, la pull request fusionnée et le clone ont ensuite été testés sans
+credentials : les trois URLs ont répondu `404` et le clone a échoué. Le dépôt a
+été renommé sous un nom de quarantaine non publié ici ; il reste privé, non
+supprimé et conserve ses runs, sa pull request, ses réglages et son historique.
 
-Les anciens fichiers racine `AGENTS.md` et `CLAUDE.md` restent des éléments sûrs
-de l'histoire du bootstrap. Ils ne sont pas présents au `HEAD` et ne remettent
-pas en cause la neutralité de la racine active.
+Le nom canonique a été recréé dans un nouveau repository privé. Aucun objet n'a
+été transféré depuis la quarantaine : seule la branche locale nettoyée a été
+poussée.
 
-## Archives et résultats gelés
+## Reconstruction du 35e commit
 
-Les 46 fichiers sous `experiments/` ont été comparés par SHA-256 avant et après
-la réécriture. L'archive `kernel-v1`, l'archive `kernel-micro-v1` et les dix
-fichiers gelés de Mission 24 sont octet-identiques. Aucun ancien SHA contenu dans
-ces preuves n'a été remplacé et aucun benchmark n'a été relancé.
+Le commit de remplacement `0a7e689142aec791467d200d6e6d3f733bad1e6b` a été
+créé avec `git commit-tree` à partir du tree et du parent gelés, du message exact
+et des dates ISO originales.
 
-## Sauvegarde, purge et clone propre
+| Propriété | Résultat |
+| --- | ---: |
+| Tree | identique, 1/1 |
+| Parent | identique, 1/1 |
+| Message complet et sujet | identiques, 1/1 |
+| Dates auteur et committer | identiques, 1/1 |
+| Diff binaire et contenu | identiques, 1/1 |
+| Chemins, modes et OID de blobs | identiques, 1/1 |
+| Identité auteur | remplacée par `noreply` |
+| Identité committer | remplacée par `noreply` |
 
-Avant la transformation, un bundle complet a été créé et vérifié hors du
-repository. Il est classé **`PRIVATE_RECOVERY_ARTIFACT`**, conserve
-volontairement l'ancien historique et ne doit jamais être publié.
+Le SHA a nécessairement changé. Aucune propriété fonctionnelle n'a changé et les
+trois commits de la branche de contribution n'ont pas été réécrits
+individuellement.
 
-Après le commit de remédiation et un premier clone de validation, les éventuelles
-refs de sauvegarde, reflogs, objets inatteignables et métadonnées temporaires de
-réécriture ont été purgés du repository source. L'ancien HEAD ne s'y résout plus.
+## Contenu historique et intégrité
 
-Le clone final a été créé avec une copie indépendante sans hardlinks. Son remote
-local technique a été supprimé avant les contrôles. Il contient 31 commits, une
-branche, zéro tag et l'unique identité attendue. Les contrôles de racine,
-surface, licences, historique, tests, JSON, TOML, liens Markdown, archives et
-résultats gelés y passent sans dépendance au workspace source. Le clone
-temporaire a ensuite été supprimé.
+Le scan des commits, arbres, blobs, messages et chemins atteignables n'observe ni
+secret plausible, clé privée PEM, chemin personnel, transcript privé, fichier
+`.env` historique, contenu tiers substantiel, blob supérieur à 512 KiB, pointeur
+Git LFS, submodule, note, tag ou ref inattendue.
+
+Les 46 fichiers sous `experiments/` sont inchangés. L'archive `kernel-v1`,
+l'archive `kernel-micro-v1` et les dix fichiers gelés de Mission 24 sont
+octet-identiques. Le hash agrégé verrouillé de `kernel-v1` reste
+`c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`.
+
+## Sauvegarde, purge et clones
+
+Avant reconstruction, un bundle complet vérifié, un tar du tree, le diff, les
+modes/OID, les chemins, le message, le sujet et leurs hashes ont été capturés
+hors repository comme **`PRIVATE_RECOVERY_ARTIFACT`**. Les bundles privés
+antérieurs restent eux aussi hors repository.
+
+Après déplacement de `main`, la branche de contribution et toutes les refs de
+transport ont été supprimées, les reflogs expirés et les objets inatteignables
+collectés. L'ancien SHA n'est plus résoluble localement et l'empreinte de
+l'ancienne adresse ne correspond à aucun objet restant.
+
+Un clone indépendant sans hardlinks, puis un clone HTTPS anonyme, contiennent 36
+commits, une branche et zéro tag. Les contrôles de racine, surface, licences,
+historique, gouvernance, liens, tests, JSON, TOML, locks, actionlint, REUSE, Git et
+intégrité gelée y passent.
 
 ## Contrôle reproductible
 
@@ -122,27 +138,16 @@ python scripts/check_git_history.py --all-refs
 python scripts/check_git_history.py --fail-on-review
 ```
 
-Le contrôle utilise la politique machine-readable active, n'imprime jamais une
-adresse personnelle complète et produit un résultat déterministe. Sur `main`, il
-reste strict à la branche publique et aux refs de transport attendues. Sur une
-branche de contribution, il inspecte `main + HEAD`, accepte uniquement la
-branche courante et son éventuelle ref `origin` identique ou ancêtre, et les
-classe `INFO CONTRIBUTION_REF`. Le checkout détaché temporaire d'une pull
-request GitHub utilise par défaut un commit de merge synthétique pour tester le
-résultat fusionné. Le contrôle ne classe ce seul `HEAD` comme
-`EPHEMERAL_GITHUB_PR_MERGE` qu'après concordance stricte des variables Actions,
-du payload, du repository, du numéro de PR, du SHA, des deux parents ordonnés et
-de l'unique ref `pull/<numéro>/merge`. Son identité et son message générés ne
-font pas partie de l'historique publié, mais son arbre, tous ses blobs
-atteignables et les deux historiques parents restent intégralement analysés.
-Toute identité personnelle dans un parent persistant reste `REVIEW`. Les objets
-résiduels locaux font l'objet d'un contrôle séparé pendant la procédure de
-purge.
+Le contrôle n'imprime jamais une adresse personnelle complète. Il reste strict
+sur `main`, borne les branches de contribution et valide le checkout détaché
+d'une pull request seulement après concordance du contexte Actions et de ses
+deux parents. Toute identité personnelle dans un parent persistant reste
+`REVIEW`.
 
 ## Limites
 
-Les scanners et comparaisons sont heuristiques et bornés. Ils ne prouvent pas
-l'absence absolue de tout secret encodé ou format inconnu et ne remplacent ni
-revue humaine ni avis juridique. Le bundle privé conserve intentionnellement
-l'ancien historique. Les réglages privés du compte GitHub ne sont pas
-vérifiables par API et ne sont pas revendiqués comme contrôlés.
+Les scanners et comparaisons sont heuristiques et bornés. Ils ne remplacent ni
+revue humaine ni avis juridique. Les artefacts privés conservent volontairement
+l'ancien historique. Le réglage de confidentialité des emails GitHub n'est pas
+vérifiable par l'API disponible :
+`EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`.

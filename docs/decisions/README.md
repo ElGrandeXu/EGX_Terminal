@@ -37,3 +37,6 @@ directly and record observed versions or commits when relevant.
 - [0009 — Publish the V1 repository](0009-publish-v1-repository.md) — accepted;
   green private staging, public security activation, anonymous validation, and
   no release or compatibility claim beyond the evidence
+- [0010 — Recreate the public repository after email exposure](0010-recreate-public-repository-after-email-exposure.md)
+  — accepted; quarantine the former staging repository and recreate the public
+  surface from a content-identical `noreply` history
