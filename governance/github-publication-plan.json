@@ -1,18 +1,19 @@
 {
   "schema_version": 1,
-  "remote_settings_status": "PLANNED_NOT_APPLIED",
+  "remote_settings_status": "APPLIED",
   "identity": {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"},
   "visibility_strategy": {
     "initial_visibility": "private",
     "target_visibility": "public",
+    "observed_visibility": "public",
     "reason": "Validate the first push, CI, repository settings, and a clean remote clone before public exposure.",
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "metadata": {
     "description": "Evidence-led research for inspectable, LLM-agnostic terminal environments.",
     "homepage": "",
     "topics": ["llm", "developer-tools", "cli", "llm-agnostic", "ai-governance", "reproducible-research", "opencode", "ollama", "qwen", "open-source"],
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "features": {
     "issues": true,
@@ -23,16 +24,17 @@
     "pages": false,
     "releases_allowed": true,
     "release_before_remote_validation": false,
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "merge_policy": {
     "squash_merge": true,
     "merge_commits": false,
     "rebase_merge": false,
+    "squash_message": "PR_TITLE_AND_BODY",
     "delete_merged_branches": true,
     "auto_merge": false,
     "linear_history": true,
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "actions_policy": {
     "github_token_default": "read",
@@ -40,21 +42,21 @@
     "allowed_actions": ["actions/checkout", "actions/setup-python"],
     "full_sha_pinning_required": true,
     "automatic_approval_for_untrusted_workflow_changes": false,
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "security": {
-    "private_vulnerability_reporting": "ENABLE_BEFORE_PUBLIC",
-    "secret_scanning": "ENABLE_IF_AVAILABLE",
-    "push_protection": "ENABLE_IF_AVAILABLE",
-    "security_alerts": "ENABLE_WHEN_APPLICABLE",
+    "private_vulnerability_reporting": "ACTIVE",
+    "secret_scanning": "ACTIVE",
+    "push_protection": "ACTIVE",
+    "security_alerts": "ACTIVE",
     "personal_security_address_published": false,
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "main_ruleset": {
     "name": "main-protection",
     "target": "main",
     "enforcement": "active",
-    "activation_condition": "After the first successful CI run has created all required check names.",
+    "activation_condition": "After the 34th documentation commit passes all three public CI jobs.",
     "rules": {
       "prevent_deletion": true,
       "prevent_force_push": true,
@@ -73,7 +75,8 @@
       "reason": "Permit recovery by the sole maintainer while retaining pull-request and status-check defaults for ordinary changes.",
       "ordinary_use": false
     },
-    "status": "PLANNED_NOT_APPLIED"
+    "deferred_reason": "Awaiting the second public CI gate required by Mission 33.",
+    "status": "DEFERRED"
   },
   "community_profile": {
     "readme": "PRESENT",
@@ -84,19 +87,22 @@
     "security": "PRESENT",
     "code_of_conduct": "DEFERRED_UNTIL_ENFORCEABLE",
     "profile_completion_claim": "NOT_CLAIMED",
-    "status": "PLANNED_NOT_APPLIED"
+    "status": "APPLIED"
   },
   "release": {
     "candidate": "v1.0.0",
     "tag_created": false,
     "release_created": false,
-    "notes": "GENERATE_AFTER_REMOTE_VALIDATION",
-    "profile_pin": "ONLY_AFTER_SUCCESSFUL_PUBLICATION",
-    "status": "PLANNED_NOT_APPLIED"
+    "notes": "DEFERRED_UNTIL_SEPARATE_AUTHORIZATION",
+    "profile_pin": "ONLY_AFTER_SUCCESSFUL_RELEASE",
+    "status": "DEFERRED"
   },
-  "pre_creation_verifiability": {
-    "desired_settings_documented": true,
-    "applied_settings": [],
-    "not_yet_verifiable": ["GitHub Actions execution", "repository features and metadata", "security feature availability", "main-protection ruleset", "anonymous public access"]
+  "publication_verification": {
+    "private_staging_ci": "APPLIED",
+    "failed_staging_run_cleanup": "APPLIED",
+    "anonymous_public_clone": "APPLIED",
+    "security_activation": "APPLIED",
+    "second_public_ci": "DEFERRED",
+    "main_ruleset": "DEFERRED"
   }
 }

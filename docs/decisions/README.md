@@ -34,3 +34,6 @@ directly and record observed versions or commits when relevant.
   GitHub `noreply` identity
 - [0008 — Finalize public repository governance](0008-finalize-public-repository-governance.md)
   — accepted; maintainer-led community files, hardened CI, and private staging
+- [0009 — Publish the V1 repository](0009-publish-v1-repository.md) — accepted;
+  green private staging, public security activation, anonymous validation, and
+  no release or compatibility claim beyond the evidence

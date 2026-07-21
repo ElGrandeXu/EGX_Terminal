@@ -123,6 +123,13 @@ class GitHubGovernanceTests(unittest.TestCase):
         path.write_text(json.dumps(data), encoding="utf-8")
         self.assertIn("PUBLICATION_PLAN", self.codes())
 
+    def test_17b_planned_remote_status_is_rejected_after_publication(self) -> None:
+        path = self.root / "governance/github-publication-plan.json"
+        data = json.loads(path.read_text(encoding="utf-8"))
+        data["metadata"]["status"] = "PLANNED_NOT_APPLIED"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        self.assertIn("REMOTE_STATUS", self.codes())
+
     def test_18_path_with_spaces(self) -> None:
         self.assertIn(" ", str(self.root))
         self.assertEqual(checker.audit(self.root), ())

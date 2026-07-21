@@ -1,6 +1,7 @@
 # Status
 
-- **Phase:** V1 public-distribution preparation with a neutral repository root.
+- **Phase:** V1 repository published with a neutral repository root; final
+  public CI and branch ruleset activation remain the closing gate.
 - **Mission 24:** complete. Its final ten-cell campaign is closed and unchanged.
 - **Final doctrine verdict:** **`REJECT_MICRO`**. Baseline used 229,923 tokens;
   micro used 247,972; overhead was 7.850019354305572%, above the frozen 5%
@@ -30,35 +31,43 @@
   remediation commit brings `main` to 31 commits, one identity, zero merge, and
   zero private commit identity. The [history audit](publication/HISTORY_AUDIT.md)
   and [remediation report](publication/IDENTITY_REMEDIATION.md) record the checks.
-- **Governance commit:** the final local governance commit brings `main` to 32
+- **Governance commit:** the final local governance commit brought `main` to 32
   commits while retaining the same single author and committer identity.
 - **Local governance:** PASS. Community files, deterministic link and GitHub
   governance controls, the action lock, publication plan, and hardened workflow
   are complete.
-- **Private staging:** `ElGrandeXu/EGX_Terminal` has been created privately and
-  `main` has received its first push. No public visibility, tag, or release was
-  created.
-- **First remote CI:** GitHub marked Windows and REUSE as passed; Ubuntu failed
+- **Private staging:** `ElGrandeXu/EGX_Terminal` was created privately and
+  `main` received its first push. The failed staging runs were removed only
+  after the amended corrective run passed all three required jobs.
+- **CI defects discovered in staging:** the first run marked Windows and REUSE
+  as passed while Ubuntu failed
   because the archive checker relied on platform-native `Path` ordering. Review
   of the Windows log also found that PowerShell continued after the history gate
   returned nonzero for the normal `origin/main` tracking ref, creating a false
   pass. The targeted correction derives relative POSIX paths with the locked
   canonical order, distinguishes publishable refs from transport refs, and runs
-  the Windows validation block through fail-fast Bash. Its new remote run is not
-  claimed as passing before the corrective push.
-- **Corrective commit:** the single authorized CI correction brings local `main`
-  to 33 commits; its remote status remains pending until push and a fresh run.
-- **Publication status:** **`PRIVATE_REMOTE_STAGING_CI_REMEDIATION`**. Public
-  visibility remains forbidden until all three checks pass on the corrective
-  commit and the remaining private staging settings are reviewed.
+  the Windows validation block through fail-fast Bash.
+- **Corrective commit:** the single authorized amend produced
+  `ff2111f6b1f7e6ea0e295b2a997d19b1a1dbdd31` with 33 commits and the same parent
+  and subject. Its private staging run passed `repository / ubuntu`,
+  `repository / windows`, and `licensing / reuse`; Windows used Bash with
+  `-e -o pipefail` and the history check accepted the Actions transport refs.
+- **Publication status:** **`PUBLIC_V1_REPOSITORY_FINAL_CI_PENDING`**. The
+  repository is public, anonymous validation passes, and the documentation
+  commit brings the reachable total to 34. No tag or release exists.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
-- **Public preparation:** `origin` exists and remains private. The next gate is
-  a fully green CI run on the corrective commit; security settings, ruleset,
-  metadata, public visibility, tags, and releases remain unapplied.
+- **Remote settings:** description, topics, issues/projects/wiki/discussions,
+  merge policy, branch cleanup, read-only Actions token defaults, selected
+  SHA-pinned actions, PVR, secret scanning, push protection, and vulnerability
+  alerts are applied. Pages and auto-merge remain disabled.
+- **Ruleset:** `main-protection` is deliberately deferred until the 34th commit
+  passes the three public CI jobs. Its planned administrator bypass is for
+  recovery, not ordinary direct pushes.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The current phase is private remote staging. This status does not authorize a
-public visibility change.
+The repository publication is complete; a release remains a distinct,
+unauthorized future action. The next gate is the second public CI followed by
+activation and verification of `main-protection`.

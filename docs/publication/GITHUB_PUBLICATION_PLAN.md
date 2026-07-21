@@ -1,72 +1,75 @@
-# GitHub publication plan
+# GitHub publication record
 
-This procedure translates the machine-readable
+This record translates the machine-readable
 [`github-publication-plan.json`](../../governance/github-publication-plan.json)
-into an operator checklist. It authorizes no remote action by itself. Every
-remote setting is `PLANNED_NOT_APPLIED`.
+into the observed publication sequence. It does not authorize a tag or release.
 
-## Phase 1 — Local validation
+## Local and private staging validation
 
-Run the complete sequence in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md),
-confirm a clean worktree, 32 public-identity commits, immutable archives, no
-remote, and no target-repository collision.
+The local policy checks, 133 tests, `reuse 6.2.0`, actionlint 1.7.12, JSON and
+TOML parsing, locks, Git integrity, Markdown links, archive hash, Mission 24
+frozen results, and authenticated-URL searches passed before the corrective
+push.
 
-Stop if any check fails, the target repository already exists unexpectedly, the
-GitHub account is not `ElGrandeXu` with ID `177521250`, or publication authority
-is ambiguous.
+The first private staging run exposed three real defects:
 
-Workflow syntax was validated with actionlint 1.7.12 from the official
-[`rhysd/actionlint` release](https://github.com/rhysd/actionlint/releases/tag/v1.7.12).
-The Windows AMD64 archive SHA-256 was
-`6e7241b51e6817ea6a047693d8e6fed13b31819c9a0dd6c5a726e1592d22f6e9`, the
-extracted binary SHA-256 was
-`54ca21be3de4c7cfa26914aa8b61bd76bf573ef3caac5f80d110558cdf241718`, and the
-syntax result was `PASS`. The temporary tool was removed after validation.
+- archive ordering depended on platform-native `Path` ordering;
+- the history audit treated the expected `origin/main` transport ref as a
+  publishable ref; and
+- the Windows multi-command block did not stop after a failing PowerShell
+  command.
 
-## Phase 2 — Create and stage a private remote
+The corrective commit preserved the archive hash, introduced explicit ref
+semantics, and selected Bash fail-fast on Windows. Its test fixture initially
+contained a complete fictitious authenticated URL in a tracked source file. The
+commit was amended once so that the value is assembled only at runtime in a
+temporary Git repository while still proving `AUTHENTICATED_URL` detection and
+redaction.
 
-Only after separate explicit authorization, create an empty private repository.
-Do not initialize it with a README, license, or `.gitignore`.
+The amended private staging SHA
+`ff2111f6b1f7e6ea0e295b2a997d19b1a1dbdd31` passed:
 
-Planned commands, not executed by this mission:
+- `repository / ubuntu`;
+- `repository / windows`; and
+- `licensing / reuse`.
 
-```console
-gh repo create ElGrandeXu/EGX_Terminal --private --disable-wiki
-git remote add origin https://github.com/ElGrandeXu/EGX_Terminal.git
-git push -u origin main
-```
+The Windows log showed Bash with `-e -o pipefail`; the history audit accepted
+the Actions checkout refs; no complete fixture appeared in the logs. The two
+failed staging runs were deleted only after this green run, which was retained.
 
-Push `main` only. Verify the pushed identity and commit count, wait for all three
-checks (`repository / ubuntu`, `repository / windows`, and `licensing / reuse`),
-then create a clean remote clone without local object sharing and run every local
-check there.
+## Applied repository settings
 
-Apply the planned description, topics, features, merge policy, and read-only
-Actions policy. Enable Private Vulnerability Reporting before public visibility,
-plus secret scanning, push protection, and security alerts where available.
-After the first successful CI run has registered the check names, apply the
-active `main-protection` ruleset exactly as planned.
+The description, ten topics, issues, disabled projects/wiki/discussions/Pages,
+squash-only merge policy, PR-title-and-body squash messages, merged-branch
+cleanup, and disabled auto-merge match the machine-readable record.
 
-## Phase 3 — Public transition
+Actions is enabled for only `actions/checkout` and `actions/setup-python`.
+Repository policy requires full SHA pinning, the default `GITHUB_TOKEN` access
+is read-only, and workflows cannot approve pull requests. The workflow itself
+declares only `contents: read` and persists no checkout credentials.
 
-Review the Community Profile without claiming complete coverage. Change
-visibility only with Maxime's explicit authorization. Then verify the repository,
-files, links, license display, security entrypoint, and anonymous read access in
-an unauthenticated session.
+## Public transition and security
 
-If staging fails before public visibility, keep the repository private, disable
-or remove incorrect settings, remove the local `origin` if the staging attempt
-is abandoned, and delete the private remote only with explicit authorization.
-Do not rewrite or force-push published history. A security-driven exception
-requires a separate documented decision.
+Maxime explicitly authorized the visibility change. The repository is public,
+non-archived, uses `main`, and retained the amended HEAD. Private Vulnerability
+Reporting, secret scanning, push protection, and vulnerability alerts are
+active. [`SECURITY.md`](../../SECURITY.md) is publicly accessible and publishes
+no personal security address.
 
-## Phase 4 — Release
+An HTTPS clone created without Git credentials or local hardlinks passed the
+complete local suite. It contained 33 commits before this documentation commit,
+only the approved public identity, no old amended commit, no authenticated URL
+in reachable blobs, and the locked `kernel-v1` hash. The temporary clone was
+removed.
 
-Public visibility and a release are distinct decisions. Only after public
-validation, prepare the `v1.0.0` tag and release notes, validate the source
-archive and checks again, publish the release, and optionally pin the repository
-on the GitHub profile.
+## Remaining publication gate
 
-Stop at any phase for a failing check, unexpected identity or object count,
-private-data exposure, license or provenance ambiguity, unavailable private
-security reporting, ruleset mismatch, or lack of explicit authorization.
+This documentation commit is the 34th reachable commit. `main-protection` is
+`DEFERRED` until its three public CI jobs pass. It will then be activated with a
+required pull request, zero required approvals, required conversation
+resolution, linear history, deletion and force-push protection, and the three
+named checks. The administrator bypass is reserved for repository recovery.
+
+No release or tag has been created. Release preparation remains deferred until
+separate authorization and must not claim compatibility beyond the preserved
+evidence.

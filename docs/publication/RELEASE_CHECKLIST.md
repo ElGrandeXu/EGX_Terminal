@@ -1,38 +1,37 @@
 # First publication and release checklist
 
-Each item requires the named command, API response, settings export, or captured
-review result as evidence.
+Each checked item is backed by a command result, API response, or remote run.
 
-## Local
+## Local and private staging
 
-- [ ] `git status --short` is empty and `git remote` is empty.
-- [ ] `git log --format='%an <%ae>|%cn <%ce>'` shows only the approved identity.
-- [ ] The canonical checks, full tests, `reuse lint`, and `actionlint` pass.
-- [ ] `git rev-list --count HEAD` reports 32 and history checks pass on all refs.
-- [ ] Archive and Mission 24 hashes match their locked values.
-- [ ] The private recovery bundle exists outside `git rev-parse --show-toplevel`.
-
-## Private remote staging
-
-- [ ] The target is created empty, private, and without generated starter files.
-- [ ] Only `main` is pushed; remote commit count and identity equal the local proof.
-- [ ] All three named CI checks pass on GitHub.
-- [ ] A clean remote clone passes all local checks without source-workspace files.
-- [ ] Description, topics, features, merge settings, and Actions policy match the JSON plan.
-- [ ] Private Vulnerability Reporting and available secret protections are enabled.
-- [ ] `main-protection` is active with the three required checks and documented bypass.
+- [x] The published commits use only the approved public identity.
+- [x] Canonical checks, full tests, `reuse lint`, and `actionlint` pass.
+- [x] Archive and Mission 24 hashes match their locked values.
+- [x] The private recovery bundle is absent from the repository.
+- [x] Only `main` was pushed; no tag was created.
+- [x] The amended private-staging SHA passed all three named CI checks.
+- [x] Failed staging runs were deleted after the green run was retained.
+- [x] Description, topics, features, merge settings, and Actions policy match
+  the machine-readable record.
 
 ## Public transition
 
-- [ ] Maxime has explicitly authorized the visibility change.
-- [ ] Visibility is public and anonymous cloning and browsing work.
-- [ ] README and documentation links resolve from the public repository.
-- [ ] GitHub displays the intended file-scoped license materials and Community Profile files.
-- [ ] A final unauthenticated review finds no personal address, secret, or private artifact.
+- [x] Maxime explicitly authorized the visibility change.
+- [x] Visibility is public and anonymous browsing, `ls-remote`, and cloning work.
+- [x] The anonymous clone passed local checks, tests, REUSE, links, licensing,
+  identity, history, and frozen-integrity validation.
+- [x] Private Vulnerability Reporting is active and discoverable.
+- [x] Secret scanning, push protection, and vulnerability alerts are active.
+- [x] No personal address, secret, authenticated URL blob, or private bundle was
+  found in the published surface.
+- [ ] The 34th documentation commit passes the three public CI checks.
+- [ ] `main-protection` is active and verified after that green CI.
 
 ## Release
 
-- [ ] The `v1.0.0` annotated target and release notes describe the validated commit.
-- [ ] The release source archive reproduces the expected files and passes applicable checks.
-- [ ] Release checks pass before publication; no tag or release is created prematurely.
-- [ ] The repository is pinned on the profile only after successful publication.
+- [ ] A release is separately authorized.
+- [ ] A release commit and notes describe only validated evidence.
+- [ ] A release source archive passes the applicable checks.
+- [ ] An annotated tag and GitHub release are created.
+
+No release or tag exists at repository publication time.

@@ -34,14 +34,14 @@ A clone does not automatically inject project-owned behavioral instructions into
 Codex, Claude Code, OpenCode, or another harness. No kernel, adapter, or behavioral
 payload is active at the root.
 
-The pre-publication Git history has been audited and remediated. Every public
+The published Git history has been audited and remediated. Every public
 commit identity uses the approved GitHub ID-based `noreply` form; see the
 [identity remediation report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
 
 ## Key V1 decision
 
-V1 is prepared for publication with a neutral root. Useful principles remain
+V1 is published with a neutral root. Useful principles remain
 available as documentation, while any future capability or adapter must be
 explicit and opt-in. Hidden instruction injection is outside the V1 boundary.
 
@@ -129,9 +129,9 @@ evidence without relaunching a benchmark.
 
 See [contribution guidelines](CONTRIBUTING.md), [governance](GOVERNANCE.md), and
 the [security policy](SECURITY.md). The SHA-pinned, read-only
-[validation workflow](.github/workflows/validate.yml) defines the future public
-checks. The [GitHub publication plan](docs/publication/GITHUB_PUBLICATION_PLAN.md)
-keeps private staging, public visibility, and the first release separate.
+[validation workflow](.github/workflows/validate.yml) defines the public checks.
+The [GitHub publication record](docs/publication/GITHUB_PUBLICATION_PLAN.md)
+keeps repository publication and any future release separate.
 
 ## What is intentionally deferred
 
@@ -161,11 +161,14 @@ These are documented project principles, not an automatically injected payload.
 
 ## Current status
 
-EGX_Terminal is in V1 pre-publication and is
-**`READY_FOR_PRIVATE_REMOTE_STAGING`**. Local governance, workflow syntax,
-content, licensing, history, identity, and clean-clone gates pass. GitHub CI has
-not run, remote settings remain planned, no remote exists, and no push has
-occurred.
+EGX_Terminal is publicly available at
+[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). Private
+staging passed all three required CI checks before the visibility change; public
+anonymous access, cloning, history, identity, licensing, tests, and frozen
+archives were then verified. Private Vulnerability Reporting, secret scanning,
+push protection, read-only Actions permissions, and the documented merge policy
+are active. No release or tag has been created. The final documentation commit
+must pass the same three public checks before `main-protection` is activated.
 
 ## License
 

@@ -24,6 +24,7 @@ REQUIRED_COMMUNITY = (
 )
 DEFERRED_FILES = ("CODE_OF_CONDUCT.md", "SUPPORT.md", ".github/CODEOWNERS", "CODEOWNERS")
 EXPECTED_CHECKS = ("repository / ubuntu", "repository / windows", "licensing / reuse")
+FINAL_REMOTE_STATUSES = {"APPLIED", "DEFERRED", "UNAVAILABLE_ON_CURRENT_PLAN"}
 EXPECTED_ACTIONS = {
     "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
@@ -268,7 +269,7 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     try:
         valid = (
             plan["schema_version"] == 1
-            and plan["remote_settings_status"] == "PLANNED_NOT_APPLIED"
+            and plan["remote_settings_status"] == "APPLIED"
             and plan["identity"] == {"owner": "ElGrandeXu", "repository": "EGX_Terminal", "default_branch": "main"}
             and plan["visibility_strategy"]["initial_visibility"] == "private"
             and plan["visibility_strategy"]["target_visibility"] == "public"
@@ -283,7 +284,7 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
             and plan["merge_policy"]["rebase_merge"] is False
             and plan["actions_policy"]["github_token_default"] == "read"
             and plan["actions_policy"]["allowed_actions"] == list(EXPECTED_ACTIONS)
-            and plan["security"]["private_vulnerability_reporting"] == "ENABLE_BEFORE_PUBLIC"
+            and plan["security"]["private_vulnerability_reporting"] == "ACTIVE"
             and plan["main_ruleset"]["name"] == "main-protection"
             and plan["main_ruleset"]["target"] == "main"
             and plan["main_ruleset"]["enforcement"] == "active"
@@ -299,8 +300,8 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     if not valid:
         findings.append(_finding(relative, "PUBLICATION_PLAN", "plan is incomplete or inconsistent"))
     for section in ("visibility_strategy", "metadata", "features", "merge_policy", "actions_policy", "security", "main_ruleset", "community_profile", "release"):
-        if not isinstance(plan.get(section), dict) or plan[section].get("status") != "PLANNED_NOT_APPLIED":
-            findings.append(_finding(relative, "REMOTE_STATUS", f"{section} is not PLANNED_NOT_APPLIED"))
+        if not isinstance(plan.get(section), dict) or plan[section].get("status") not in FINAL_REMOTE_STATUSES:
+            findings.append(_finding(relative, "REMOTE_STATUS", f"{section} does not have a final status"))
 
 
 def _matches(pattern: str, path: str) -> bool:
