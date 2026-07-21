@@ -1,6 +1,7 @@
 # Status
 
-- **Phase:** architecture formalized; experimental kernel quarantined and inactive.
+- **Phase:** architecture formalized; balanced kernel rejected and archived;
+  static micro candidate experimental and inactive.
 - **Research corpus:** five independent audits and cross-repository synthesis
   complete.
 - **Synthesis:** `docs/research/synthesis/` contains the decision dossier.
@@ -61,7 +62,11 @@
   [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md),
   the [first pilot](../experiments/kernel-v1/behavioral/pilot-v1/results.md), and
   the [decisive challenge](../experiments/kernel-v1/behavioral/challenge-v1/results.md).
-- **Next step:** close the balanced candidate without another replication. If
-  experimentation continues, make a separate decision and protocol for a
-  substantively distinct micro candidate; do not rerun the balanced kernel or
-  promote it at the root.
+  [Decision 0003](decisions/0003-balanced-kernel-rejection.md) now closes that
+  exact balanced payload as rejected and preserves `experiments/kernel-v1/` as
+  an immutable historical archive. `experiments/kernel-micro-v1/` defines a
+  substantively distinct static candidate only: it is inactive, unpromoted and
+  behaviorally unvalidated. No doctrine is promoted and the active root remains
+  unchanged.
+- **Next step:** pre-register a distinct evaluation for the micro candidate in a
+  separate mission; do not rerun, repair or promote the balanced payload.

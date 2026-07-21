@@ -20,3 +20,5 @@ directly and record observed versions or commits when relevant.
 - [0001 — Bootstrap entrypoints](0001-bootstrap-entrypoints.md) — provisional
 - [0002 — Architecture du kernel LLM-agnostique](0002-llm-agnostic-kernel-architecture.md)
   — accepted architecture, no behavioral activation
+- [0003 — Rejet du kernel équilibré](0003-balanced-kernel-rejection.md) — rejected
+  balanced payload; archived evidence; inactive static micro candidate

@@ -1,0 +1,21 @@
+{
+  "id": "egx-kernel-micro-v1",
+  "version": "1.0.0-experimental",
+  "status": "experimental",
+  "payload_path": "experiments/kernel-micro-v1/KERNEL.md",
+  "encoding": "UTF-8",
+  "line_endings": "LF",
+  "final_line_ending": false,
+  "bytes": 474,
+  "characters": 474,
+  "words": 66,
+  "word_count_method": "non-empty segments split on one or more whitespace characters (\\s+)",
+  "token_estimation_method": "ceil(characters / 4)",
+  "estimated_tokens": 119,
+  "sha256": "e4e23477afceaa290bdfa040a9087ca53fde9a3bd390499671fd46032b56d6b5",
+  "created": "2026-07-21",
+  "source_evidence_head": "6c69faa6031ea4993047cbea0fa4a566b287ebbc",
+  "source_decision": "docs/decisions/0003-balanced-kernel-rejection.md",
+  "activation": false,
+  "behavioral_validation": "not_run"
+}
