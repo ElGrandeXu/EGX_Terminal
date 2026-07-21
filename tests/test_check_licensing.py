@@ -39,7 +39,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 SPDX-FileComment = "Original documentation."
 '''
         functional = '''[[annotations]]
-path = [".gitattributes", ".gitignore", "scripts/**", "tests/**", "experiments/**", "licensing/**"]
+path = [".gitattributes", ".gitignore", "scripts/**", "tests/**", "experiments/**", "governance/**", "licensing/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Maxime Erard"
 SPDX-License-Identifier = "Apache-2.0"
@@ -58,6 +58,7 @@ SPDX-FileComment = "Original functional artifacts and experiment bundles."
         self.write(root, "scripts/tool.py", "print('ok')\n")
         self.write(root, "tests/test_tool.py", "value = True\n")
         self.write(root, "experiments/demo/README.md", "experiment bundle\n")
+        self.write(root, "governance/public-commit-identity.json", "{}\n")
         self.write(root, "REUSE.toml", self.metadata())
         shutil.copyfile(REPOSITORY_ROOT / "LICENSE", root / "LICENSE")
         for name in ("Apache-2.0.txt", "CC-BY-4.0.txt"):
@@ -104,6 +105,12 @@ SPDX-FileComment = "Original functional artifacts and experiment bundles."
             root = Path(temporary)
             self.assertNotIn("BOUNDARY", self.codes(self.report(root)))
             self.assertEqual("Apache-2.0", CHECK.expected_license("experiments/demo/README.md"))
+
+    def test_governance_metadata_is_apache(self) -> None:
+        self.assertEqual(
+            "Apache-2.0",
+            CHECK.expected_license("governance/public-commit-identity.json"),
+        )
 
     def test_unclassified_file(self) -> None:
         with self.fixture() as temporary:

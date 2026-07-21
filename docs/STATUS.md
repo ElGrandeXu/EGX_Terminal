@@ -25,22 +25,22 @@
   non-exempt file with exactly one effective license and no third-party exception.
 - **License validation:** the dependency-free local control and the official
   `reuse 6.2.0` linter pass on 2026-07-21 against REUSE Specification 3.3.
-- **Git history:** all commits, trees, blobs, refs, messages, and identities
-  reachable from `main` have been inspected. No content blocker was observed,
-  but the [history audit](publication/HISTORY_AUDIT.md) classifies the sole
-  non-`noreply` author/committer address as **`REVIEW_REQUIRED`**.
-- **Publication status:** **`HISTORY_REVIEW_REQUIRED_BEFORE_PUBLICATION`**. The
-  content, licensing, and provenance gates are clear; Maxime must explicitly
-  accept the masked historical email exposure before final governance review.
-  The security result remains a bounded heuristic, not an absolute guarantee.
+- **Git history:** 30 historical commits were rewritten once before publication
+  to use the approved public GitHub ID-based `noreply` identity. The single
+  remediation commit brings `main` to 31 commits, one identity, zero merge, and
+  zero private commit identity. The [history audit](publication/HISTORY_AUDIT.md)
+  and [remediation report](publication/IDENTITY_REMEDIATION.md) record the checks.
+- **Publication status:** **`READY_FOR_FINAL_GOVERNANCE_REVIEW`**. Content,
+  licensing, provenance, identity, history, and clean-clone gates pass. The
+  security result remains a bounded heuristic, not an absolute guarantee.
 - **Public entrypoint:** the root README is finalized and the local, deterministic
   [quickstart](QUICKSTART.md) has been created and validated.
 - **Public preparation:** there is still no Git remote and no push has occurred.
-  The next gate is the explicit history-identity decision. Final governance
-  review and GitHub publication preparation remain separate later work.
+  Final governance review is the remaining gate; GitHub publication remains a
+  separate, explicitly authorized later action.
 - **Deferred capabilities:** memory, hooks, skills, routing, compression, and
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The next phase records Maxime's decision on the historical and future commit
-identity, without rewriting history or beginning publication in this phase.
+The next phase is final governance review. No publication action is authorized
+by this status.

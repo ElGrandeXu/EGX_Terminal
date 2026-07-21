@@ -8,7 +8,7 @@ SPDX-License-Identifier = "CC-BY-4.0"
 SPDX-FileComment = "Original documentation, research, audits, decisions, and explanatory text. Facts, names, URLs, hashes, versions, and attributed short quotations are not relicensed third-party works."
 
 [[annotations]]
-path = [".gitattributes", ".gitignore", "scripts/**", "tests/**", "experiments/**", "licensing/**"]
+path = [".gitattributes", ".gitignore", "scripts/**", "tests/**", "experiments/**", "governance/**", "licensing/**"]
 precedence = "override"
 SPDX-FileCopyrightText = "2026 Maxime Erard"
 SPDX-License-Identifier = "Apache-2.0"

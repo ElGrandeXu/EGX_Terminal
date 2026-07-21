@@ -35,12 +35,20 @@ from check_public_surface import (
 DEFAULT_MAX_BLOB_BYTES = 512 * 1024
 SEVERITIES = ("INFO", "REVIEW", "BLOCKER")
 EXPECTED_PUBLIC_REF = "refs/heads/main"
+PUBLIC_IDENTITY_POLICY = Path("governance/public-commit-identity.json")
 EMAIL_PATTERN = re.compile(
     r"(?i)(?<![A-Z0-9._%+-])([A-Z0-9._%+-]+)@([A-Z0-9.-]+\.[A-Z]{2,})"
     r"(?![A-Z0-9._%+-])"
 )
 VALID_EMAIL_PATTERN = re.compile(
     r"(?i)^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9.-]*[A-Z0-9])?$"
+)
+ID_BASED_NOREPLY_PATTERN = re.compile(
+    r"^(?P<user_id>[1-9][0-9]*)\+(?P<login>[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)"
+    r"@users\.noreply\.github\.com$"
+)
+USERNAME_ONLY_NOREPLY_PATTERN = re.compile(
+    r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?@users\.noreply\.github\.com$"
 )
 IDENTITY_PATTERN = re.compile(r"^(.*?)\s*<([^<>]*)>\s*(.*)$")
 TRAILER_PATTERN = re.compile(
@@ -83,6 +91,14 @@ class Identity:
     name: str
     email: str
     classification: str
+
+
+@dataclasses.dataclass(frozen=True)
+class PublicIdentityPolicy:
+    name: str
+    email: str
+    github_login: str
+    github_user_id: int
 
 
 @dataclasses.dataclass(frozen=True)
@@ -181,13 +197,67 @@ def redact_text(value: str) -> str:
     return value
 
 
-def classify_identity(name: str, email: str) -> str:
+def _load_identity_policy(root: Path) -> PublicIdentityPolicy:
+    path = root / PUBLIC_IDENTITY_POLICY
+    if not path.is_file():
+        raise HistoryAuditError(f"required identity policy {PUBLIC_IDENTITY_POLICY} is absent")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as error:
+        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid") from error
+    required = {
+        "schema_version": 1,
+        "scope": "all public repository commits",
+        "privacy_mode": "github-id-based-noreply",
+    }
+    if not isinstance(payload, dict) or any(payload.get(key) != value for key, value in required.items()):
+        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
+    name = payload.get("name")
+    email = payload.get("email")
+    login = payload.get("github_login")
+    user_id = payload.get("github_user_id")
+    if (
+        not isinstance(name, str)
+        or not name.strip()
+        or not isinstance(email, str)
+        or not isinstance(login, str)
+        or not login
+        or not isinstance(user_id, int)
+        or isinstance(user_id, bool)
+    ):
+        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
+    match = ID_BASED_NOREPLY_PATTERN.fullmatch(email)
+    if not match or int(match.group("user_id")) != user_id or match.group("login") != login:
+        raise HistoryAuditError(
+            f"identity policy {PUBLIC_IDENTITY_POLICY} has inconsistent GitHub ID-based noreply fields"
+        )
+    return PublicIdentityPolicy(name, email, login, user_id)
+
+
+def classify_identity(
+    name: str,
+    email: str,
+    policy: PublicIdentityPolicy | None = None,
+) -> str:
     if not name.strip() or not VALID_EMAIL_PATTERN.fullmatch(email.strip()):
         return "INVALID_IDENTITY"
     lowered_name = name.lower()
     lowered_email = email.lower()
+    if policy is not None and name == policy.name and email == policy.email:
+        return "EXPECTED_PUBLIC_IDENTITY"
+    id_based = ID_BASED_NOREPLY_PATTERN.fullmatch(email)
+    if id_based:
+        if policy is None:
+            return "PUBLIC_ID_BASED_NOREPLY"
+        if int(id_based.group("user_id")) != policy.github_user_id:
+            return "NOREPLY_USER_ID_MISMATCH"
+        if id_based.group("login") != policy.github_login:
+            return "NOREPLY_LOGIN_MISMATCH"
+        return "PUBLIC_NAME_MISMATCH"
+    if USERNAME_ONLY_NOREPLY_PATTERN.fullmatch(email):
+        return "USERNAME_ONLY_NOREPLY"
     if lowered_email.endswith("@users.noreply.github.com"):
-        return "PUBLIC_NOREPLY"
+        return "OTHER_GITHUB_NOREPLY"
     if any(token in lowered_name or token in lowered_email for token in ("[bot]", "github-actions", "dependabot")):
         return "AUTOMATION_IDENTITY"
     if lowered_name in {"unknown", "n/a", "none"}:
@@ -196,16 +266,23 @@ def classify_identity(name: str, email: str) -> str:
     return "PRIVATE_EMAIL_REVIEW_REQUIRED"
 
 
-def _identity(raw: str) -> tuple[Identity, str]:
+def _identity(
+    raw: str,
+    policy: PublicIdentityPolicy | None = None,
+) -> tuple[Identity, str]:
     match = IDENTITY_PATTERN.match(raw)
     if not match:
         identity = Identity(redact_text(raw.strip()) or "<missing>", "<invalid>", "INVALID_IDENTITY")
         return identity, ""
     name, email, date = (part.strip() for part in match.groups())
-    return Identity(name, mask_email(email), classify_identity(name, email)), date
+    return Identity(name, mask_email(email), classify_identity(name, email, policy)), date
 
 
-def _parse_commit(oid: str, raw: bytes) -> tuple[CommitRecord, str]:
+def _parse_commit(
+    oid: str,
+    raw: bytes,
+    policy: PublicIdentityPolicy,
+) -> tuple[CommitRecord, str]:
     text = raw.decode("utf-8", errors="replace")
     header_text, separator, message = text.partition("\n\n")
     if not separator:
@@ -222,8 +299,8 @@ def _parse_commit(oid: str, raw: bytes) -> tuple[CommitRecord, str]:
         headers[key].append(value)
         current = key
     try:
-        author, author_date = _identity(headers["author"][0])
-        committer, committer_date = _identity(headers["committer"][0])
+        author, author_date = _identity(headers["author"][0], policy)
+        committer, committer_date = _identity(headers["committer"][0], policy)
     except (KeyError, IndexError) as error:
         raise HistoryAuditError(f"commit {oid} lacks author or committer metadata") from error
     trailers: list[dict[str, str]] = []
@@ -408,6 +485,7 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
     if max_blob_bytes < 1:
         raise HistoryAuditError("--max-blob-bytes must be a positive integer")
     root = repository_root(root)
+    policy = _load_identity_policy(root)
     refs = _all_refs(root)
     selected = _selected_refs(refs, all_refs)
     objects = _reachable_objects(root, selected)
@@ -435,11 +513,11 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
     reviewed_roles: set[tuple[str, str, str, str]] = set()
     for oid in commits:
         raw = _git(("cat-file", "commit", oid), cwd=root)
-        record, message = _parse_commit(oid, raw)
+        record, message = _parse_commit(oid, raw, policy)
         commit_records.append(record)
         for role, identity in (("author", record.author), ("committer", record.committer)):
             identities.add((identity.name, identity.email, identity.classification))
-            if identity.classification in {"PRIVATE_EMAIL_REVIEW_REQUIRED", "UNKNOWN_IDENTITY", "INVALID_IDENTITY"}:
+            if identity.classification != "EXPECTED_PUBLIC_IDENTITY":
                 review_key = (role, identity.name, identity.email, identity.classification)
                 if review_key not in reviewed_roles:
                     reviewed_roles.add(review_key)
@@ -453,7 +531,9 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
                     )
         for trailer in record.trailers:
             classification = trailer["classification"]
-            severity = "INFO" if classification in {"PUBLIC_NOREPLY", "AUTOMATION_IDENTITY"} else "REVIEW"
+            severity = "INFO" if classification in {
+                "PUBLIC_ID_BASED_NOREPLY", "AUTOMATION_IDENTITY"
+            } else "REVIEW"
             findings.append(
                 Finding(
                     severity,
@@ -463,6 +543,27 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
                 )
             )
         findings.extend(_content_findings(f"commit:{oid}", message, commit_message=True))
+
+    author_identities = {(record.author.name, record.author.email) for record in commit_records}
+    committer_identities = {(record.committer.name, record.committer.email) for record in commit_records}
+    if len(author_identities) > 1:
+        findings.append(
+            Finding(
+                "REVIEW",
+                "MULTIPLE_AUTHOR_IDENTITIES",
+                "history:author",
+                f"history contains {len(author_identities)} author identities",
+            )
+        )
+    if len(committer_identities) > 1:
+        findings.append(
+            Finding(
+                "REVIEW",
+                "MULTIPLE_COMMITTER_IDENTITIES",
+                "history:committer",
+                f"history contains {len(committer_identities)} committer identities",
+            )
+        )
 
     blob_records: list[BlobRecord] = []
     binary_count = 0

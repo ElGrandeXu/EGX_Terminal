@@ -34,6 +34,11 @@ A clone does not automatically inject project-owned behavioral instructions into
 Codex, Claude Code, OpenCode, or another harness. No kernel, adapter, or behavioral
 payload is active at the root.
 
+The pre-publication Git history has been audited and remediated. Every public
+commit identity uses the approved GitHub ID-based `noreply` form; see the
+[identity remediation report](docs/publication/IDENTITY_REMEDIATION.md) and run
+`python scripts/check_git_history.py --fail-on-review` to verify the gate.
+
 ## Key V1 decision
 
 V1 is prepared for publication with a neutral root. Useful principles remain
@@ -108,6 +113,7 @@ python scripts/check_neutral_root.py
 python scripts/check_public_surface.py
 python scripts/check_licensing.py
 python scripts/check_git_history.py
+python scripts/check_git_history.py --fail-on-review
 python -m unittest discover -s tests -v
 ```
 
@@ -145,14 +151,11 @@ These are documented project principles, not an automatically injected payload.
 
 ## Current status
 
-EGX_Terminal is in V1 pre-publication. The root is neutral, and no content,
-licensing, or provenance blocker was observed in the tracked surface or reachable
-history. The [history audit](docs/publication/HISTORY_AUDIT.md) nevertheless
-classifies the sole non-`noreply` commit identity as `REVIEW_REQUIRED`; the
-[publication boundary](docs/publication/PUBLICATION_BOUNDARY.md) therefore remains
-blocked pending Maxime's explicit privacy decision. Historical runtime facts in
-the immutable archives remain documented evidence, not licensing exceptions. No
-public remote exists and no push has occurred.
+EGX_Terminal is in V1 pre-publication and is
+**`READY_FOR_FINAL_GOVERNANCE_REVIEW`**. The neutral root, content, licensing,
+history, identity, and clean-clone gates pass. Historical runtime facts in the
+immutable archives remain documented evidence, not licensing exceptions. No
+remote exists and no push has occurred.
 
 ## License
 

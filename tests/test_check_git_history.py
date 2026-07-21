@@ -14,6 +14,10 @@ from pathlib import Path
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPOSITORY_ROOT / "scripts" / "check_git_history.py"
+POLICY_NAME = "Fixture Author"
+POLICY_EMAIL = "123456+fixture-user@users.noreply.github.com"
+POLICY_LOGIN = "fixture-user"
+POLICY_USER_ID = 123456
 sys.path.insert(0, str(SCRIPT_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("check_git_history", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
@@ -27,8 +31,25 @@ class HistoryRepository:
     def __init__(self, root: Path) -> None:
         self.root = root
         self.git("init", "--quiet", "--initial-branch=main")
-        self.git("config", "user.name", "Fixture Author")
-        self.git("config", "user.email", "fixture@users.noreply.github.com")
+        self.git("config", "user.name", POLICY_NAME)
+        self.git("config", "user.email", POLICY_EMAIL)
+        self.write_policy()
+
+    def write_policy(self, **overrides: object) -> None:
+        payload: dict[str, object] = {
+            "schema_version": 1,
+            "name": POLICY_NAME,
+            "email": POLICY_EMAIL,
+            "github_login": POLICY_LOGIN,
+            "github_user_id": POLICY_USER_ID,
+            "scope": "all public repository commits",
+            "privacy_mode": "github-id-based-noreply",
+        }
+        payload.update(overrides)
+        self.write(
+            "governance/public-commit-identity.json",
+            json.dumps(payload, indent=2) + "\n",
+        )
 
     def git(
         self,
@@ -186,13 +207,16 @@ class GitHistoryTests(unittest.TestCase):
             report = CHECK.audit(repo.root, max_blob_bytes=32)
         self.assertIn("LARGE_BLOB", self.categories(report))
 
-    def test_11_github_noreply_identity_is_accepted(self) -> None:
+    def test_11_id_based_noreply_identity_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.write("safe.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertEqual({"PUBLIC_NOREPLY"}, {item["classification"] for item in report.identities})
+        self.assertEqual(
+            {"EXPECTED_PUBLIC_IDENTITY"},
+            {item["classification"] for item in report.identities},
+        )
 
     def test_12_non_noreply_email_is_review(self) -> None:
         temporary, repo = self.repository()
@@ -405,6 +429,114 @@ class GitHistoryTests(unittest.TestCase):
             repo.commit()
             report = CHECK.audit(repo.root)
         self.assertNotIn("BLOCKER", self.severities(report))
+
+    def test_31_username_only_noreply_is_distinct_and_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.git("config", "user.email", "fixture-user@users.noreply.github.com")
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("USERNAME_ONLY_NOREPLY", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_32_incorrect_public_name_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.git("config", "user.name", "Different Name")
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("PUBLIC_NAME_MISMATCH", self.categories(report))
+
+    def test_33_incorrect_noreply_user_id_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.git("config", "user.email", "654321+fixture-user@users.noreply.github.com")
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("NOREPLY_USER_ID_MISMATCH", self.categories(report))
+
+    def test_34_incorrect_noreply_login_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.git("config", "user.email", "123456+different-user@users.noreply.github.com")
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("NOREPLY_LOGIN_MISMATCH", self.categories(report))
+
+    def test_35_correct_author_incorrect_committer_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GIT_COMMITTER_NAME": "Different Committer",
+                    "GIT_COMMITTER_EMAIL": "committer@personal.test",
+                }
+            )
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("EXPECTED_PUBLIC_IDENTITY", report.commits[0].author.classification)
+        self.assertEqual("PRIVATE_EMAIL_REVIEW_REQUIRED", report.commits[0].committer.classification)
+        self.assertIn("PRIVATE_EMAIL_REVIEW_REQUIRED", self.categories(report))
+
+    def test_36_multiple_identities_are_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("one.txt")
+            repo.commit()
+            repo.git("config", "user.name", "Different Author")
+            repo.git("config", "user.email", "different@personal.test")
+            repo.write("two.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("MULTIPLE_AUTHOR_IDENTITIES", self.categories(report))
+        self.assertIn("MULTIPLE_COMMITTER_IDENTITIES", self.categories(report))
+
+    def test_37_missing_policy_is_an_error(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            (repo.root / "governance/public-commit-identity.json").unlink()
+            repo.write("safe.txt")
+            repo.commit()
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_38_invalid_policy_json_is_an_error(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("governance/public-commit-identity.json", "{invalid\n")
+            repo.write("safe.txt")
+            repo.commit()
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_39_inconsistent_policy_identity_is_an_error(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write_policy(github_user_id=999999)
+            repo.write("safe.txt")
+            repo.commit()
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_40_identity_diagnostic_masks_personal_email(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            email = "sensitive-person@personal.test"
+            repo.git("config", "user.email", email)
+            repo.write("safe.txt")
+            repo.commit()
+            code, output = self.capture_main(
+                "--root", str(repo.root), "--fail-on-review"
+            )
+        self.assertEqual(1, code)
+        self.assertNotIn(email, output)
+        self.assertIn("s***@personal.test", output)
 
 
 if __name__ == "__main__":

@@ -35,10 +35,12 @@ python scripts/check_licensing.py
 ```
 
 Audit commits, metadata, refs, and blobs reachable from the planned public
-branch. Review findings are reported without exposing a full private address:
+branch, then require the identity review gate to be empty. Diagnostics never
+expose a full private address:
 
 ```console
 python scripts/check_git_history.py
+python scripts/check_git_history.py --fail-on-review
 ```
 
 Run the tests applicable to the neutral-root V1 distribution:
@@ -86,11 +88,11 @@ parsing them is evidence inspection; it does not reproduce a runtime observation
 **Inspect existing evidence.** Read the tracked reports, protocols, manifests,
 and metrics. This is the default path and has no runtime or network cost.
 
-**Reproduce local V1 validation.** Run the five local commands above. They verify
+**Reproduce local V1 validation.** Run the six local commands above. They verify
 the current neutral root, tracked public surface, file-scoped licensing,
-reachable Git history, and active distribution checks on your machine. They do
-not re-evaluate a kernel. The history check returns zero for review-only identity
-findings; use `--fail-on-review` when that decision must block automation.
+reachable Git history, the strict public identity policy, and active distribution
+checks on your machine. They do not re-evaluate a kernel. The
+`--fail-on-review` invocation is required before publication.
 
 **Rerun a benchmark or runtime-dependent validation.** Historical commands under
 `experiments/` can require exact software versions, local models, substantial

@@ -29,3 +29,6 @@ directly and record observed versions or commits when relevant.
   — accepted; no automatically discovered root instructions in V1
 - [0006 — Adopter des licences Apache et CC par fichier](0006-adopt-file-scoped-apache-and-cc-licensing.md)
   — accepted; exhaustive file-scoped Apache-2.0 and CC-BY-4.0 governance
+- [0007 — Remédier l'identité publique des commits](0007-remediate-public-commit-identity.md)
+  — accepted; one controlled pre-publication rewrite to the approved ID-based
+  GitHub `noreply` identity

@@ -1,0 +1,165 @@
+{
+  "schema_version": 1,
+  "reason": "pre-publication commit identity remediation",
+  "rewritten_at": "2026-07-21",
+  "source_head": "aededda268c6fa5f1d2269985c874085966a9ba4",
+  "rewritten_head": "6b0bf5fc4f1a4fc208ce59220ca4f4774cd88f84",
+  "target_identity": {
+    "name": "Maxime Erard",
+    "email": "177521250+ElGrandeXu@users.noreply.github.com",
+    "github_login": "ElGrandeXu",
+    "github_user_id": 177521250
+  },
+  "commits": [
+    {
+      "ordinal": 1,
+      "old": "edcc3a629e8b20f9478d5c2384d0446367d21b5a",
+      "new": "962ae72ef3bbff4e94530222b093ae4de6ccbdd5"
+    },
+    {
+      "ordinal": 2,
+      "old": "f0bb308d51c8c40849cb5666edba4a2ae3183a40",
+      "new": "bc52eb96b883107257baa6e50b42b272e943e2cb"
+    },
+    {
+      "ordinal": 3,
+      "old": "bcf9f8920e5dd918b624f1afe99ba6afdee16741",
+      "new": "ead7929476b8b82050efff8f4f1d61de5730d793"
+    },
+    {
+      "ordinal": 4,
+      "old": "16b38adbe0b5c2febb935a6ed4cff2491ea6e4cb",
+      "new": "8f62191da34ab5dcecbe42a0dfafcb92c28294d1"
+    },
+    {
+      "ordinal": 5,
+      "old": "baf96e9636dd6207d6ae1ec72ecfeea07625e104",
+      "new": "9dc74f5c80b33df08c76b440849efcb8ec1af662"
+    },
+    {
+      "ordinal": 6,
+      "old": "0c5dc51e21d74a0f6527e6855c7369261fe57951",
+      "new": "962bb7944a0f29201bf082611dd63a47b170ad15"
+    },
+    {
+      "ordinal": 7,
+      "old": "f3b955c22cc0cff46315ae3851709a308a6e31b1",
+      "new": "3d3efcf9b8fd6e89b387f57c5dae9b530101d26e"
+    },
+    {
+      "ordinal": 8,
+      "old": "e20ced6a11c97018cca1006236032f463a626a56",
+      "new": "a9354cf6f9ed7efa7ddbebc4c558d9f6aeb5bf82"
+    },
+    {
+      "ordinal": 9,
+      "old": "0b29504b1116435ecbd5a447fe40d93c1234e45d",
+      "new": "463ff878ff15a6d9b35b1ad8ccede0d72b35fb73"
+    },
+    {
+      "ordinal": 10,
+      "old": "217e7441933b06644a4bd72c356a77bcc79f04bc",
+      "new": "1e1e5905f96ff455bf0e82fcf645d497d25cd13b"
+    },
+    {
+      "ordinal": 11,
+      "old": "3222253516d5bcbd80ad64403c4f8d902f5e5541",
+      "new": "9cb184101f6bc366861c20fbb121bdd2133b136c"
+    },
+    {
+      "ordinal": 12,
+      "old": "28ba0c86502a080805d2adf5b3ed9e7e4ca090a2",
+      "new": "20507bbc13bf511e700cf11d454d50f24a80a427"
+    },
+    {
+      "ordinal": 13,
+      "old": "ddc455b4094b05bb4dedd4381e2608616aeb74ad",
+      "new": "666b393874c39b439cddf384560f64f5a3bae4a5"
+    },
+    {
+      "ordinal": 14,
+      "old": "332b5b6c2aa3b1e2afc025ae341a0d0ef9fc4fa1",
+      "new": "e3896a62c78e1294b079ab2861286224b066e6ca"
+    },
+    {
+      "ordinal": 15,
+      "old": "94815799fc491d6c37ba824a69134811f59ff6b2",
+      "new": "b4512cb9e3785f122b3256aad90a5cf745dffd25"
+    },
+    {
+      "ordinal": 16,
+      "old": "232992f355e2143427b2521e1ce0cc65f0c16a3f",
+      "new": "ac5f64d42083d1d7ed35385d11aad19400a324b9"
+    },
+    {
+      "ordinal": 17,
+      "old": "63693b6128182233d1fffb8608655bb804909ab3",
+      "new": "2e72a8b6b0f6612b66abdcdf2b47a7e5367cf846"
+    },
+    {
+      "ordinal": 18,
+      "old": "8460701e1e51bc4967d033835e353e1c0a229834",
+      "new": "3ccee169792fc1c98fbf008df0a45cc31bf959ac"
+    },
+    {
+      "ordinal": 19,
+      "old": "def5c43e7222834cb6e81fb93dea39a9e0827d52",
+      "new": "cf53e288bda020c4503484fd786678335d909d50"
+    },
+    {
+      "ordinal": 20,
+      "old": "345951aeebfeb00607f2f21e65c6051cc3155198",
+      "new": "f5a3ed7ae1d8481c7acd7e814ec4c30c13a20507"
+    },
+    {
+      "ordinal": 21,
+      "old": "303c354f2c21fee9783d055b3567f9c54e7b2e91",
+      "new": "bc348eca1560131fc61ca637f0a662819f519449"
+    },
+    {
+      "ordinal": 22,
+      "old": "6c69faa6031ea4993047cbea0fa4a566b287ebbc",
+      "new": "c2cfa52ceb28a945f777bd9e5f3658344e9a9d70"
+    },
+    {
+      "ordinal": 23,
+      "old": "5a8953157268aad03da4eeaae6502d35073de4dc",
+      "new": "8c81ad41545d4d472d7dd62cafc33689a13ce057"
+    },
+    {
+      "ordinal": 24,
+      "old": "57caa316466d1bf48cb8e126bfb731e887876468",
+      "new": "167f3dbd342e87ac66c62d0aa5fe03eb23339638"
+    },
+    {
+      "ordinal": 25,
+      "old": "5735abbf94a134836bbf85e3360ff851ea52e284",
+      "new": "2ab865268891e2c6a450299d4c82217a95ad78ec"
+    },
+    {
+      "ordinal": 26,
+      "old": "c86771c24fe4a638f6cc51dfea3d8da883bbed51",
+      "new": "c5b2ee0682369abf6e743f240b96edfed25c8f50"
+    },
+    {
+      "ordinal": 27,
+      "old": "60347e75ae13491a3cbadbf428528253e657d89e",
+      "new": "d5a291294da6277b6408e6c075b34c49ec05379d"
+    },
+    {
+      "ordinal": 28,
+      "old": "43901975d4f9384d6276d03edb3ffdd791f26a9f",
+      "new": "e570699c193cb5f58daed8335480def87e61c3b5"
+    },
+    {
+      "ordinal": 29,
+      "old": "e88ab8f985b577da3550cfd0c1e5280cc90eb560",
+      "new": "c8214717fd42ed97745c02f0ee3fde08078bec96"
+    },
+    {
+      "ordinal": 30,
+      "old": "aededda268c6fa5f1d2269985c874085966a9ba4",
+      "new": "6b0bf5fc4f1a4fc208ce59220ca4f4774cd88f84"
+    }
+  ]
+}
