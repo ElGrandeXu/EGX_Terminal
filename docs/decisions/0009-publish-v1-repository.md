@@ -6,7 +6,8 @@
 ## Context
 
 V1 had a neutral root, frozen experimental evidence, file-scoped licensing, one
-approved public commit identity, local governance controls, and a private
+canonical maintainer identity across its prepublication history, local
+governance controls, and a private
 staging repository. Publication required proof that the remote workflow behaved
 consistently across Ubuntu and Windows without weakening the history scanner.
 
@@ -31,15 +32,25 @@ and `licensing / reuse`. Failed staging runs were then removed. Remote metadata,
 features, merge policy, and read-only Actions policy were applied. After the
 authorized visibility change, Private Vulnerability Reporting, secret scanning,
 push protection, and vulnerability alerts were verified active. An anonymous
-clone passed the local controls, 133 tests, REUSE, actionlint, identity and
+clone passed the local controls, 134 tests, REUSE, actionlint, identity and
 history checks, and frozen-integrity checks.
+
+The 34th commit then passed the same three checks publicly. The
+`main-protection` ruleset was activated with the required pull-request path,
+conversation resolution, linear history, deletion and force-push protection,
+and the three named checks. The identity and ref-policy correction is delivered
+through the first protected pull request without administrative bypass; it
+preserves the 34 existing commits while supporting GitHub `noreply`
+contributors and the exact GitHub web committer used by squash merges.
 
 ## Consequences
 
 The repository is public and inspectable. The private recovery bundle remains
 outside the repository. No release exists, and no compatibility is promised
-beyond the measured combinations and preserved evidence. The 34th documentation
-commit and subsequent ruleset activation are the remaining publication gates.
+beyond the measured combinations and preserved evidence. The second public CI
+and ruleset activation are complete. The repository status is
+`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`; the remaining gate is a separate explicit
+decision on `v1.0.0`, not an automatic tag or release.
 
 ## Revision triggers
 

@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Audit reachable Git history for publication risks without network access.
 
-By default, objects reachable from ``refs/heads/main`` are inspected. In a
-detached pull-request checkout, HEAD and the available local or ``origin/main``
-base are inspected instead. Use ``--all-refs`` to include every local ref.
+By default, objects reachable from ``refs/heads/main`` are inspected, together
+with the current bounded contribution branch when HEAD is attached elsewhere.
+In a detached pull-request checkout, HEAD and the available local or
+``origin/main`` base are inspected instead. Use ``--all-refs`` to inspect every
+ref while retaining the same ref-policy findings.
 Reflogs and unreachable objects are never scanned. The default blocking blob
 limit is 524288 bytes (512 KiB).
 
@@ -22,7 +24,7 @@ import subprocess
 import sys
 from collections import defaultdict
 from pathlib import Path, PurePosixPath
-from typing import Iterable, Sequence
+from typing import Iterable, Mapping, Sequence
 
 from check_public_surface import (
     LOCAL_ACCOUNT_PATTERN,
@@ -40,6 +42,8 @@ EXPECTED_PUBLIC_REF = "refs/heads/main"
 EXPECTED_REMOTE_MAIN = "refs/remotes/origin/main"
 EXPECTED_REMOTE_HEAD = "refs/remotes/origin/HEAD"
 PUBLIC_IDENTITY_POLICY = Path("governance/public-commit-identity.json")
+GITHUB_WEB_COMMITTER_NAME = "GitHub"
+GITHUB_WEB_COMMITTER_EMAIL = "noreply@github.com"
 EMAIL_PATTERN = re.compile(
     r"(?i)(?<![A-Z0-9._%+-])([A-Z0-9._%+-]+)@([A-Z0-9.-]+\.[A-Z]{2,})"
     r"(?![A-Z0-9._%+-])"
@@ -52,7 +56,11 @@ ID_BASED_NOREPLY_PATTERN = re.compile(
     r"@users\.noreply\.github\.com$"
 )
 USERNAME_ONLY_NOREPLY_PATTERN = re.compile(
-    r"^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?@users\.noreply\.github\.com$"
+    r"^(?P<login>[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)"
+    r"@users\.noreply\.github\.com$"
+)
+AUTOMATION_MARKER_PATTERN = re.compile(
+    r"(?i)(?:\[bot\]|(?:^|[-_\s])bot(?:$|[-_\s])|github-actions|dependabot)"
 )
 IDENTITY_PATTERN = re.compile(r"^(.*?)\s*<([^<>]*)>\s*(.*)$")
 TRAILER_PATTERN = re.compile(
@@ -76,6 +84,26 @@ KNOWN_BINARY_SUFFIXES = frozenset(
 )
 THIRD_PARTY_MARKER = "THIRD_PARTY_MATERIAL_WITH_PROVEN_LICENSE:"
 UNCLEAR_PROVENANCE_MARKER = "PROVENANCE_UNCLEAR"
+GITHUB_PR_REF_PATTERN = re.compile(r"^refs/pull/(?P<number>[1-9][0-9]*)/merge$")
+GITHUB_REPOSITORY_PATTERN = re.compile(
+    r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+)
+GITHUB_PR_REQUIRED_EVIDENCE = (
+    "github-actions-true",
+    "pull-request-event",
+    "canonical-merge-ref",
+    "head-sha-match",
+    "readable-event-payload",
+    "pull-request-number-match",
+    "repository-match",
+    "base-and-head-shas-present",
+    "two-parent-head",
+    "base-parent-match",
+    "head-parent-match",
+    "synthetic-remote-ref-match",
+)
+PERSISTENT_HISTORY = "PERSISTENT_HISTORY"
+EPHEMERAL_GITHUB_PR_MERGE = "EPHEMERAL_GITHUB_PR_MERGE"
 
 
 class HistoryAuditError(RuntimeError):
@@ -103,6 +131,10 @@ class PublicIdentityPolicy:
     email: str
     github_login: str
     github_user_id: int
+    accepted_author_classes: frozenset[str]
+    accepted_committer_classes: frozenset[str]
+    accepted_trailer_classes: frozenset[str]
+    github_pr_required_evidence: tuple[str, ...]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -115,6 +147,21 @@ class CommitRecord:
     subject: str
     trailers: tuple[dict[str, str], ...]
     signature: str
+    persistence: str = PERSISTENT_HISTORY
+
+
+@dataclasses.dataclass(frozen=True)
+class GitHubPullRequestContext:
+    attempted: bool
+    valid: bool
+    pr_number: int | None
+    repository: str | None
+    head_oid: str
+    base_oid: str | None
+    source_oid: str | None
+    merge_ref: str | None
+    evidence: tuple[str, ...]
+    failures: tuple[str, ...]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -209,25 +256,97 @@ def _load_identity_policy(root: Path) -> PublicIdentityPolicy:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as error:
         raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid") from error
-    required = {
-        "schema_version": 1,
-        "scope": "all public repository commits",
-        "privacy_mode": "github-id-based-noreply",
+    expected_authors = frozenset(
+        {
+            "MAINTAINER_GITHUB_NOREPLY",
+            "PUBLIC_ID_BASED_NOREPLY",
+            "PUBLIC_USERNAME_NOREPLY",
+        }
+    )
+    expected_committers = expected_authors | {"GITHUB_WEB_COMMITTER"}
+    expected_purpose = [
+        "protect public email privacy",
+        "preserve inspectable GitHub attribution",
+        "support public contributions",
+        "detect unexpected human or system identities",
+    ]
+    expected_keys = {
+        "schema_version",
+        "purpose",
+        "maintainer",
+        "accepted_author_classes",
+        "accepted_committer_classes",
+        "accepted_trailer_classes",
+        "github_web_committer",
+        "personal_email_policy",
+        "invalid_identity_policy",
+        "multiple_compliant_identities_policy",
+        "automation_policy",
+        "ephemeral_github_pr_merge",
     }
-    if not isinstance(payload, dict) or any(payload.get(key) != value for key, value in required.items()):
-        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
-    name = payload.get("name")
-    email = payload.get("email")
-    login = payload.get("github_login")
-    user_id = payload.get("github_user_id")
     if (
-        not isinstance(name, str)
+        not isinstance(payload, dict)
+        or set(payload) != expected_keys
+        or payload.get("schema_version") != 2
+    ):
+        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
+    maintainer = payload.get("maintainer")
+    web_committer = payload.get("github_web_committer")
+    purpose = payload.get("purpose")
+    if (
+        not isinstance(maintainer, dict)
+        or set(maintainer) != {"name", "email", "github_login", "github_user_id"}
+        or not isinstance(web_committer, dict)
+    ):
+        raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
+    name = maintainer.get("name")
+    email = maintainer.get("email")
+    login = maintainer.get("github_login")
+    user_id = maintainer.get("github_user_id")
+    author_classes = payload.get("accepted_author_classes")
+    committer_classes = payload.get("accepted_committer_classes")
+    trailer_classes = payload.get("accepted_trailer_classes")
+    ephemeral_context = payload.get("ephemeral_github_pr_merge")
+    if (
+        purpose != expected_purpose
+        or not isinstance(name, str)
         or not name.strip()
         or not isinstance(email, str)
+        or not email.strip()
         or not isinstance(login, str)
         or not login
         or not isinstance(user_id, int)
         or isinstance(user_id, bool)
+        or not isinstance(author_classes, list)
+        or not all(isinstance(item, str) for item in author_classes)
+        or not isinstance(committer_classes, list)
+        or not all(isinstance(item, str) for item in committer_classes)
+        or not isinstance(trailer_classes, list)
+        or not all(isinstance(item, str) for item in trailer_classes)
+        or ephemeral_context
+        != {
+            "type": "github-pull-request-merge",
+            "persistence": "ephemeral",
+            "identity_policy": "excluded-after-context-validation",
+            "content_policy": "fully-scanned",
+            "required_evidence": list(GITHUB_PR_REQUIRED_EVIDENCE),
+        }
+        or frozenset(author_classes) != expected_authors
+        or len(author_classes) != len(expected_authors)
+        or frozenset(committer_classes) != expected_committers
+        or len(committer_classes) != len(expected_committers)
+        or frozenset(trailer_classes) != expected_authors
+        or len(trailer_classes) != len(expected_authors)
+        or web_committer
+        != {
+            "name": GITHUB_WEB_COMMITTER_NAME,
+            "email": GITHUB_WEB_COMMITTER_EMAIL,
+            "allowed_role": "committer",
+        }
+        or payload.get("personal_email_policy") != "REVIEW"
+        or payload.get("invalid_identity_policy") != "REVIEW"
+        or payload.get("multiple_compliant_identities_policy") != "ACCEPT"
+        or payload.get("automation_policy") != "EXPLICIT_RULE_REQUIRED"
     ):
         raise HistoryAuditError(f"identity policy {PUBLIC_IDENTITY_POLICY} is invalid")
     match = ID_BASED_NOREPLY_PATTERN.fullmatch(email)
@@ -235,43 +354,60 @@ def _load_identity_policy(root: Path) -> PublicIdentityPolicy:
         raise HistoryAuditError(
             f"identity policy {PUBLIC_IDENTITY_POLICY} has inconsistent GitHub ID-based noreply fields"
         )
-    return PublicIdentityPolicy(name, email, login, user_id)
+    return PublicIdentityPolicy(
+        name=name,
+        email=email,
+        github_login=login,
+        github_user_id=user_id,
+        accepted_author_classes=frozenset(author_classes),
+        accepted_committer_classes=frozenset(committer_classes),
+        accepted_trailer_classes=frozenset(trailer_classes),
+        github_pr_required_evidence=GITHUB_PR_REQUIRED_EVIDENCE,
+    )
 
 
 def classify_identity(
     name: str,
     email: str,
+    role: str,
     policy: PublicIdentityPolicy | None = None,
 ) -> str:
-    if not name.strip() or not VALID_EMAIL_PATTERN.fullmatch(email.strip()):
+    name = name.strip()
+    email = email.strip()
+    if role not in {"author", "committer", "trailer"}:
+        raise ValueError(f"unsupported identity role {role!r}")
+    if not name:
         return "INVALID_IDENTITY"
     lowered_name = name.lower()
     lowered_email = email.lower()
-    if policy is not None and name == policy.name and email == policy.email:
-        return "EXPECTED_PUBLIC_IDENTITY"
+    if AUTOMATION_MARKER_PATTERN.search(name) or AUTOMATION_MARKER_PATTERN.search(email.split("@", 1)[0]):
+        return "UNDECLARED_AUTOMATION_IDENTITY"
+    if not VALID_EMAIL_PATTERN.fullmatch(email):
+        return "INVALID_IDENTITY"
+    if lowered_email == GITHUB_WEB_COMMITTER_EMAIL:
+        if name == GITHUB_WEB_COMMITTER_NAME and role == "committer":
+            return "GITHUB_WEB_COMMITTER"
+        if name == GITHUB_WEB_COMMITTER_NAME:
+            return "GITHUB_WEB_COMMITTER_WRONG_ROLE"
+        return "UNAUTHORIZED_SYSTEM_IDENTITY"
+    if policy is not None and lowered_email == policy.email.lower():
+        return "MAINTAINER_GITHUB_NOREPLY"
     id_based = ID_BASED_NOREPLY_PATTERN.fullmatch(email)
     if id_based:
-        if policy is None:
-            return "PUBLIC_ID_BASED_NOREPLY"
-        if int(id_based.group("user_id")) != policy.github_user_id:
-            return "NOREPLY_USER_ID_MISMATCH"
-        if id_based.group("login") != policy.github_login:
-            return "NOREPLY_LOGIN_MISMATCH"
-        return "PUBLIC_NAME_MISMATCH"
+        return "PUBLIC_ID_BASED_NOREPLY"
     if USERNAME_ONLY_NOREPLY_PATTERN.fullmatch(email):
-        return "USERNAME_ONLY_NOREPLY"
+        return "PUBLIC_USERNAME_NOREPLY"
     if lowered_email.endswith("@users.noreply.github.com"):
-        return "OTHER_GITHUB_NOREPLY"
-    if any(token in lowered_name or token in lowered_email for token in ("[bot]", "github-actions", "dependabot")):
-        return "AUTOMATION_IDENTITY"
+        return "INVALID_IDENTITY"
     if lowered_name in {"unknown", "n/a", "none"}:
-        return "UNKNOWN_IDENTITY"
+        return "INVALID_IDENTITY"
     # No non-noreply identity is assumed public without an explicit human decision.
     return "PRIVATE_EMAIL_REVIEW_REQUIRED"
 
 
 def _identity(
     raw: str,
+    role: str,
     policy: PublicIdentityPolicy | None = None,
 ) -> tuple[Identity, str]:
     match = IDENTITY_PATTERN.match(raw)
@@ -279,7 +415,7 @@ def _identity(
         identity = Identity(redact_text(raw.strip()) or "<missing>", "<invalid>", "INVALID_IDENTITY")
         return identity, ""
     name, email, date = (part.strip() for part in match.groups())
-    return Identity(name, mask_email(email), classify_identity(name, email, policy)), date
+    return Identity(name, mask_email(email), classify_identity(name, email, role, policy)), date
 
 
 def _parse_commit(
@@ -303,8 +439,8 @@ def _parse_commit(
         headers[key].append(value)
         current = key
     try:
-        author, author_date = _identity(headers["author"][0], policy)
-        committer, committer_date = _identity(headers["committer"][0], policy)
+        author, author_date = _identity(headers["author"][0], "author", policy)
+        committer, committer_date = _identity(headers["committer"][0], "committer", policy)
     except (KeyError, IndexError) as error:
         raise HistoryAuditError(f"commit {oid} lacks author or committer metadata") from error
     trailers: list[dict[str, str]] = []
@@ -313,7 +449,7 @@ def _parse_commit(
         if not match:
             continue
         label, value = match.groups()
-        trailer_identity, _ = _identity(value)
+        trailer_identity, _ = _identity(value, "trailer", policy)
         trailers.append(
             {
                 "label": label,
@@ -361,16 +497,156 @@ def _all_refs(root: Path) -> tuple[dict[str, str], ...]:
     return tuple(sorted(records, key=lambda item: item["name"]))
 
 
+def _github_pr_context(
+    root: Path,
+    refs: tuple[dict[str, str], ...],
+    environment: Mapping[str, str],
+) -> GitHubPullRequestContext:
+    """Validate an Actions pull-request merge using only local, correlated proof."""
+
+    head_oid = _git(("rev-parse", "HEAD"), cwd=root).decode("ascii", errors="strict").strip()
+    attempted = (
+        environment.get("GITHUB_EVENT_NAME") == "pull_request"
+        or environment.get("GITHUB_REF", "").startswith("refs/pull/")
+        or any(ref["name"].startswith("refs/remotes/pull/") for ref in refs)
+    )
+    if not attempted:
+        return GitHubPullRequestContext(
+            attempted=False,
+            valid=False,
+            pr_number=None,
+            repository=None,
+            head_oid=head_oid,
+            base_oid=None,
+            source_oid=None,
+            merge_ref=None,
+            evidence=(),
+            failures=(),
+        )
+
+    failures: list[str] = []
+    if environment.get("GITHUB_ACTIONS") != "true":
+        failures.append("GITHUB_ACTIONS_NOT_TRUE")
+    if environment.get("GITHUB_EVENT_NAME") != "pull_request":
+        failures.append("GITHUB_EVENT_NAME_MISMATCH")
+
+    github_ref = environment.get("GITHUB_REF", "")
+    ref_match = GITHUB_PR_REF_PATTERN.fullmatch(github_ref)
+    pr_number = int(ref_match.group("number")) if ref_match else None
+    if ref_match is None:
+        failures.append("GITHUB_REF_INVALID")
+
+    github_sha = environment.get("GITHUB_SHA", "")
+    if not re.fullmatch(r"[0-9a-f]{40}", github_sha) or github_sha != head_oid:
+        failures.append("GITHUB_SHA_MISMATCH")
+
+    event_path_value = environment.get("GITHUB_EVENT_PATH", "")
+    if not event_path_value:
+        failures.append("GITHUB_EVENT_PATH_MISSING")
+        payload: object = {}
+    else:
+        event_path = Path(event_path_value)
+        if not event_path.is_file():
+            raise HistoryAuditError("GitHub pull-request event payload is absent or unreadable")
+        try:
+            payload = json.loads(event_path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            raise HistoryAuditError("GitHub pull-request event payload is invalid") from error
+
+    pull_request: object = payload.get("pull_request") if isinstance(payload, dict) else None
+    if not isinstance(pull_request, dict):
+        failures.append("PULL_REQUEST_PAYLOAD_MISSING")
+        pull_request = {}
+
+    payload_number = payload.get("number") if isinstance(payload, dict) else None
+    embedded_number = pull_request.get("number")
+    if (
+        not isinstance(payload_number, int)
+        or isinstance(payload_number, bool)
+        or payload_number < 1
+        or payload_number != pr_number
+        or (embedded_number is not None and embedded_number != payload_number)
+    ):
+        failures.append("PULL_REQUEST_NUMBER_MISMATCH")
+
+    repository_payload = payload.get("repository") if isinstance(payload, dict) else None
+    payload_repository = (
+        repository_payload.get("full_name") if isinstance(repository_payload, dict) else None
+    )
+    github_repository = environment.get("GITHUB_REPOSITORY", "")
+    if (
+        not GITHUB_REPOSITORY_PATTERN.fullmatch(github_repository)
+        or payload_repository != github_repository
+    ):
+        failures.append("GITHUB_REPOSITORY_MISMATCH")
+
+    base = pull_request.get("base") if isinstance(pull_request, dict) else None
+    source = pull_request.get("head") if isinstance(pull_request, dict) else None
+    base_oid = base.get("sha") if isinstance(base, dict) else None
+    source_oid = source.get("sha") if isinstance(source, dict) else None
+    if not isinstance(base_oid, str) or not re.fullmatch(r"[0-9a-f]{40}", base_oid):
+        failures.append("PULL_REQUEST_BASE_SHA_MISSING")
+        base_oid = None
+    if not isinstance(source_oid, str) or not re.fullmatch(r"[0-9a-f]{40}", source_oid):
+        failures.append("PULL_REQUEST_HEAD_SHA_MISSING")
+        source_oid = None
+
+    parents = _git(("show", "-s", "--format=%P", "HEAD"), cwd=root).decode("ascii").split()
+    if len(parents) != 2:
+        failures.append("HEAD_PARENT_COUNT_MISMATCH")
+    else:
+        if parents[0] != base_oid:
+            failures.append("HEAD_BASE_PARENT_MISMATCH")
+        if parents[1] != source_oid:
+            failures.append("HEAD_SOURCE_PARENT_MISMATCH")
+
+    merge_ref = f"refs/remotes/pull/{pr_number}/merge" if pr_number is not None else None
+    observed = tuple(ref for ref in refs if ref["name"] == merge_ref)
+    if (
+        merge_ref is None
+        or len(observed) != 1
+        or observed[0]["object_type"] != "commit"
+        or observed[0]["oid"] != head_oid
+        or observed[0]["oid"] != github_sha
+    ):
+        failures.append("SYNTHETIC_MERGE_REF_MISMATCH")
+
+    valid = not failures
+    return GitHubPullRequestContext(
+        attempted=True,
+        valid=valid,
+        pr_number=pr_number,
+        repository=github_repository or None,
+        head_oid=head_oid,
+        base_oid=base_oid,
+        source_oid=source_oid,
+        merge_ref=merge_ref,
+        evidence=GITHUB_PR_REQUIRED_EVIDENCE if valid else (),
+        failures=tuple(dict.fromkeys(failures)),
+    )
+
+
 def _detached_head(root: Path) -> bool:
     return _git(("rev-parse", "--abbrev-ref", "HEAD"), cwd=root).decode("utf-8").strip() == "HEAD"
 
 
+def _current_branch(root: Path) -> str | None:
+    name = _git(("rev-parse", "--abbrev-ref", "HEAD"), cwd=root).decode("utf-8").strip()
+    return None if name == "HEAD" else name
+
+
 def _base_audit_refs(root: Path, refs: tuple[dict[str, str], ...]) -> tuple[str, ...]:
     raw_names = tuple(item["name"] for item in refs)
-    if not _detached_head(root):
+    current_branch = _current_branch(root)
+    if current_branch is not None:
         if EXPECTED_PUBLIC_REF not in raw_names:
             raise HistoryAuditError(f"required publication ref {EXPECTED_PUBLIC_REF} is absent")
-        return (EXPECTED_PUBLIC_REF,)
+        if current_branch == "main":
+            return (EXPECTED_PUBLIC_REF,)
+        contribution_ref = f"refs/heads/{current_branch}"
+        if contribution_ref not in raw_names:
+            raise HistoryAuditError(f"current contribution ref {contribution_ref} is absent")
+        return (EXPECTED_PUBLIC_REF, contribution_ref)
     bases = ["HEAD"]
     if EXPECTED_PUBLIC_REF in raw_names:
         bases.append(EXPECTED_PUBLIC_REF)
@@ -497,18 +773,32 @@ def _reachable_commit_oids(root: Path, refs: Sequence[str]) -> frozenset[str]:
     return frozenset(raw.decode("ascii", errors="strict").splitlines())
 
 
-def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]:
+def _ref_findings(
+    root: Path,
+    refs: tuple[dict[str, str], ...],
+    github_context: GitHubPullRequestContext,
+) -> list[Finding]:
     """Classify publishable refs separately from transport refs and HEAD.
 
     ``refs/heads/*``, tags, notes, and custom refs are locally publishable and
-    remain strict. ``refs/remotes/*`` are transport metadata: only ``origin`` is
-    recognized, and its refs must describe the graph already audited from main
-    or from a detached pull-request checkout. HEAD names the currently audited
-    commit but is not itself a publishable ref.
+    remain strict except for the bounded current contribution branch.
+    ``refs/remotes/*`` are transport metadata: only ``origin`` is recognized,
+    and its refs must describe the graph already audited from main, the current
+    contribution branch, or a detached pull-request checkout. HEAD names the
+    currently audited commit but is not itself a publishable ref.
     """
     findings: list[Finding] = []
     by_name = {ref["name"]: ref for ref in refs}
-    detached = _detached_head(root)
+    current_branch = _current_branch(root)
+    detached = current_branch is None
+    contribution_ref = (
+        f"refs/heads/{current_branch}"
+        if current_branch is not None and current_branch != "main"
+        else None
+    )
+    contribution_remote_ref = (
+        f"refs/remotes/origin/{current_branch}" if contribution_ref is not None else None
+    )
     base_refs = _base_audit_refs(root, refs)
     graph_roots = (
         tuple(ref for ref in base_refs if ref != EXPECTED_REMOTE_MAIN)
@@ -516,6 +806,22 @@ def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]
         else base_refs
     )
     audited_graph = _reachable_commit_oids(root, graph_roots)
+    contribution_history = (
+        _reachable_commit_oids(root, (contribution_ref,))
+        if contribution_ref is not None
+        else frozenset()
+    )
+    if contribution_ref is not None:
+        main_history = _reachable_commit_oids(root, (EXPECTED_PUBLIC_REF,))
+        if not main_history.intersection(contribution_history):
+            findings.append(
+                Finding(
+                    "REVIEW",
+                    "UNRELATED_CONTRIBUTION_HISTORY",
+                    contribution_ref,
+                    "current contribution branch has no common base with main",
+                )
+            )
     configured_remotes = tuple(
         name for name in _git(("remote",), cwd=root).decode("utf-8", errors="replace").splitlines() if name
     )
@@ -527,6 +833,31 @@ def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]
     for ref in refs:
         name = ref["name"]
         if name == EXPECTED_PUBLIC_REF:
+            continue
+        if (
+            github_context.valid
+            and name == github_context.merge_ref
+            and ref["object_type"] == "commit"
+            and ref["oid"] == github_context.head_oid
+        ):
+            findings.append(
+                Finding(
+                    "INFO",
+                    "GITHUB_PR_MERGE_REF",
+                    name,
+                    "validated ephemeral pull-request merge ref points exactly to HEAD",
+                )
+            )
+            continue
+        if contribution_ref is not None and name == contribution_ref:
+            findings.append(
+                Finding(
+                    "INFO",
+                    "CONTRIBUTION_REF",
+                    name,
+                    "current local contribution ref is transient and included in the audited graph",
+                )
+            )
             continue
         if name.startswith("refs/remotes/"):
             parts = name.split("/", 3)
@@ -586,6 +917,26 @@ def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]
                         Finding("INFO", "EXPECTED_REMOTE_MAIN", name, "transport ref is inside the audited graph")
                     )
                 continue
+            if contribution_remote_ref is not None and name == contribution_remote_ref:
+                if ref["oid"] not in contribution_history:
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "DIVERGENT_CONTRIBUTION_REF",
+                            name,
+                            "remote contribution ref is not the local contribution head or one of its ancestors",
+                        )
+                    )
+                else:
+                    findings.append(
+                        Finding(
+                            "INFO",
+                            "CONTRIBUTION_REF",
+                            name,
+                            "origin contribution ref is transient and synchronized or behind the local branch",
+                        )
+                    )
+                continue
             if detached:
                 findings.append(
                     Finding(
@@ -614,16 +965,33 @@ def _ref_findings(root: Path, refs: tuple[dict[str, str], ...]) -> list[Finding]
     return findings
 
 
-def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_MAX_BLOB_BYTES) -> AuditReport:
+def audit(
+    root: Path,
+    *,
+    all_refs: bool = False,
+    max_blob_bytes: int = DEFAULT_MAX_BLOB_BYTES,
+    environment: Mapping[str, str] | None = None,
+) -> AuditReport:
     if max_blob_bytes < 1:
         raise HistoryAuditError("--max-blob-bytes must be a positive integer")
     root = repository_root(root)
     policy = _load_identity_policy(root)
     refs = _all_refs(root)
+    github_context = _github_pr_context(root, refs, os.environ if environment is None else environment)
     selected = _selected_refs(root, refs, all_refs)
     objects = _reachable_objects(root, selected)
     commits = _reachable_commits(root, selected)
-    findings = _ref_findings(root, refs)
+    findings: list[Finding] = []
+    if github_context.attempted and not github_context.valid:
+        findings.append(
+            Finding(
+                "REVIEW",
+                "GITHUB_PR_CONTEXT_INVALID",
+                "github-actions-context",
+                "ephemeral merge exception rejected: " + ", ".join(github_context.failures),
+            )
+        )
+    findings.extend(_ref_findings(root, refs, github_context))
 
     paths_by_blob: dict[str, set[str]] = defaultdict(set)
     introduction: dict[str, str] = {}
@@ -647,10 +1015,28 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
     for oid in commits:
         raw = _git(("cat-file", "commit", oid), cwd=root)
         record, message = _parse_commit(oid, raw, policy)
+        if github_context.valid and oid == github_context.head_oid:
+            record = dataclasses.replace(
+                record,
+                author=Identity("<ephemeral>", "<excluded>", "EPHEMERAL_METADATA_EXCLUDED"),
+                committer=Identity("<ephemeral>", "<excluded>", "EPHEMERAL_METADATA_EXCLUDED"),
+                author_date="<excluded>",
+                committer_date="<excluded>",
+                subject="<ephemeral GitHub pull-request merge metadata excluded>",
+                trailers=(),
+                persistence=EPHEMERAL_GITHUB_PR_MERGE,
+            )
+            commit_records.append(record)
+            continue
         commit_records.append(record)
         for role, identity in (("author", record.author), ("committer", record.committer)):
             identities.add((identity.name, identity.email, identity.classification))
-            if identity.classification != "EXPECTED_PUBLIC_IDENTITY":
+            accepted = (
+                policy.accepted_author_classes
+                if role == "author"
+                else policy.accepted_committer_classes
+            )
+            if identity.classification not in accepted:
                 review_key = (role, identity.name, identity.email, identity.classification)
                 if review_key not in reviewed_roles:
                     reviewed_roles.add(review_key)
@@ -664,9 +1050,7 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
                     )
         for trailer in record.trailers:
             classification = trailer["classification"]
-            severity = "INFO" if classification in {
-                "PUBLIC_ID_BASED_NOREPLY", "AUTOMATION_IDENTITY"
-            } else "REVIEW"
+            severity = "INFO" if classification in policy.accepted_trailer_classes else "REVIEW"
             findings.append(
                 Finding(
                     severity,
@@ -676,27 +1060,6 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
                 )
             )
         findings.extend(_content_findings(f"commit:{oid}", message, commit_message=True))
-
-    author_identities = {(record.author.name, record.author.email) for record in commit_records}
-    committer_identities = {(record.committer.name, record.committer.email) for record in commit_records}
-    if len(author_identities) > 1:
-        findings.append(
-            Finding(
-                "REVIEW",
-                "MULTIPLE_AUTHOR_IDENTITIES",
-                "history:author",
-                f"history contains {len(author_identities)} author identities",
-            )
-        )
-    if len(committer_identities) > 1:
-        findings.append(
-            Finding(
-                "REVIEW",
-                "MULTIPLE_COMMITTER_IDENTITIES",
-                "history:committer",
-                f"history contains {len(committer_identities)} committer identities",
-            )
-        )
 
     blob_records: list[BlobRecord] = []
     binary_count = 0
@@ -799,6 +1162,16 @@ def audit(root: Path, *, all_refs: bool = False, max_blob_bytes: int = DEFAULT_M
     metrics: dict[str, object] = {
         "total_objects": len(objects),
         "commits": counts["commit"],
+        "persistent_commits": sum(
+            record.persistence == PERSISTENT_HISTORY for record in commit_records
+        ),
+        "ephemeral_pr_merge_commits": sum(
+            record.persistence == EPHEMERAL_GITHUB_PR_MERGE for record in commit_records
+        ),
+        "total_scanned_commits": len(commit_records),
+        "github_pr_context_validated": github_context.valid,
+        "github_pr_number": github_context.pr_number if github_context.valid else None,
+        "github_pr_context_evidence": list(github_context.evidence),
         "trees": counts["tree"],
         "blobs": counts["blob"],
         "total_uncompressed_blob_bytes": blob_total,
@@ -873,6 +1246,18 @@ def _print_report(report: AuditReport) -> None:
         f"{metrics['total_uncompressed_blob_bytes']} uncompressed blob bytes."
     )
     print(f"Selected refs: {', '.join(report.selected_refs)}")
+    print(f"PERSISTENT_HISTORY={metrics['persistent_commits']}")
+    print(f"EPHEMERAL_GITHUB_PR_MERGE={metrics['ephemeral_pr_merge_commits']}")
+    print(f"TOTAL_SCANNED_COMMITS={metrics['total_scanned_commits']}")
+    if metrics["ephemeral_pr_merge_commits"]:
+        print(
+            "GITHUB_PR_CONTEXT_EVIDENCE="
+            + ",".join(str(item) for item in metrics["github_pr_context_evidence"])
+        )
+        print(
+            "Validated GitHub pull-request merge metadata is ephemeral and excluded from "
+            "publication identity/message policy; its parents, tree, and reachable blobs remain scanned."
+        )
     print(
         f"Findings: INFO={counts['INFO']} REVIEW={counts['REVIEW']} "
         f"BLOCKER={counts['BLOCKER']}"
@@ -885,7 +1270,11 @@ def _print_report(report: AuditReport) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, help="Git worktree to inspect")
-    parser.add_argument("--all-refs", action="store_true", help="scan objects reachable from every local ref")
+    parser.add_argument(
+        "--all-refs",
+        action="store_true",
+        help="scan objects reachable from every ref while enforcing the bounded ref policy",
+    )
     parser.add_argument("--json", type=Path, metavar="PATH", help="write deterministic JSON outside the repository")
     parser.add_argument("--fail-on-review", action="store_true", help="return nonzero when REVIEW findings exist")
     parser.add_argument(

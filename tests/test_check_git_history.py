@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +19,14 @@ POLICY_NAME = "Fixture Author"
 POLICY_EMAIL = "123456+fixture-user@users.noreply.github.com"
 POLICY_LOGIN = "fixture-user"
 POLICY_USER_ID = 123456
+GITHUB_ACTIONS_ENV_KEYS = (
+    "GITHUB_ACTIONS",
+    "GITHUB_EVENT_NAME",
+    "GITHUB_EVENT_PATH",
+    "GITHUB_REF",
+    "GITHUB_SHA",
+    "GITHUB_REPOSITORY",
+)
 sys.path.insert(0, str(SCRIPT_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("check_git_history", SCRIPT_PATH)
 if SPEC is None or SPEC.loader is None:
@@ -25,6 +34,36 @@ if SPEC is None or SPEC.loader is None:
 CHECK = importlib.util.module_from_spec(SPEC)
 sys.modules[SPEC.name] = CHECK
 SPEC.loader.exec_module(CHECK)
+
+
+def without_github_actions_environment() -> dict[str, str]:
+    environment = os.environ.copy()
+    for key in GITHUB_ACTIONS_ENV_KEYS:
+        environment.pop(key, None)
+    return environment
+
+
+def github_actions_environment(
+    *,
+    event_path: Path,
+    ref: str,
+    sha: str,
+    repository: str = "fixture/fixture",
+    event_name: str = "pull_request",
+    actions: str = "true",
+) -> dict[str, str]:
+    environment = without_github_actions_environment()
+    environment.update(
+        {
+            "GITHUB_ACTIONS": actions,
+            "GITHUB_EVENT_NAME": event_name,
+            "GITHUB_EVENT_PATH": str(event_path),
+            "GITHUB_REF": ref,
+            "GITHUB_SHA": sha,
+            "GITHUB_REPOSITORY": repository,
+        }
+    )
+    return environment
 
 
 class HistoryRepository:
@@ -37,13 +76,64 @@ class HistoryRepository:
 
     def write_policy(self, **overrides: object) -> None:
         payload: dict[str, object] = {
-            "schema_version": 1,
-            "name": POLICY_NAME,
-            "email": POLICY_EMAIL,
-            "github_login": POLICY_LOGIN,
-            "github_user_id": POLICY_USER_ID,
-            "scope": "all public repository commits",
-            "privacy_mode": "github-id-based-noreply",
+            "schema_version": 2,
+            "purpose": [
+                "protect public email privacy",
+                "preserve inspectable GitHub attribution",
+                "support public contributions",
+                "detect unexpected human or system identities",
+            ],
+            "maintainer": {
+                "name": POLICY_NAME,
+                "email": POLICY_EMAIL,
+                "github_login": POLICY_LOGIN,
+                "github_user_id": POLICY_USER_ID,
+            },
+            "accepted_author_classes": [
+                "MAINTAINER_GITHUB_NOREPLY",
+                "PUBLIC_ID_BASED_NOREPLY",
+                "PUBLIC_USERNAME_NOREPLY",
+            ],
+            "accepted_committer_classes": [
+                "MAINTAINER_GITHUB_NOREPLY",
+                "PUBLIC_ID_BASED_NOREPLY",
+                "PUBLIC_USERNAME_NOREPLY",
+                "GITHUB_WEB_COMMITTER",
+            ],
+            "accepted_trailer_classes": [
+                "MAINTAINER_GITHUB_NOREPLY",
+                "PUBLIC_ID_BASED_NOREPLY",
+                "PUBLIC_USERNAME_NOREPLY",
+            ],
+            "github_web_committer": {
+                "name": "GitHub",
+                "email": "noreply@github.com",
+                "allowed_role": "committer",
+            },
+            "personal_email_policy": "REVIEW",
+            "invalid_identity_policy": "REVIEW",
+            "multiple_compliant_identities_policy": "ACCEPT",
+            "automation_policy": "EXPLICIT_RULE_REQUIRED",
+            "ephemeral_github_pr_merge": {
+                "type": "github-pull-request-merge",
+                "persistence": "ephemeral",
+                "identity_policy": "excluded-after-context-validation",
+                "content_policy": "fully-scanned",
+                "required_evidence": [
+                    "github-actions-true",
+                    "pull-request-event",
+                    "canonical-merge-ref",
+                    "head-sha-match",
+                    "readable-event-payload",
+                    "pull-request-number-match",
+                    "repository-match",
+                    "base-and-head-shas-present",
+                    "two-parent-head",
+                    "base-parent-match",
+                    "head-parent-match",
+                    "synthetic-remote-ref-match",
+                ],
+            },
         }
         payload.update(overrides)
         self.write(
@@ -98,14 +188,36 @@ class HistoryRepository:
             self.git("remote", "add", remote, f"https://example.invalid/{remote}.git")
         self.git("update-ref", f"refs/remotes/{remote}/{name}", oid)
 
-    def commit_tree(self, tree: str, *parents: str, message: str = "test: synthetic commit") -> str:
+    def add_pull_ref(self, name: str, oid: str) -> None:
+        self.git("update-ref", f"refs/remotes/pull/{name}", oid)
+
+    def commit_tree(
+        self,
+        tree: str,
+        *parents: str,
+        message: str = "test: synthetic commit",
+        env: dict[str, str] | None = None,
+    ) -> str:
         arguments = ["commit-tree", tree]
         for parent in parents:
             arguments.extend(("-p", parent))
-        return self.git(*arguments, input_bytes=(message + "\n").encode("utf-8")).stdout.decode("ascii").strip()
+        return self.git(
+            *arguments,
+            input_bytes=(message + "\n").encode("utf-8"),
+            env=env,
+        ).stdout.decode("ascii").strip()
 
 
 class GitHistoryTests(unittest.TestCase):
+    def setUp(self) -> None:
+        environment_patch = mock.patch.dict(
+            os.environ,
+            without_github_actions_environment(),
+            clear=True,
+        )
+        environment_patch.start()
+        self.addCleanup(environment_patch.stop)
+
     def repository(self) -> tuple[tempfile.TemporaryDirectory[str], HistoryRepository]:
         temporary = tempfile.TemporaryDirectory(prefix="history audit ")
         return temporary, HistoryRepository(Path(temporary.name))
@@ -121,6 +233,90 @@ class GitHistoryTests(unittest.TestCase):
         with contextlib.redirect_stdout(output):
             result = CHECK.main(arguments)
         return result, output.getvalue()
+
+    def github_pr_checkout(
+        self,
+        repo: HistoryRepository,
+        *,
+        base_env: dict[str, str] | None = None,
+        head_env: dict[str, str] | None = None,
+        personal_merge: bool = False,
+        result_content: str | None = None,
+        head_content: str = "feature\n",
+        merge_uses_base_tree: bool = False,
+        parent_count: int = 2,
+    ) -> tuple[dict[str, str], Path, dict[str, str]]:
+        repo.write("base.txt", "base\n")
+        base = repo.commit(env=base_env)
+        base_tree = repo.git("rev-parse", f"{base}^{{tree}}").stdout.decode("ascii").strip()
+
+        repo.write("feature.txt", head_content)
+        repo.git("add", "-A")
+        head_tree = repo.git("write-tree").stdout.decode("ascii").strip()
+        source = repo.commit_tree(head_tree, base, message="test: feature head", env=head_env)
+
+        if result_content is not None:
+            repo.write("merge-only.txt", result_content)
+            repo.git("add", "-A")
+            merge_tree = repo.git("write-tree").stdout.decode("ascii").strip()
+        elif merge_uses_base_tree:
+            merge_tree = base_tree
+        else:
+            merge_tree = head_tree
+
+        if parent_count == 1:
+            parents = (base,)
+        elif parent_count == 2:
+            parents = (base, source)
+        elif parent_count == 3:
+            third = repo.commit_tree(head_tree, base, message="test: third parent")
+            parents = (base, source, third)
+        else:
+            raise AssertionError("unsupported fixture parent count")
+
+        merge_env = os.environ.copy()
+        if personal_merge:
+            merge_env.update(
+                {
+                    "GIT_AUTHOR_NAME": "Ephemeral Author",
+                    "GIT_AUTHOR_EMAIL": "merge-person" + "@" + "private.test",
+                    "GIT_COMMITTER_NAME": "GitHub",
+                    "GIT_COMMITTER_EMAIL": "noreply" + "@" + "github.com",
+                }
+            )
+        merge = repo.commit_tree(
+            merge_tree,
+            *parents,
+            message="Merge fixture into main",
+            env=merge_env,
+        )
+        repo.add_remote_ref("main", base)
+        repo.add_pull_ref("1/merge", merge)
+        repo.git("checkout", "--quiet", "--detach", merge)
+        repo.git("update-ref", "-d", "refs/heads/main")
+
+        payload = {
+            "number": 1,
+            "repository": {"full_name": "fixture/fixture"},
+            "pull_request": {
+                "number": 1,
+                "base": {"sha": base},
+                "head": {"sha": source},
+            },
+        }
+        event_path = repo.root / "github-event.json"
+        event_path.write_text(json.dumps(payload), encoding="utf-8")
+        environment = github_actions_environment(
+            event_path=event_path,
+            ref="refs/pull/1/merge",
+            sha=merge,
+        )
+        return environment, event_path, {
+            "base": base,
+            "source": source,
+            "merge": merge,
+            "personal": "merge-person" + "@" + "private.test",
+        }
 
     def test_01_minimal_compliant_history(self) -> None:
         temporary, repo = self.repository()
@@ -226,7 +422,7 @@ class GitHistoryTests(unittest.TestCase):
             repo.commit()
             report = CHECK.audit(repo.root)
         self.assertEqual(
-            {"EXPECTED_PUBLIC_IDENTITY"},
+            {"MAINTAINER_GITHUB_NOREPLY"},
             {item["classification"] for item in report.identities},
         )
 
@@ -265,6 +461,8 @@ class GitHistoryTests(unittest.TestCase):
             report = CHECK.audit(repo.root)
         commit = report.commits[0]
         self.assertNotEqual(commit.author.name, commit.committer.name)
+        self.assertEqual("PUBLIC_USERNAME_NOREPLY", commit.author.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
 
     def test_15_coauthor_trailer_is_masked(self) -> None:
         temporary, repo = self.repository()
@@ -434,7 +632,22 @@ class GitHistoryTests(unittest.TestCase):
             base = repo.commit()
             tree = repo.git("write-tree").stdout.decode("ascii").strip()
             feature = repo.commit_tree(tree, base, message="test: feature head")
-            merge = repo.commit_tree(tree, base, feature, message="test: temporary pull request merge")
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GIT_AUTHOR_NAME": POLICY_NAME,
+                    "GIT_AUTHOR_EMAIL": POLICY_EMAIL,
+                    "GIT_COMMITTER_NAME": "GitHub",
+                    "GIT_COMMITTER_EMAIL": "noreply@github.com",
+                }
+            )
+            merge = repo.commit_tree(
+                tree,
+                base,
+                feature,
+                message="test: temporary pull request merge",
+                env=environment,
+            )
             repo.add_remote_ref("main", base)
             repo.add_remote_ref("pull-checkout", feature)
             repo.git("checkout", "--quiet", "--detach", merge)
@@ -587,42 +800,45 @@ class GitHistoryTests(unittest.TestCase):
             report = CHECK.audit(repo.root)
         self.assertNotIn("BLOCKER", self.severities(report))
 
-    def test_31_username_only_noreply_is_distinct_and_reviewed(self) -> None:
+    def test_31_username_only_noreply_author_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.git("config", "user.email", "fixture-user@users.noreply.github.com")
             repo.write("safe.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertIn("USERNAME_ONLY_NOREPLY", self.categories(report))
-        self.assertIn("REVIEW", self.severities(report))
+        self.assertEqual("PUBLIC_USERNAME_NOREPLY", report.commits[0].author.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
 
-    def test_32_incorrect_public_name_is_reviewed(self) -> None:
+    def test_32_maintainer_display_name_variation_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.git("config", "user.name", "Different Name")
             repo.write("safe.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertIn("PUBLIC_NAME_MISMATCH", self.categories(report))
+        self.assertEqual("MAINTAINER_GITHUB_NOREPLY", report.commits[0].author.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
 
-    def test_33_incorrect_noreply_user_id_is_reviewed(self) -> None:
+    def test_33_other_id_based_noreply_author_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.git("config", "user.email", "654321+fixture-user@users.noreply.github.com")
             repo.write("safe.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertIn("NOREPLY_USER_ID_MISMATCH", self.categories(report))
+        self.assertEqual("PUBLIC_ID_BASED_NOREPLY", report.commits[0].author.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
 
-    def test_34_incorrect_noreply_login_is_reviewed(self) -> None:
+    def test_34_other_id_based_login_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.git("config", "user.email", "123456+different-user@users.noreply.github.com")
             repo.write("safe.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertIn("NOREPLY_LOGIN_MISMATCH", self.categories(report))
+        self.assertEqual("PUBLIC_ID_BASED_NOREPLY", report.commits[0].author.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
 
     def test_35_correct_author_incorrect_committer_is_reviewed(self) -> None:
         temporary, repo = self.repository()
@@ -637,22 +853,23 @@ class GitHistoryTests(unittest.TestCase):
             )
             repo.commit(env=environment)
             report = CHECK.audit(repo.root)
-        self.assertEqual("EXPECTED_PUBLIC_IDENTITY", report.commits[0].author.classification)
+        self.assertEqual("MAINTAINER_GITHUB_NOREPLY", report.commits[0].author.classification)
         self.assertEqual("PRIVATE_EMAIL_REVIEW_REQUIRED", report.commits[0].committer.classification)
         self.assertIn("PRIVATE_EMAIL_REVIEW_REQUIRED", self.categories(report))
 
-    def test_36_multiple_identities_are_reviewed(self) -> None:
+    def test_36_multiple_compliant_identities_are_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:
             repo.write("one.txt")
             repo.commit()
             repo.git("config", "user.name", "Different Author")
-            repo.git("config", "user.email", "different@personal.test")
+            repo.git("config", "user.email", "654321+different@users.noreply.github.com")
             repo.write("two.txt")
             repo.commit()
             report = CHECK.audit(repo.root)
-        self.assertIn("MULTIPLE_AUTHOR_IDENTITIES", self.categories(report))
-        self.assertIn("MULTIPLE_COMMITTER_IDENTITIES", self.categories(report))
+        self.assertEqual(2, len({item.author.email for item in report.commits}))
+        self.assertEqual(2, len({item.committer.email for item in report.commits}))
+        self.assertNotIn("REVIEW", self.severities(report))
 
     def test_37_missing_policy_is_an_error(self) -> None:
         temporary, repo = self.repository()
@@ -672,10 +889,10 @@ class GitHistoryTests(unittest.TestCase):
             with self.assertRaises(CHECK.HistoryAuditError):
                 CHECK.audit(repo.root)
 
-    def test_39_inconsistent_policy_identity_is_an_error(self) -> None:
+    def test_39_invalid_version_2_policy_is_an_error(self) -> None:
         temporary, repo = self.repository()
         with temporary:
-            repo.write_policy(github_user_id=999999)
+            repo.write_policy(automation_policy="ALLOW_ALL")
             repo.write("safe.txt")
             repo.commit()
             with self.assertRaises(CHECK.HistoryAuditError):
@@ -694,6 +911,634 @@ class GitHistoryTests(unittest.TestCase):
         self.assertEqual(1, code)
         self.assertNotIn(email, output)
         self.assertIn("s***@personal.test", output)
+
+    def test_50_version_1_policy_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            legacy = {
+                "schema_version": 1,
+                "name": POLICY_NAME,
+                "email": POLICY_EMAIL,
+                "github_login": POLICY_LOGIN,
+                "github_user_id": POLICY_USER_ID,
+                "scope": "all public repository commits",
+                "privacy_mode": "github-id-based-noreply",
+            }
+            repo.write(
+                "governance/public-commit-identity.json",
+                json.dumps(legacy, indent=2) + "\n",
+            )
+            repo.write("safe.txt")
+            repo.commit()
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root)
+
+    def test_51_github_web_identity_is_rejected_as_author(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {"GIT_AUTHOR_NAME": "GitHub", "GIT_AUTHOR_EMAIL": "noreply@github.com"}
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("GITHUB_WEB_COMMITTER_WRONG_ROLE", report.commits[0].author.classification)
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_52_id_based_noreply_committer_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GIT_COMMITTER_NAME": "Public Committer",
+                    "GIT_COMMITTER_EMAIL": "654321+public-committer@users.noreply.github.com",
+                }
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("PUBLIC_ID_BASED_NOREPLY", report.commits[0].committer.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_53_username_noreply_committer_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GIT_COMMITTER_NAME": "Public Committer",
+                    "GIT_COMMITTER_EMAIL": "public-committer@users.noreply.github.com",
+                }
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("PUBLIC_USERNAME_NOREPLY", report.commits[0].committer.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_54_exact_github_web_committer_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {"GIT_COMMITTER_NAME": "GitHub", "GIT_COMMITTER_EMAIL": "noreply@github.com"}
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("MAINTAINER_GITHUB_NOREPLY", report.commits[0].author.classification)
+        self.assertEqual("GITHUB_WEB_COMMITTER", report.commits[0].committer.classification)
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_55_false_github_system_committer_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {"GIT_COMMITTER_NAME": "Not GitHub", "GIT_COMMITTER_EMAIL": "noreply@github.com"}
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("UNAUTHORIZED_SYSTEM_IDENTITY", report.commits[0].committer.classification)
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_56_undeclared_bot_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {
+                    "GIT_AUTHOR_NAME": "dependabot[bot]",
+                    "GIT_AUTHOR_EMAIL": "49699333+dependabot[bot]@users.noreply.github.com",
+                }
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("UNDECLARED_AUTOMATION_IDENTITY", report.commits[0].author.classification)
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_57_current_contribution_branch_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature/test")
+            repo.write("feature.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertIn("CONTRIBUTION_REF", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertIn("refs/heads/feature/test", report.selected_refs)
+
+    def test_58_matching_remote_contribution_ref_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            repo.write("feature.txt")
+            head = repo.commit()
+            repo.add_remote_ref("feature", head)
+            report = CHECK.audit(repo.root)
+        contribution_findings = [
+            item for item in report.findings if item.category == "CONTRIBUTION_REF"
+        ]
+        self.assertEqual(2, len(contribution_findings))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_59_remote_contribution_ancestor_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            base = repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            repo.write("feature.txt")
+            repo.commit()
+            repo.add_remote_ref("feature", base)
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertIn("CONTRIBUTION_REF", self.categories(report))
+
+    def test_60_divergent_remote_contribution_ref_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            base = repo.commit()
+            repo.write("main.txt")
+            main_head = repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature", base)
+            repo.write("feature.txt")
+            repo.commit()
+            repo.add_remote_ref("feature", main_head)
+            report = CHECK.audit(repo.root)
+        self.assertIn("DIVERGENT_CONTRIBUTION_REF", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_61_second_local_branch_is_rejected_in_contribution_mode(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            repo.git("branch", "third")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNEXPECTED_BRANCH", self.categories(report))
+
+    def test_62_second_remote_is_rejected_in_contribution_mode(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            base = repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            repo.add_remote_ref("main", base, remote="upstream")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNEXPECTED_REMOTE", self.categories(report))
+
+    def test_63_all_refs_scans_current_contribution_content(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            value = "AK" + "IA" + ("E" * 16)
+            repo.write("feature.txt", value + "\n")
+            repo.commit()
+            report = CHECK.audit(repo.root, all_refs=True)
+        self.assertIn("refs/heads/feature", report.selected_refs)
+        self.assertIn("SECRET_SIGNATURE", self.categories(report))
+
+    def test_64_returning_to_main_restores_strict_ref_policy(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature")
+            contribution = CHECK.audit(repo.root)
+            repo.git("checkout", "--quiet", "main")
+            main = CHECK.audit(repo.root)
+        self.assertNotIn("UNEXPECTED_BRANCH", self.categories(contribution))
+        self.assertIn("UNEXPECTED_BRANCH", self.categories(main))
+
+    def test_65_unrelated_current_contribution_history_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            tree = repo.git("write-tree").stdout.decode("ascii").strip()
+            independent = repo.commit_tree(tree, message="test: independent feature")
+            repo.git("update-ref", "refs/heads/feature", independent)
+            repo.git("checkout", "--quiet", "feature")
+            report = CHECK.audit(repo.root)
+        self.assertIn("UNRELATED_CONTRIBUTION_HISTORY", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_66_invalid_identity_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment = os.environ.copy()
+            environment.update(
+                {"GIT_AUTHOR_NAME": "Invalid Author", "GIT_AUTHOR_EMAIL": "not-an-email"}
+            )
+            repo.write("safe.txt")
+            repo.commit(env=environment)
+            report = CHECK.audit(repo.root)
+        self.assertEqual("INVALID_IDENTITY", report.commits[0].author.classification)
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_67_complete_github_pr_context_is_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertNotIn("BLOCKER", self.severities(report))
+        self.assertEqual(1, report.metrics["ephemeral_pr_merge_commits"])
+
+    def test_68_personal_identity_is_excluded_only_for_ephemeral_merge(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo, personal_merge=True)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertNotIn("REVIEW", self.severities(report))
+        ephemeral = [
+            commit for commit in report.commits
+            if commit.persistence == CHECK.EPHEMERAL_GITHUB_PR_MERGE
+        ]
+        self.assertEqual(1, len(ephemeral))
+        self.assertNotIn(fixture["personal"], repr(report))
+
+    def test_69_personal_identity_in_head_parent_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            private = os.environ.copy()
+            private["GIT_AUTHOR_EMAIL"] = "head-person" + "@" + "private.test"
+            environment, _, _ = self.github_pr_checkout(repo, head_env=private)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("PRIVATE_EMAIL_REVIEW_REQUIRED", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_70_personal_identity_in_base_parent_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            private = os.environ.copy()
+            private["GIT_AUTHOR_EMAIL"] = "base-person" + "@" + "private.test"
+            environment, _, _ = self.github_pr_checkout(repo, base_env=private)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("PRIVATE_EMAIL_REVIEW_REQUIRED", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_71_secret_in_merged_result_is_blocked(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            secret = "AK" + "IA" + ("R" * 16) + "\n"
+            environment, _, _ = self.github_pr_checkout(repo, result_content=secret)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("SECRET_SIGNATURE", self.categories(report))
+        self.assertIn("BLOCKER", self.severities(report))
+
+    def test_72_secret_in_parent_is_blocked_when_absent_from_merge_tree(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            secret = "AK" + "IA" + ("P" * 16) + "\n"
+            environment, _, _ = self.github_pr_checkout(
+                repo,
+                head_content=secret,
+                merge_uses_base_tree=True,
+            )
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("SECRET_SIGNATURE", self.categories(report))
+        self.assertIn("BLOCKER", self.severities(report))
+
+    def test_73_exact_synthetic_merge_ref_is_info(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            report = CHECK.audit(repo.root, environment=environment)
+        matching = [item for item in report.findings if item.category == "GITHUB_PR_MERGE_REF"]
+        self.assertEqual(1, len(matching))
+        self.assertEqual("INFO", matching[0].severity)
+
+    def test_74_synthetic_ref_with_wrong_number_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            environment["GITHUB_REF"] = "refs/pull/2/merge"
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_75_synthetic_ref_to_other_oid_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo)
+            repo.add_pull_ref("1/merge", fixture["base"])
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_76_pull_head_ref_is_not_authorized(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo)
+            repo.git("update-ref", "-d", "refs/remotes/pull/1/merge")
+            repo.add_pull_ref("1/head", fixture["source"])
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertNotIn("GITHUB_PR_MERGE_REF", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_77_context_without_github_actions_true_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            environment["GITHUB_ACTIONS"] = "false"
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_78_wrong_event_name_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            environment["GITHUB_EVENT_NAME"] = "push"
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_79_invalid_github_ref_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            environment["GITHUB_REF"] = "refs/pull/1/head"
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_80_github_sha_different_from_head_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo)
+            environment["GITHUB_SHA"] = fixture["base"]
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_81_absent_event_payload_is_controlled_error(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, _ = self.github_pr_checkout(repo)
+            event_path.unlink()
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root, environment=environment)
+
+    def test_82_invalid_event_payload_json_is_controlled_error(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, _ = self.github_pr_checkout(repo)
+            event_path.write_text("{invalid\n", encoding="utf-8")
+            with self.assertRaises(CHECK.HistoryAuditError):
+                CHECK.audit(repo.root, environment=environment)
+
+    def test_83_payload_number_mismatch_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, fixture = self.github_pr_checkout(repo)
+            payload = json.loads(event_path.read_text(encoding="utf-8"))
+            payload["number"] = 2
+            payload["pull_request"]["number"] = 2
+            event_path.write_text(json.dumps(payload), encoding="utf-8")
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertEqual(40, len(fixture["merge"]))
+
+    def test_84_payload_repository_mismatch_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, _ = self.github_pr_checkout(repo)
+            payload = json.loads(event_path.read_text(encoding="utf-8"))
+            payload["repository"]["full_name"] = "different/repository"
+            event_path.write_text(json.dumps(payload), encoding="utf-8")
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_85_payload_base_sha_mismatch_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, fixture = self.github_pr_checkout(repo)
+            payload = json.loads(event_path.read_text(encoding="utf-8"))
+            payload["pull_request"]["base"]["sha"] = fixture["source"]
+            event_path.write_text(json.dumps(payload), encoding="utf-8")
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_86_payload_head_sha_mismatch_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, event_path, fixture = self.github_pr_checkout(repo)
+            payload = json.loads(event_path.read_text(encoding="utf-8"))
+            payload["pull_request"]["head"]["sha"] = fixture["base"]
+            event_path.write_text(json.dumps(payload), encoding="utf-8")
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_87_single_parent_candidate_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo, parent_count=1)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_88_octopus_merge_candidate_is_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo, parent_count=3)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_89_multiple_pull_refs_are_reviewed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo)
+            repo.add_pull_ref("2/merge", fixture["merge"])
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_MERGE_REF", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_90_all_refs_accepts_only_valid_synthetic_ref(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            report = CHECK.audit(repo.root, all_refs=True, environment=environment)
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertNotIn("BLOCKER", self.severities(report))
+        self.assertIn("refs/remotes/pull/1/merge", report.selected_refs)
+
+    def test_91_ephemeral_identity_is_absent_from_persistent_identity_count(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo, personal_merge=True)
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertEqual(2, report.metrics["persistent_commits"])
+        self.assertEqual(3, report.metrics["total_scanned_commits"])
+        self.assertEqual(1, len(report.identities))
+        self.assertNotIn(fixture["personal"], repr(report.identities))
+
+    def test_92_ephemeral_merge_tree_is_still_analyzed(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(
+                repo,
+                result_content="merged result\n",
+            )
+            report = CHECK.audit(repo.root, environment=environment)
+        merged = [record for record in report.blobs if "merge-only.txt" in record.paths]
+        self.assertEqual(1, len(merged))
+        self.assertEqual(fixture["merge"], merged[0].introduction_commit)
+
+    def test_93_ephemeral_diagnostics_never_print_complete_personal_email(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, fixture = self.github_pr_checkout(repo, personal_merge=True)
+            report = CHECK.audit(repo.root, environment=environment)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                CHECK._print_report(report)
+        self.assertNotIn(fixture["personal"], output.getvalue())
+        self.assertIn("EPHEMERAL_GITHUB_PR_MERGE=1", output.getvalue())
+
+    def test_94_local_execution_without_github_environment_is_unchanged(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root, environment={})
+        self.assertNotIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertEqual(0, report.metrics["ephemeral_pr_merge_commits"])
+        self.assertEqual(1, report.metrics["persistent_commits"])
+
+    def test_95_normal_contribution_branch_remains_accepted(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            repo.commit()
+            repo.git("checkout", "--quiet", "-b", "feature/context-independent")
+            repo.write("feature.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root, environment={})
+        self.assertIn("CONTRIBUTION_REF", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+
+    def test_96_current_actions_checkout_shape_passes_all_three_modes(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo, personal_merge=True)
+            with mock.patch.dict(os.environ, environment, clear=True):
+                normal, normal_output = self.capture_main("--root", str(repo.root))
+                complete, complete_output = self.capture_main(
+                    "--root", str(repo.root), "--all-refs"
+                )
+                strict, strict_output = self.capture_main(
+                    "--root", str(repo.root), "--fail-on-review"
+                )
+        self.assertEqual((0, 0, 0), (normal, complete, strict))
+        for output in (normal_output, complete_output, strict_output):
+            self.assertIn("EPHEMERAL_GITHUB_PR_MERGE=1", output)
+            self.assertIn("REVIEW=0 BLOCKER=0", output)
+        self.assertTrue(all(key not in os.environ for key in GITHUB_ACTIONS_ENV_KEYS))
+
+    def test_97_github_push_context_keeps_persistent_main_behavior(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            head = repo.commit()
+            event_path = repo.root / "push-event.json"
+            event_path.write_text(json.dumps({"ref": "refs/heads/main"}), encoding="utf-8")
+            environment = {
+                "GITHUB_ACTIONS": "true",
+                "GITHUB_EVENT_NAME": "push",
+                "GITHUB_EVENT_PATH": str(event_path),
+                "GITHUB_REF": "refs/heads/main",
+                "GITHUB_SHA": head,
+                "GITHUB_REPOSITORY": "fixture/fixture",
+            }
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertNotIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertNotIn("REVIEW", self.severities(report))
+        self.assertEqual(1, report.metrics["persistent_commits"])
+
+    def test_98_ordinary_fixture_has_no_github_actions_environment(self) -> None:
+        self.assertEqual(
+            [],
+            [key for key in GITHUB_ACTIONS_ENV_KEYS if key in os.environ],
+        )
+
+    def test_99_sanitizer_preserves_non_github_environment(self) -> None:
+        marker = "EGX_HISTORY_FIXTURE_MARKER"
+        with mock.patch.dict(
+            os.environ,
+            {
+                marker: "preserved",
+                "GITHUB_ACTIONS": "inherited",
+                "GITHUB_EVENT_NAME": "inherited",
+                "GITHUB_EVENT_PATH": "inherited",
+                "GITHUB_REF": "inherited",
+                "GITHUB_SHA": "inherited",
+                "GITHUB_REPOSITORY": "inherited",
+            },
+            clear=False,
+        ):
+            sanitized = without_github_actions_environment()
+        self.assertEqual("preserved", sanitized[marker])
+        self.assertTrue(all(key not in sanitized for key in GITHUB_ACTIONS_ENV_KEYS))
+
+    def test_100_default_audit_uses_sanitized_fixture_environment(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            report = CHECK.audit(repo.root)
+        self.assertNotIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+
+    def test_101_environment_none_passes_real_process_environment(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("safe.txt")
+            repo.commit()
+            with mock.patch.object(
+                CHECK,
+                "_github_pr_context",
+                wraps=CHECK._github_pr_context,
+            ) as github_context:
+                CHECK.audit(repo.root)
+        self.assertIs(os.environ, github_context.call_args.args[2])
+
+    def test_102_incomplete_explicit_synthetic_context_is_rejected(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            environment, _, _ = self.github_pr_checkout(repo)
+            environment.pop("GITHUB_SHA")
+            report = CHECK.audit(repo.root, environment=environment)
+        self.assertIn("GITHUB_PR_CONTEXT_INVALID", self.categories(report))
+        self.assertIn("REVIEW", self.severities(report))
+
+    def test_103_main_restores_ordinary_environment_after_synthetic_block(self) -> None:
+        synthetic_temporary, synthetic_repo = self.repository()
+        ordinary_temporary, ordinary_repo = self.repository()
+        with synthetic_temporary, ordinary_temporary:
+            environment, _, _ = self.github_pr_checkout(synthetic_repo)
+            ordinary_repo.write("safe.txt")
+            ordinary_repo.commit()
+            with mock.patch.dict(os.environ, environment, clear=True):
+                synthetic_code, synthetic_output = self.capture_main(
+                    "--root", str(synthetic_repo.root)
+                )
+            ordinary_code, ordinary_output = self.capture_main(
+                "--root", str(ordinary_repo.root)
+            )
+        self.assertEqual(0, synthetic_code, synthetic_output)
+        self.assertEqual(0, ordinary_code, ordinary_output)
+        self.assertIn("EPHEMERAL_GITHUB_PR_MERGE=1", synthetic_output)
+        self.assertNotIn("GITHUB_PR_CONTEXT_INVALID", ordinary_output)
+        self.assertTrue(all(key not in os.environ for key in GITHUB_ACTIONS_ENV_KEYS))
 
 
 if __name__ == "__main__":

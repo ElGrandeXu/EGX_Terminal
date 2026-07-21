@@ -6,7 +6,7 @@ into the observed publication sequence. It does not authorize a tag or release.
 
 ## Local and private staging validation
 
-The local policy checks, 133 tests, `reuse 6.2.0`, actionlint 1.7.12, JSON and
+The local policy checks, 134 tests, `reuse 6.2.0`, actionlint 1.7.12, JSON and
 TOML parsing, locks, Git integrity, Markdown links, archive hash, Mission 24
 frozen results, and authenticated-URL searches passed before the corrective
 push.
@@ -62,14 +62,22 @@ only the approved public identity, no old amended commit, no authenticated URL
 in reachable blobs, and the locked `kernel-v1` hash. The temporary clone was
 removed.
 
-## Remaining publication gate
+## Protected pull-request gate
 
-This documentation commit is the 34th reachable commit. `main-protection` is
-`DEFERRED` until its three public CI jobs pass. It will then be activated with a
-required pull request, zero required approvals, required conversation
-resolution, linear history, deletion and force-push protection, and the three
-named checks. The administrator bypass is reserved for repository recovery.
+The 34th reachable commit passed the second public CI with `repository / ubuntu`,
+`repository / windows`, and `licensing / reuse` all successful. The
+`main-protection` ruleset is `APPLIED` and active with a required pull request,
+zero required approvals, required conversation resolution, linear history,
+deletion and force-push protection, and the same three named checks. Repository
+merge settings permit squash only. The administrator bypass is reserved for
+repository recovery and is not used by the ordinary protected workflow.
 
-No release or tag has been created. Release preparation remains deferred until
-separate authorization and must not claim compatibility beyond the preserved
-evidence.
+The identity and ref-policy correction is delivered through the repository's
+first fully protected pull request. The policy accepts attributable GitHub
+`noreply` contributors and the exact GitHub web committer, while the history
+check audits a bounded current contribution branch and detached Actions checkout
+without treating arbitrary refs as permanent publication roots.
+
+The public status is `PUBLIC_V1_READY_FOR_RELEASE_REVIEW`. No release or tag has
+been created. The next gate is a separate explicit decision on `v1.0.0`, and any
+future release must not claim compatibility beyond the preserved evidence.

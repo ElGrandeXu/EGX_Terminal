@@ -30,6 +30,11 @@ dans [`governance/history-rewrite-map.json`](../../governance/history-rewrite-ma
 La politique machine-readable de l'identité future se trouve dans
 [`governance/public-commit-identity.json`](../../governance/public-commit-identity.json).
 
+Les 34 commits qui précèdent la première pull request protégée conservent encore
+l'identité canonique du mainteneur. Le passage ultérieur de la politique au
+schéma 2 ne modifie aucun de ces commits et ne réalise aucune nouvelle
+réécriture d'historique.
+
 ## Références historiques et archives
 
 Une référence active à un ancien commit a été mise à jour. Douze occurrences
@@ -64,3 +69,16 @@ Les réglages privés du compte GitHub ne sont pas vérifiables par cette missio
 
 Après la première publication, aucune nouvelle réécriture d'historique ne doit
 avoir lieu, sauf réponse de sécurité formellement décidée.
+
+La politique active vise désormais la confidentialité des emails publics et une
+provenance GitHub inspectable, pas l'uniformité artificielle de tous les auteurs.
+Elle accepte les contributeurs humains avec une adresse GitHub ID-based ou
+username-only `noreply`, et accepte l'identité exacte
+`GitHub <noreply@github.com>` uniquement comme committer d'un merge web. Les
+contributions externes restent attribuées à leur propre compte GitHub. Une
+adresse personnelle, une identité invalide ou une automatisation non déclarée
+reste soumise à `REVIEW`; aucun bot futur n'est autorisé sans règle explicite.
+
+L'ancienne adresse privée demeure absente de l'historique public. L'élargissement
+des classes conformes ne change ni ce constat ni l'interdiction de réécrire
+l'histoire publique pour une simple préférence d'identité.

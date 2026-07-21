@@ -1,9 +1,60 @@
 {
-  "schema_version": 1,
-  "name": "Maxime Erard",
-  "email": "177521250+ElGrandeXu@users.noreply.github.com",
-  "github_login": "ElGrandeXu",
-  "github_user_id": 177521250,
-  "scope": "all public repository commits",
-  "privacy_mode": "github-id-based-noreply"
+  "schema_version": 2,
+  "purpose": [
+    "protect public email privacy",
+    "preserve inspectable GitHub attribution",
+    "support public contributions",
+    "detect unexpected human or system identities"
+  ],
+  "maintainer": {
+    "name": "Maxime Erard",
+    "email": "177521250+ElGrandeXu@users.noreply.github.com",
+    "github_login": "ElGrandeXu",
+    "github_user_id": 177521250
+  },
+  "accepted_author_classes": [
+    "MAINTAINER_GITHUB_NOREPLY",
+    "PUBLIC_ID_BASED_NOREPLY",
+    "PUBLIC_USERNAME_NOREPLY"
+  ],
+  "accepted_committer_classes": [
+    "MAINTAINER_GITHUB_NOREPLY",
+    "PUBLIC_ID_BASED_NOREPLY",
+    "PUBLIC_USERNAME_NOREPLY",
+    "GITHUB_WEB_COMMITTER"
+  ],
+  "accepted_trailer_classes": [
+    "MAINTAINER_GITHUB_NOREPLY",
+    "PUBLIC_ID_BASED_NOREPLY",
+    "PUBLIC_USERNAME_NOREPLY"
+  ],
+  "github_web_committer": {
+    "name": "GitHub",
+    "email": "noreply@github.com",
+    "allowed_role": "committer"
+  },
+  "personal_email_policy": "REVIEW",
+  "invalid_identity_policy": "REVIEW",
+  "multiple_compliant_identities_policy": "ACCEPT",
+  "automation_policy": "EXPLICIT_RULE_REQUIRED",
+  "ephemeral_github_pr_merge": {
+    "type": "github-pull-request-merge",
+    "persistence": "ephemeral",
+    "identity_policy": "excluded-after-context-validation",
+    "content_policy": "fully-scanned",
+    "required_evidence": [
+      "github-actions-true",
+      "pull-request-event",
+      "canonical-merge-ref",
+      "head-sha-match",
+      "readable-event-payload",
+      "pull-request-number-match",
+      "repository-match",
+      "base-and-head-shas-present",
+      "two-parent-head",
+      "base-parent-match",
+      "head-parent-match",
+      "synthetic-remote-ref-match"
+    ]
+  }
 }

@@ -17,6 +17,27 @@ Use a fork or a dedicated branch and submit one coherent change per pull
 request. State the intended outcome, scope, evidence, and validation. Declare
 all affected files and consumers; do not include unannounced changes.
 
+Configure Git with a GitHub `noreply` address before committing. Both the
+ID-based form (`<id>+<login>@users.noreply.github.com`) and the username-only
+form (`<login>@users.noreply.github.com`) are accepted. Personal email addresses
+in public commit metadata are not accepted by default and are reported for
+review; contributors are never asked to provide one.
+
+GitHub squash merges use the distinct system committer
+`GitHub <noreply@github.com>`. That identity records the web merge
+infrastructure and is not the author of the contribution. The author remains
+attributed through their own GitHub `noreply` identity. GitHub Actions,
+Dependabot, or any future automation identity requires an explicit policy rule;
+no bot is implicitly allowed.
+
+For a `pull_request` run, GitHub Actions checks out a temporary merge commit so
+the merged result is tested before publication. The history gate excludes that
+commit's generated identity and message metadata only after the event payload,
+repository, PR number, HEAD, two ordered parents, and exact synthetic ref all
+agree. Its two parent histories, resulting tree, and every reachable blob remain
+fully scanned. This exception never permits a personal email in a contribution
+commit or another persistent part of the history.
+
 ## Required local validation
 
 Run the canonical sequence from the repository root:
@@ -25,12 +46,18 @@ Run the canonical sequence from the repository root:
 python scripts/check_neutral_root.py
 python scripts/check_public_surface.py
 python scripts/check_licensing.py
+python scripts/check_git_history.py
+python scripts/check_git_history.py --all-refs
 python scripts/check_git_history.py --fail-on-review
 python scripts/check_markdown_links.py
 python scripts/check_github_governance.py
 python -m unittest discover -s tests -v
 reuse lint
 ```
+
+The three history modes are designed to run from the current contribution
+branch. They audit `main`, the bounded current branch, and its permitted
+`origin` transport ref without treating that branch as a permanent public root.
 
 ## Archives
 

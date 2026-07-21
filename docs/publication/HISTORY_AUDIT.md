@@ -7,12 +7,15 @@
 - **Historique :** **`PASS`**.
 - **Identité :** **`PASS`**.
 - **Clone propre :** **`PASS`**.
-- **Commits :** 31, dont 30 commits historiques remédiés et un commit de
-  remédiation.
+- **Commits de référence avant la première PR protégée :** 34, dont 30 commits
+  historiques remédiés et quatre commits de remédiation, gouvernance,
+  correction de staging et publication.
 - **Merges :** 0.
-- **Identités auteur :** 1.
-- **Identités committer :** 1.
+- **Identités auteur sur ces 34 commits :** 1.
+- **Identités committer sur ces 34 commits :** 1.
 - **Identités privées :** 0.
+- **Politique active :** schéma 2, contributions GitHub `noreply` et committer
+  web GitHub borné.
 
 Un audit antérieur a déclenché la remédiation parce que les métadonnées des 30
 commits utilisaient une adresse personnelle. Cette adresse n'est jamais affichée
@@ -20,17 +23,29 @@ ici. Aucun secret de contenu ou autre bloqueur de publication n'avait été trou
 
 ## Identité publique
 
-Tous les auteurs et committers atteignables utilisent exactement :
+Les 34 commits qui précèdent la première pull request protégée utilisent
+exactement, comme auteur et committer :
 
 ```text
 Maxime Erard <177521250+ElGrandeXu@users.noreply.github.com>
 ```
 
-Le contrôle vérifie aussi que l'adresse est une adresse GitHub ID-based
-`noreply`, que l'ID `177521250` et le login `ElGrandeXu` correspondent à la
-politique [`public-commit-identity.json`](../../governance/public-commit-identity.json),
-et qu'aucune seconde identité n'existe. Toute divergence est au minimum
-`REVIEW` et fait échouer `--fail-on-review`.
+Le schéma 2 de la politique
+[`public-commit-identity.json`](../../governance/public-commit-identity.json)
+conserve cette identité canonique du mainteneur, dont l'ID `177521250` et le
+login `ElGrandeXu` sont inspectables dans l'adresse. Il accepte aussi les auteurs
+et committers humains utilisant une adresse GitHub ID-based ou username-only
+`noreply`. Une variation du nom d'affichage associée à l'adresse exacte du
+mainteneur reste classée comme compte `ElGrandeXu`.
+
+Le committer système exact `GitHub <noreply@github.com>` est accepté uniquement
+dans le rôle committer créé par le squash merge web. Il n'est jamais accepté
+comme auteur. Une adresse personnelle, une identité invalide, un faux système
+ou un bot non déclaré reste `REVIEW` et fait échouer `--fail-on-review`. Plusieurs
+identités conformes sont normales et ne constituent plus un finding.
+
+Cette évolution ne réécrit aucun commit. Elle protège la confidentialité et la
+provenance inspectable sans imposer une uniformité artificielle des auteurs.
 
 ## Réécriture contrôlée
 
@@ -108,9 +123,21 @@ python scripts/check_git_history.py --fail-on-review
 ```
 
 Le contrôle utilise la politique machine-readable active, n'imprime jamais une
-adresse personnelle complète et produit un résultat déterministe. Il inspecte
-les objets atteignables ; les objets résiduels locaux font l'objet d'un contrôle
-séparé pendant la procédure de purge.
+adresse personnelle complète et produit un résultat déterministe. Sur `main`, il
+reste strict à la branche publique et aux refs de transport attendues. Sur une
+branche de contribution, il inspecte `main + HEAD`, accepte uniquement la
+branche courante et son éventuelle ref `origin` identique ou ancêtre, et les
+classe `INFO CONTRIBUTION_REF`. Le checkout détaché temporaire d'une pull
+request GitHub utilise par défaut un commit de merge synthétique pour tester le
+résultat fusionné. Le contrôle ne classe ce seul `HEAD` comme
+`EPHEMERAL_GITHUB_PR_MERGE` qu'après concordance stricte des variables Actions,
+du payload, du repository, du numéro de PR, du SHA, des deux parents ordonnés et
+de l'unique ref `pull/<numéro>/merge`. Son identité et son message générés ne
+font pas partie de l'historique publié, mais son arbre, tous ses blobs
+atteignables et les deux historiques parents restent intégralement analysés.
+Toute identité personnelle dans un parent persistant reste `REVIEW`. Les objets
+résiduels locaux font l'objet d'un contrôle séparé pendant la procédure de
+purge.
 
 ## Limites
 

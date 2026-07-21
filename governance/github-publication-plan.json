@@ -56,7 +56,7 @@
     "name": "main-protection",
     "target": "main",
     "enforcement": "active",
-    "activation_condition": "After the 34th documentation commit passes all three public CI jobs.",
+    "activation_condition": "Applied after the 34th documentation commit passed all three public CI jobs.",
     "rules": {
       "prevent_deletion": true,
       "prevent_force_push": true,
@@ -75,8 +75,7 @@
       "reason": "Permit recovery by the sole maintainer while retaining pull-request and status-check defaults for ordinary changes.",
       "ordinary_use": false
     },
-    "deferred_reason": "Awaiting the second public CI gate required by Mission 33.",
-    "status": "DEFERRED"
+    "status": "APPLIED"
   },
   "community_profile": {
     "readme": "PRESENT",
@@ -102,7 +101,7 @@
     "failed_staging_run_cleanup": "APPLIED",
     "anonymous_public_clone": "APPLIED",
     "security_activation": "APPLIED",
-    "second_public_ci": "DEFERRED",
-    "main_ruleset": "DEFERRED"
+    "second_public_ci": "APPLIED",
+    "main_ruleset": "APPLIED"
   }
 }

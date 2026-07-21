@@ -58,12 +58,16 @@ contenu tiers substantiel ni exception tierce n'a été identifié.
 
 `scripts/check_git_history.py` lit la politique
 [`public-commit-identity.json`](../../governance/public-commit-identity.json),
-inspecte l'historique atteignable et exige l'identité publique exacte pour
-chaque auteur et committer. Les modes `--all-refs` et `--fail-on-review` passent
-localement et dans le clone public anonyme ; le correctif amendé porte ce total
-à 33, puis le présent commit documentaire à 34. L'ancien commit amendé n'est pas
-dans l'historique publié. Le [rapport](HISTORY_AUDIT.md) et la
-[remédiation](IDENTITY_REMEDIATION.md) documentent la transformation.
+inspecte l'historique atteignable et applique le schéma 2 selon le rôle auteur,
+committer ou trailer. Les contributeurs humains GitHub `noreply` sont acceptés ;
+le committer web exact de GitHub est borné au rôle committer ; les adresses
+personnelles et automatisations non déclarées restent `REVIEW`. Les 34 commits
+antérieurs à la première pull request protégée conservent l'identité canonique du
+mainteneur, sans réécriture supplémentaire. Les trois modes passent depuis une
+branche de contribution et la classent `INFO CONTRIBUTION_REF`, sans en faire
+une racine publique permanente. Le [rapport](HISTORY_AUDIT.md) et la
+[remédiation](IDENTITY_REMEDIATION.md) documentent la transformation initiale et
+la politique active.
 
 `scripts/check_markdown_links.py` valide hors ligne les liens Markdown suivis.
 `scripts/check_github_governance.py` vérifie les fichiers communautaires, la CI,
@@ -94,14 +98,17 @@ autorisée, les hashes gelés, zéro ancien SHA amendé et zéro URL authentifi�
 dans les blobs publiés. Tous les contrôles et tests y ont passé, puis le clone
 temporaire a été supprimé.
 
-Le ruleset `main-protection` reste différé jusqu'à la seconde CI publique verte
-sur le présent commit documentaire. Cette séquence évite de déclarer une
-protection appliquée avant sa vérification effective.
+La seconde CI publique sur le 34e commit a passé `repository / ubuntu`,
+`repository / windows` et `licensing / reuse`. Le ruleset `main-protection` est
+actif : il exige la pull request, la résolution des conversations, l'historique
+linéaire et les trois checks, et interdit suppression et force-push de `main`.
+La correction d'état et de politique est livrée par le premier workflow de pull
+request réellement protégé, sans bypass administrateur.
 
 ## État
 
-**`PUBLIC_V1_REPOSITORY_FINAL_CI_PENDING`**
+**`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`**
 
-La visibilité publique et les protections de sécurité sont actives. Le prochain
-gate est la seconde CI publique, suivie du ruleset final. Ce statut n'autorise
-ni tag ni release.
+La visibilité publique, les protections de sécurité et le ruleset sont actifs.
+Aucun tag ni aucune release n'existe. Le prochain gate est une décision explicite
+et séparée sur `v1.0.0` ; ce statut ne l'autorise pas.

@@ -34,8 +34,11 @@ A clone does not automatically inject project-owned behavioral instructions into
 Codex, Claude Code, OpenCode, or another harness. No kernel, adapter, or behavioral
 payload is active at the root.
 
-The published Git history has been audited and remediated. Every public
-commit identity uses the approved GitHub ID-based `noreply` form; see the
+The published Git history has been audited and remediated. The 34 commits that
+predate the first protected pull request use the maintainer's approved GitHub
+ID-based `noreply` identity. The active policy also accepts attributable GitHub
+`noreply` contributors and the exact GitHub web committer used for squash
+merges, without accepting personal email addresses or undeclared bots; see the
 [identity remediation report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
 
@@ -167,8 +170,11 @@ staging passed all three required CI checks before the visibility change; public
 anonymous access, cloning, history, identity, licensing, tests, and frozen
 archives were then verified. Private Vulnerability Reporting, secret scanning,
 push protection, read-only Actions permissions, and the documented merge policy
-are active. No release or tag has been created. The final documentation commit
-must pass the same three public checks before `main-protection` is activated.
+are active. The second public CI passed all three required checks and the active
+`main-protection` ruleset requires the protected pull-request path. No release or
+tag has been created. The repository status is
+`PUBLIC_V1_READY_FOR_RELEASE_REVIEW`; the next gate is a separate explicit
+decision on `v1.0.0`.
 
 ## License
 
