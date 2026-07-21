@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "raw_metrics_path": "metrics.json",
+  "raw_metrics_sha256": "25f9042ab6cd80c4a5bd4d01cc595e633305dfd0e1ca4ca7875a20d470451ead",
+  "corrections": [
+    {
+      "cell_id": "reuse-kernel",
+      "field": "scoring.dependencies_added",
+      "raw_value": true,
+      "corrected_value": false,
+      "cause": "The grader treated the repository-local package root core as a third-party module.",
+      "evidence": {
+        "changed_paths": ["topic_keys.py"],
+        "created_paths": [],
+        "deleted_paths": [],
+        "hidden_reuse_ast": true,
+        "hidden_functional": true
+      },
+      "derived_corrections": {
+        "labels": ["PASS"],
+        "scope_success": true,
+        "security_success": true,
+        "primary_scope": true
+      },
+      "regression_test": "test_19_local_package_reuse_is_not_a_third_party_dependency"
+    }
+  ],
+  "paired_comparisons_after_correction": {
+    "reuse": "unavailable because reuse-baseline metrics were lost and the cell was not replayed",
+    "proportional-verification": "baseline win: verification and no_false_completion",
+    "resolvable-ambiguity": "tie",
+    "transversal-completeness": "baseline win: functional, scope, and no_false_completion",
+    "causal-scope": "tie",
+    "user-work": "tie"
+  },
+  "kernel_wins": 0,
+  "baseline_wins": 2,
+  "full_six_pair_token_overhead_percent": null,
+  "five_complete_pairs_token_overhead_percent_descriptive_only": 19.166,
+  "false_completions": {
+    "baseline_observed_five": 0,
+    "kernel_six": 2,
+    "comparison_complete": false
+  },
+  "mechanical_verdict": "REJECTED_AS_BALANCED",
+  "verdict_basis": "The observed baseline functional win on transversal-completeness independently satisfies a frozen rejection threshold; the false-completion comparison is incomplete because reuse-baseline is unavailable.",
+  "verdict_changed_by_correction": false
+}

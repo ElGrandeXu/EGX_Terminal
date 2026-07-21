@@ -21,3 +21,26 @@ et une fois avec le kernel distribué par `sync_adapters.py`.
 Ce pilote valide surtout l'infrastructure de mesure et démontre qu'elle peut
 conserver un résultat nul. Il ne fournit aucune puissance statistique et ne
 justifie ni promotion ni rejet.
+
+## Challenge décisif v1
+
+Le [challenge pré-enregistré](challenge-v1/results.md) oppose baseline et kernel
+sur six fixtures plus difficiles : réutilisation, scope causal, ambiguïté locale,
+complétude transversale, préservation de deux changements utilisateur et
+vérification proportionnée.
+
+- protocole : [protocol.md](challenge-v1/protocol.md) ;
+- SHA-256 :
+  `1efa54d7d02e05a34d1701e930b38146f8e526e41d0de856ef5473ff5ec4022d` ;
+- 12 runs consommés, zéro retry comportemental, un retry infrastructure ;
+- 11 observations disponibles et une cellule non rejouée perdue après scoring ;
+- zéro kernel win, deux baseline wins ;
+- deux faux achèvements observés sous kernel ;
+- décision mécanique : **`REJECTED_AS_BALANCED`**.
+
+La baseline gagne sur la vérification proportionnée et sur la tâche transversale,
+où le kernel modifie inutilement le test visible. Un faux positif du grader de
+dépendances locales sur `reuse-kernel` est corrigé et testé dans
+[adjudication.json](challenge-v1/adjudication.json) sans changer le verdict. Le
+kernel équilibré ne doit pas être répliqué de nouveau ; tout travail ultérieur
+porterait sur un candidat micro distinct et requerrait une décision séparée.

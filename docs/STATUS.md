@@ -43,21 +43,25 @@
   distribution is **PASS**; Codex CLI 0.144.6 distribution/discovery is **PASS**;
   OpenCode 1.17.9 distribution/discovery against the mock is **PASS**; and the
   real OpenCode → Ollama → `qwen3.6:27b` path is **PASS** for runtime transport.
-  Exact canary adherence is **FAIL**, while behavioral effectiveness is
-  no longer wholly untested: a first pre-registered OpenCode/Qwen pilot ran four
-  unique cells on two Python tasks. All four passed functional, scope,
-  preservation and verification checks, with zero false completion. Baseline and
-  kernel each used 11 requests; the kernel aggregate used 2.61% more total tokens
-  and 7.54% less latency. This is an infrastructure-validating null result with
-  one observation per cell, not evidence for promotion or rejection. Runtime
-  portability remains validated experimentally and OpenCode + Qwen is no longer
-  **BLOCKED**. Overall compatibility is **SUPPORTED — EXPERIMENTAL** and the
-  project is not blocked from proceeding. The active root bootstrap is unchanged
-  and no kernel promotion has occurred. See the
-  [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md)
-  and the [behavioral pilot](../experiments/kernel-v1/behavioral/pilot-v1/results.md).
-- **Next step:** decide whether to authorize a replicated, counterbalanced
-  behavioral pilot with several fixtures per task category and improved
-  availability tracking for token/tool fields. Do not rerun the four completed
-  cells, rerun exact-canary inference, or promote the kernel as part of that
-  transition. The measured 3 GiB gate remains host-specific.
+  Exact canary adherence is **FAIL**. Behavioral effectiveness now has a terminal
+  result for the balanced candidate. The first pre-registered pilot remained a
+  four-cell null result. The decisive counterbalanced challenge then consumed 12
+  runs over six harder fixtures, with zero behavioral retry. Eleven observations
+  are available; `reuse-baseline` was lost after scoring during a Windows cleanup
+  failure, consumed and never replayed. On the five complete pairs, the kernel
+  produced zero primary win and the baseline two. The baseline won verification
+  proportionality and transversal completeness; in the latter, the kernel
+  modified a visible test, failed functional/scope criteria and declared success.
+  This observed functional baseline win independently satisfies the frozen
+  rejection threshold: **REJECTED_AS_BALANCED**. A local-package grader false
+  positive was corrected and regression-tested without changing the verdict.
+  Runtime portability remains **SUPPORTED — EXPERIMENTAL**, OpenCode + Qwen is
+  not blocked, and the measured 3 GiB gate remains host-specific. The active root
+  bootstrap is unchanged and no kernel promotion occurred. See the
+  [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md),
+  the [first pilot](../experiments/kernel-v1/behavioral/pilot-v1/results.md), and
+  the [decisive challenge](../experiments/kernel-v1/behavioral/challenge-v1/results.md).
+- **Next step:** close the balanced candidate without another replication. If
+  experimentation continues, make a separate decision and protocol for a
+  substantively distinct micro candidate; do not rerun the balanced kernel or
+  promote it at the root.

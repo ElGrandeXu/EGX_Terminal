@@ -2,7 +2,8 @@
 
 ## Statut
 
-Ce candidat est **expérimental, inactif et non promu**. Il n'est chargé
+Ce candidat est **expérimental, inactif, non promu et rejeté dans sa forme
+équilibrée**. Il n'est chargé
 automatiquement dans EGX_Terminal ni par Codex, ni par Claude Code, ni par
 OpenCode. Son existence ne modifie pas le bootstrap actuellement chargé à la
 racine. Une validation séparée a confirmé sa découverte dans des fixtures Codex
@@ -174,6 +175,26 @@ observation par cellule et deux tâches simples ne permettent aucune généralis
 statistique. Ce résultat valide l'infrastructure de mesure, pas l'efficacité
 générale, et ne promeut ni ne rejette le kernel.
 
+## Challenge comportemental décisif
+
+Le [challenge v1](behavioral/challenge-v1/results.md) a pré-enregistré six
+fixtures ciblant les mécanismes exacts du candidat, puis consommé douze cellules
+contrebalancées. Onze observations sont disponibles ; `reuse-baseline` a été
+perdue après scoring lors d'un refus Windows de nettoyage, consommée et jamais
+rejouée.
+
+Sur les cinq paires complètes, le kernel obtient zéro win et la baseline deux.
+La baseline vérifie proportionnellement là où le kernel ajoute une suite complète,
+et elle complète la modification transversale sans toucher le test visible là où
+le kernel le modifie puis déclare la réussite. Ce dernier baseline win fonctionnel
+satisfait à lui seul le seuil pré-enregistré : **`REJECTED_AS_BALANCED`**.
+
+L'overhead six-paires est indisponible. Sur les cinq paires complètes, le kernel
+utilise descriptivement 19,166 % de tokens et 11,388 % de latence en plus. Un
+faux positif du grader sur un import de package local est corrigé et testé, sans
+changer la décision. Aucune nouvelle réplication du même kernel équilibré n'est
+proposée et aucun fichier racine n'est modifié.
+
 ## Origine conceptuelle
 
 Le texte est une reformulation originale de la
@@ -205,16 +226,17 @@ maintient le payload en LF lors des checkouts Git.
 
 ## Limites
 
-- Le premier pilote comportemental est exécuté, mais ses quatre observations
-  toutes réussies ne montrent aucun effet différentiel et ne valident pas une
-  efficacité générale.
+- Le premier pilote comportemental était nul, puis le challenge décisif a rejeté
+  la forme équilibrée sur deux baseline wins observés. Une cellule baseline est
+  indisponible après un incident de nettoyage post-scoring, mais la régression
+  fonctionnelle transversale suffit au seuil de rejet.
 - Aucun contexte système complet réellement injecté par un harness n'a été
   capturé ; la validation Codex repose sur des canaris fermés.
 - L'initialisation OpenCode, le transport mock, la découverte racine unique du
   kernel et le transport provider réel vers le 27B sont validés. La sortie Qwen
   sans thinking n'est pas exacte : **FAIL** d'adhérence formelle, sans invalider
-  le **PASS** de transport. L'efficacité comportementale reste inconclusive après
-  le pilote v1 non répété.
+  le **PASS** de transport. L'efficacité comportementale du kernel équilibré est
+  désormais classée **REJECTED_AS_BALANCED** dans le harness/model testé.
 - Le runtime Ollama/Qwen est validé séparément à 16 384 tokens, mais la marge
   VRAM observée est faible pour le 35B comme pour le 27B ; même la réserve 27B
   de 4 Gio n'a laissé que 3 683 MiB libres lors d'une campagne antérieure. La
@@ -228,14 +250,12 @@ maintient le payload en LF lors des checkouts Git.
 - Qwen n'est pas un harness ; son comportement dépendra du runtime, du modèle
   précis, de la quantification et du template testés.
 
-## Conditions avant promotion
+## Statut après décision
 
-La promotion exige au minimum des adaptateurs expérimentaux inspectables, une
-preuve de chargement unique et de synchronisation, les tests de scope et de
-précédence sur versions fixées, la campagne du
-[plan de validation](../../docs/research/synthesis/validation-plan.md), le respect
-du plafond de 300 tokens estimés pour le payload et une décision explicite
-séparée.
+La forme équilibrée ne poursuit plus le chemin de promotion et ne doit pas être
+répliquée. Une éventuelle suite exige une décision séparée sur un candidat micro
+substantiellement distinct ; elle ne réactive pas ce candidat et ne transforme
+pas ses preuves de transport en preuve comportementale.
 
 ## Fichiers racine volontairement inchangés
 
