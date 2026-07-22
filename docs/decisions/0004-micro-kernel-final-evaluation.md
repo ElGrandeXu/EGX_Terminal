@@ -5,6 +5,12 @@
 - **Behavioral activation:** none
 - **Final classification:** `REJECT_MICRO`
 
+> **Avis sur la preuve runtime :** la
+> [décision 0014](0014-micro-kernel-evidence-erratum.md) gouverne la lecture des
+> affirmations runtime associées à cette décision. Elle documente l'absence des
+> données runtime sources et de l'agrégat original sans modifier le verdict
+> terminal **`REJECT_MICRO`**.
+
 ## Contexte et portée
 
 La [décision 0003](0003-balanced-kernel-rejection.md) a rejeté le kernel
@@ -17,35 +23,47 @@ La présente décision porte uniquement sur le payload exact de 474 octets
 identifié par le SHA-256
 `e4e23477afceaa290bdfa040a9087ca53fde9a3bd390499671fd46032b56d6b5`.
 
-## Éléments de preuve observés
+## Affirmations historiques publiées
 
-Le [rapport final](../../experiments/kernel-micro-v1/behavioral/final-v1/results.md)
-établit les faits suivants :
+Le [rapport final historique](../../experiments/kernel-micro-v1/behavioral/final-v1/results.md)
+publie les affirmations suivantes :
 
-- les dix cellules sont valides ;
-- baseline et micro réussissent fonctionnellement 5/5 et au primaire 4/5 ;
-- les cinq paires sont des égalités, avec zéro primary win de chaque côté ;
-- aucune régression micro de scope, préservation ou sécurité n'est observée ;
-- chaque cellule exécute une validation pertinente ;
-- les deux bras produisent zéro faux achèvement ;
-- la baseline consomme 229 923 tokens et le micro 247 972 ;
-- l'overhead exact est **7,850019354305572 %**, au-dessus du plafond obligatoire
+- les dix cellules sont publiées comme valides ;
+- les scores publiés donnent à la baseline et au micro 5/5 en réussite
+  fonctionnelle et 4/5 au primaire ;
+- les cinq paires sont publiées comme des égalités, avec zéro primary win de
+  chaque côté ;
+- le rapport ne publie aucune régression micro de scope, préservation ou
+  sécurité ;
+- chaque cellule est publiée comme exécutant une validation pertinente ;
+- les deux bras sont publiés avec zéro faux achèvement ;
+- les mesures de tokens publiées sont de 229 923 pour la baseline et de 247 972
+  pour le micro ;
+- l'overhead publié est **7,850019354305572 %**, au-dessus du plafond obligatoire
   de 5 % ;
-- la latence agrégée est 623,718 s baseline contre 654,750 s micro ;
-- deux incidents purement infrastructurels ont été résolus avant toute cellule,
-  puis les dix observations ont été consommées sans retry comportemental.
+- les latences agrégées publiées sont de 623,718 s pour la baseline et de
+  654,750 s pour le micro ;
+- deux incidents purement infrastructurels sont rapportés comme résolus avant
+  toute cellule, puis les dix observations comme consommées sans retry
+  comportemental.
+
+La cohérence arithmétique interne des nombres publiés reste contrôlable.
+Toutefois, les données runtime sources et l'agrégat original sont absents : les
+cellules, scores, mesures et incidents ci-dessus ne sont donc plus
+indépendamment vérifiables à partir du record conservé.
 
 ## Interprétation limitée
 
-Dans les conditions gelées, le micro-kernel n'améliore aucun critère primaire et
-n'entraîne aucune régression fonctionnelle, de scope, de préservation ou de
-sécurité. Sa taxe token dépasse toutefois le budget d'acceptation pré-enregistré.
-La règle ne permet aucune exception qualitative : la classification mécanique
-est **`REJECT_MICRO`**.
+Selon les affirmations historiques publiées pour les conditions gelées, le
+micro-kernel n'améliore aucun critère primaire et n'entraîne aucune régression
+fonctionnelle, de scope, de préservation ou de sécurité. Les valeurs publiées de
+tokens, arithmétiquement cohérentes entre elles, placent sa taxe au-dessus du
+budget d'acceptation pré-enregistré. La règle ne permet aucune exception
+qualitative : la classification mécanique est **`REJECT_MICRO`**.
 
-Ce résultat ne démontre pas que les principes reformulés par le payload sont
-généralement nuisibles. Il démontre que ce payload exact ne peut pas être une
-politique projet always-on acceptable pour la V1 selon le seuil convenu.
+Cette décision ne conclut pas que les principes reformulés par le payload sont
+généralement nuisibles. Elle classe ce payload exact comme politique projet
+always-on inacceptable pour la V1 selon la règle et le seuil convenus.
 
 ## Décision
 
@@ -56,9 +74,10 @@ politique projet always-on acceptable pour la V1 selon le seuil convenu.
 3. Aucun kernel comportemental n'est promu, distribué ou activé à la racine.
 4. La V1 poursuit avec une racine neutre. Les principes restent accessibles
    dans la documentation et les protocoles chargés à la demande.
-5. Le payload, le protocole, les fixtures, les graders et les preuves historiques
-   restent auditables ; le correctif d'identité Ollama et ses anciens et nouveaux
-   hashes sont consignés dans le rapport final.
+5. L'auditabilité directe se limite au payload, au protocole et à sa règle de
+   décision, aux fixtures, aux graders, au manifeste et aux hashes consignés des
+   artefacts conservés. Les affirmations runtime demeurent dans le rapport
+   historique sans leurs données sources ni l'agrégat original.
 
 ## Conséquences
 

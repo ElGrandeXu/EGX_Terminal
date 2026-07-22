@@ -1,8 +1,12 @@
 # Quickstart
 
 This guide validates the public V1 workspace without a model or agent runtime.
-Run every command from the repository root. A full Git clone and a GitHub source
-archive provide different evidence and are not interchangeable.
+For the micro-kernel campaign, inspection covers the preserved historical report
+and directly auditable definition artifacts; it does not independently verify
+the source runtime observations, whose original aggregate and source data are
+absent. Run every command from the repository root. A full Git clone and a
+GitHub source archive provide different validation scopes and are not
+interchangeable.
 
 ## Prerequisites
 
@@ -55,8 +59,8 @@ reuse lint
 ```
 
 This command runs the active tests under `tests/`. Historical experimental suites
-remain part of their archived evidence and are intentionally outside the active
-V1 test total.
+remain retained archive artifacts and are intentionally outside the active V1
+test total.
 
 The governance checks use only the standard library and make no network
 requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification 3.3; CI
@@ -90,8 +94,14 @@ simulates missing history.
 
 1. [Project charter](CHARTER.md) — mission, principles, and non-objectives.
 2. [Current status](STATUS.md) — the present boundary and next gate.
-3. [Decision register](decisions/README.md) — then read decisions [0004](decisions/0004-micro-kernel-final-evaluation.md) and [0005](decisions/0005-ship-v1-with-neutral-root.md).
-4. [Balanced-kernel archive](../experiments/kernel-v1/README.md) and [micro-kernel archive](../experiments/kernel-micro-v1/README.md) — rejected candidates and retained evidence.
+3. [Decision register](decisions/README.md) — then read the micro-kernel
+   evaluation [0004](decisions/0004-micro-kernel-final-evaluation.md), its
+   runtime-evidence erratum [0014](decisions/0014-micro-kernel-evidence-erratum.md),
+   and the neutral-root decision
+   [0005](decisions/0005-ship-v1-with-neutral-root.md).
+4. [Balanced-kernel archive](../experiments/kernel-v1/README.md) and
+   [micro-kernel archive](../experiments/kernel-micro-v1/README.md) — rejected
+   candidates and their retained historical records.
 5. [Publication boundary](publication/PUBLICATION_BOUNDARY.md) — inspected surface and documented exceptions.
 
 ## Inspect an experiment without rerunning it
@@ -104,13 +114,20 @@ and compatibility links. For the final outcomes, use:
 - [micro-kernel final results](../experiments/kernel-micro-v1/behavioral/final-v1/results.md); and
 - [runtime compatibility summary](../experiments/kernel-v1/validation/runtime-compatibility-summary.md).
 
-The Markdown reports and tracked JSON artifacts are the evidence. Reading and
-parsing them is evidence inspection; it does not reproduce a runtime observation.
+For the micro-kernel, the preserved payload, protocol, fixtures, graders,
+manifest, and recorded hashes are directly auditable. The results document is a
+historical report: its published totals can be checked for internal arithmetic
+consistency, but it is not a substitute for the missing original aggregate or
+source runtime data. Reading and parsing the retained record therefore neither
+reproduces nor independently verifies a runtime observation.
 
 ## Three different validation scopes
 
-**Inspect existing evidence.** Read the tracked reports, protocols, manifests,
-and metrics. This is the default path and has no runtime or network cost.
+**Inspect the existing record.** Read the tracked historical reports and the
+preserved protocols, manifests, fixtures, graders, and metrics definitions. This
+is the default path and has no runtime or network cost. For the micro-kernel,
+only the preserved definition artifacts are directly auditable; the runtime
+claims remain historically published rather than independently revalidated.
 
 **Reproduce local V1 validation.** Run the full-clone commands above. They verify
 the current neutral root, tracked public surface, file-scoped licensing,
@@ -125,5 +142,9 @@ Do not download a model, start Ollama, launch OpenCode, execute Qwen, or rerun a
 behavioral campaign as part of standard V1 validation.
 
 The final doctrinal campaigns are closed. Do not rerun them to obtain a more
-favorable result: their pre-registered verdicts and negative evidence are part
-of the V1 record.
+favorable result: their terminal verdicts, produced under pre-registered rules,
+and their bounded historical record are part of V1. For the micro-kernel, the
+bounded negative evidence record comprises directly auditable definition
+artifacts, historically published claims, and their internally checkable
+arithmetic; it does not comprise recoverable source runtime proof. This
+limitation does not weaken **`REJECT_MICRO`** or authorize a new campaign.

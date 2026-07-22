@@ -3,9 +3,10 @@
 ## But
 
 La V1 conserve un workspace de recherche LLM-agnostique, à racine neutre, avec
-ses principes, décisions et preuves reproductibles. Le seul repository canonique
-est `ElGrandeXu/EGX_Terminal`. Il reste privé pendant cette clôture de
-récupération et ne possède actuellement aucun Git tag ni aucune release GitHub.
+ses principes, décisions, contrôles et artefacts reproductibles dans les limites
+documentées. Le seul repository canonique est `ElGrandeXu/EGX_Terminal`. Il
+reste privé pendant cette clôture de récupération et ne possède actuellement
+aucun Git tag ni aucune release GitHub.
 
 ## Surface canonique incluse
 
@@ -17,6 +18,14 @@ récupération et ne possède actuellement aucun Git tag ni aucune release GitHu
   gouvernance de licences ;
 - `experiments/kernel-v1/` et `experiments/kernel-micro-v1/` conservent les deux
   campagnes rejetées comme archives inactives et immuables.
+
+Pour le micro-kernel, les artefacts de définition conservés — payload,
+protocole, fixtures, graders et manifeste — restent auditables. Le rapport
+historique conserve les affirmations runtime publiées, mais l'agrégat original
+et les données runtime sources sont irrécouvrables ; ces observations ne sont
+donc pas entièrement auditables ou reproductibles à partir du record conservé.
+La [décision 0014](../decisions/0014-micro-kernel-evidence-erratum.md) documente
+cette limite sans modifier le verdict terminal **`REJECT_MICRO`**.
 
 La racine ne contient ni kernel always-on, adaptateur actif, hook, skill,
 mémoire, routing ni injection de doctrine. Les archives ne sont pas des
@@ -60,8 +69,10 @@ sont conservés uniquement dans des preuves privées vérifiées. La réservatio
 GitHub liée aux releases immuables interdit de réutiliser ce nom dans le
 repository recréé ; aucun contournement n'est poursuivi.
 
-Les conclusions expérimentales associées à V1 restent valables : aucun fichier
-expérimental, résultat ou protocole n'est modifié. `v1.0.1` est la prochaine
+La conclusion de gouvernance **`REJECT_MICRO`** associée à la V1 reste
+inchangée : aucun fichier expérimental, résultat ou protocole n'est modifié. Les
+affirmations runtime publiées restent historiques et ne remplacent pas
+l'agrégat et les données runtime sources absents. `v1.0.1` est la prochaine
 candidate, mais aucun tag ou release de ce nom n'existe. PR 2 reste une étape
 ultérieure séparée.
 

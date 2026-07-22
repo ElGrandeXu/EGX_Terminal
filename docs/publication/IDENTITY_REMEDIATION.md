@@ -75,8 +75,12 @@ ruleset. Cette exception n'autorise aucun push direct futur.
 ## Intégrité expérimentale et règle future
 
 Aucun fichier sous `experiments/kernel-v1/` ou
-`experiments/kernel-micro-v1/` n'est modifié. Les dix résultats gelés de Mission
-24 restent identiques et aucun benchmark ou runtime de modèle n'est relancé.
+`experiments/kernel-micro-v1/` n'est modifié. Les dix fichiers gelés listés sous
+`frozen_files` par le manifeste Mission 24 restent octet-identiques et aucun
+benchmark ou runtime de modèle n'est relancé. Cette intégrité des archives
+conservées ne démontre ni la complétude de la preuve runtime, ni la conservation
+de l'agrégat original et de ses données sources ; voir la
+[décision 0014](../decisions/0014-micro-kernel-evidence-erratum.md).
 
 La politique active accepte les contributeurs humains avec une adresse GitHub
 ID-based ou username-only `noreply`, ainsi que l'identité GitHub web exacte
