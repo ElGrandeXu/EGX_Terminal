@@ -1,14 +1,15 @@
 # Status
 
 - **Phase:** canonical recovery is closed on a private repository with no Git
-  tag or published release. PR 2 is the next step; `v1.0.1` is only the next
-  candidate and has not been created.
+  tag or published release. PR #2 is complete and merged; the next gate is the
+  final pre-publication audit. `v1.0.1` remains only the next candidate and has
+  not been created.
 - **Mission 24:** complete. Its final governance campaign is closed.
 - **Final doctrine verdict:** **`REJECT_MICRO`**. The historical report publishes
   totals of 229,923 tokens for the baseline and 247,972 for the micro, with an
   overhead of 7.850019354305572% above the frozen 5% ceiling. These values remain
   internally arithmetically checkable, but the original aggregate and source
-  runtime data are absent; [Decision 0014](decisions/0014-micro-kernel-evidence-erratum.md)
+  runtime data are irrecoverable; [Decision 0014](decisions/0014-micro-kernel-evidence-erratum.md)
   governs their interpretation. The earlier balanced candidate was already
   rejected.
 - **Benchmark phase:** closed. No kernel adjustment, third variant, payload
@@ -36,7 +37,9 @@
   records the private replacement of the affected repository. The functional commit was
   reconstructed with the same tree, parent, complete message, dates, diff,
   paths, modes, and contents, using only approved `noreply` identities. The
-  recovery-closing documentation brings the clean history to 38 commits.
+  recovery-closing documentation preserved that clean history. The PR #2
+  squash-merge commit `c708bc6af88b5e98a08fc801e476d4c16248e701`
+  established the 40-commit canonical recovery checkpoint.
 - **Canonical-object boundary:** the canonical repository was newly created from
   the cleaned history with no object carrying the former metadata and no
   inherited pull request. Temporary recovery repositories were deleted only
@@ -69,9 +72,10 @@
   Pull requests are a mandatory project convention, not an active GitHub
   protection.
 - **Repository status:** **`PRIVATE_RECOVERY_CLOSED`**. The canonical repository
-  remains private, has no tag, release, or pull request, and is ready for PR 2.
-  `v1.0.1` is not published; its release gate still includes selecting and
-  recording a durable SSH signing identity.
+  remains private and has no tag or release. `v1.0.1` is not published. The
+  final pre-publication audit is the next gate; only afterward may separate
+  preparation select and record a durable SSH signing identity for the
+  candidate release.
 - **Email privacy:** the GitHub account setting is
   `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`; future web operations require it
   to remain enabled and the scanner accepts no personal-address fallback.
@@ -79,7 +83,8 @@
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The active gate is PR 2 under the mandatory project pull-request convention.
-The remote controls, including Private Vulnerability Reporting, must be
-re-evaluated before public publication. Only a later, separately authorized
-mission may satisfy the signing gate and create a `v1.0.1` tag or release.
+PR #2 is complete and merged. The active gate is the final pre-publication
+audit, including re-evaluation of remote controls and Private Vulnerability
+Reporting before public publication. Only a later, separately authorized
+mission may prepare `v1.0.1`, satisfy the SSH signing gate, and create a tag or
+release.
