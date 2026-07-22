@@ -1,6 +1,6 @@
 {
-  "schema_version": 3,
-  "remote_settings_status": "APPLIED",
+  "schema_version": 4,
+  "remote_settings_status": "PARTIALLY_APPLIED",
   "identity": {
     "owner": "ElGrandeXu",
     "repository": "EGX_Terminal",
@@ -67,42 +67,108 @@
     "automatic_approval_for_untrusted_workflow_changes": false,
     "status": "APPLIED"
   },
-  "security": {
-    "private_vulnerability_reporting": "ACTIVE",
-    "secret_scanning": "ACTIVE",
-    "push_protection": "ACTIVE",
-    "security_alerts": "ACTIVE",
-    "personal_security_address_published": false,
-    "status": "APPLIED"
-  },
-  "main_ruleset": {
-    "name": "main-protection",
-    "target": "main",
-    "enforcement": "active",
-    "activation_condition": "Apply after the 38th clean recovery-closing commit passes all three required private checks on the recreated repository.",
-    "rules": {
-      "prevent_deletion": true,
-      "prevent_force_push": true,
-      "require_linear_history": true,
-      "require_pull_request": true,
-      "required_approvals": 0,
-      "require_conversation_resolution": true,
-      "require_branch_up_to_date": false,
-      "require_signed_commits": false,
-      "require_code_owner_review": false,
-      "required_status_checks": [
-        "repository / ubuntu",
-        "repository / windows",
-        "licensing / reuse"
-      ]
+  "remote_governance": {
+    "verified_on": "2026-07-22",
+    "plan": "GITHUB_FREE",
+    "observed_visibility": "private",
+    "controls": {
+      "main_ruleset": {
+        "desired_state": "ACTIVE",
+        "desired_configuration": {
+          "name": "main-protection",
+          "target": "main",
+          "enforcement": "active",
+          "rules": {
+            "prevent_deletion": true,
+            "prevent_force_push": true,
+            "require_linear_history": true,
+            "require_pull_request": true,
+            "required_approvals": 0,
+            "require_conversation_resolution": true,
+            "require_branch_up_to_date": false,
+            "require_signed_commits": false,
+            "require_code_owner_review": false,
+            "required_status_checks": [
+              "repository / ubuntu",
+              "repository / windows",
+              "licensing / reuse"
+            ]
+          },
+          "administrative_bypass": {
+            "planned": true,
+            "scope": "Repository administrator",
+            "reason": "Document the one-time direct recovery-closing push made while the repository was private and before this ruleset was activated.",
+            "ordinary_use": false
+          }
+        },
+        "observed_state": "UNAVAILABLE_ON_CURRENT_PLAN",
+        "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
+        "application_status": "NOT_APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
+          "http_status": 403
+        }
+      },
+      "main_branch": {
+        "desired_state": "PROTECTED",
+        "observed_state": "UNPROTECTED",
+        "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
+        "application_status": "NOT_APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main",
+          "http_status": 200
+        },
+        "limitation_evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main/protection",
+          "http_status": 403
+        }
+      },
+      "private_vulnerability_reporting": {
+        "desired_state": "ACTIVE_BEFORE_PUBLICATION",
+        "observed_state": "UNAVAILABLE_WHILE_PRIVATE",
+        "limitation": "REQUIRES_PUBLIC_VISIBILITY",
+        "application_status": "NOT_APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/private-vulnerability-reporting",
+          "http_status": 404
+        }
+      },
+      "secret_scanning": {
+        "desired_state": "ACTIVE",
+        "observed_state": "DISABLED",
+        "limitation": "PRIVATE_REPOSITORY_ON_GITHUB_FREE",
+        "application_status": "NOT_APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/secret-scanning/alerts",
+          "http_status": 404
+        }
+      },
+      "push_protection": {
+        "desired_state": "ACTIVE",
+        "observed_state": "NOT_ACTIVE",
+        "limitation": "SECRET_SCANNING_DISABLED",
+        "application_status": "NOT_APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal",
+          "http_status": 200
+        }
+      },
+      "security_alerts": {
+        "desired_state": "ACTIVE",
+        "observed_state": "ACTIVE",
+        "limitation": null,
+        "application_status": "APPLIED",
+        "evidence": {
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/vulnerability-alerts",
+          "http_status": 204
+        }
+      }
     },
-    "administrative_bypass": {
-      "planned": true,
-      "scope": "Repository administrator",
-      "reason": "Document the one-time direct recovery-closing push made while the repository was private and before this ruleset was activated.",
-      "ordinary_use": false
-    },
-    "status": "APPLIED"
+    "procedural_fallback": {
+      "pull_request_required": true,
+      "basis": "MANDATORY_PROJECT_CONVENTION",
+      "github_enforced": false
+    }
   },
   "community_profile": {
     "readme": "PRESENT",

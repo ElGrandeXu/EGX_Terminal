@@ -66,25 +66,35 @@ GitHub-owned and verified-action broad allowances are disabled, full SHA pinning
 is required, the default workflow token is read-only, and workflows cannot
 approve pull requests.
 
-Private Vulnerability Reporting, secret scanning, push protection, and
-vulnerability alerts are active. No personal security address is published.
+Vulnerability alerts are active. Private Vulnerability Reporting is unavailable
+while the repository is private, secret scanning is disabled, and push
+protection is not active. No personal security address is published as a
+substitute. Private Vulnerability Reporting must be enabled and verified before
+any public publication.
 
-## Protected main
+## Desired and observed branch governance
 
-The `main-protection` ruleset is activated only after the closing commit has
-produced the three private green checks:
+The desired `main-protection` configuration would require these three checks:
 
 - `repository / ubuntu`;
 - `repository / windows`; and
 - `licensing / reuse`.
 
-The active ruleset blocks deletion and force-push, requires linear history and a
-pull request, requires conversation resolution, and requires those three checks
-with zero mandatory approvals. No ordinary bypass is permitted.
+It would also block deletion and force-push, require linear history and a pull
+request, require conversation resolution, and use zero mandatory approvals. The
+configuration is not applied: repository rulesets are unavailable for this
+private repository on the current GitHub Free plan, and `main` is observed as
+unprotected.
 
 The direct fast-forward push of the closing commit is a one-time recovery
 exception while the repository is private and before ruleset activation. It is
 not precedent or authorization for future direct pushes.
+
+Until the controls are re-evaluated before public publication, using a pull
+request is a mandatory project convention enforced procedurally rather than by
+GitHub branch protection. The schema 4 manifest records desired state, observed
+state, plan or visibility limitation, application accounting, GET endpoint,
+HTTP result, and verification date separately.
 
 ## Validation boundary
 

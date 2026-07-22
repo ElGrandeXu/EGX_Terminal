@@ -1,6 +1,6 @@
 # 0012 — Close canonical recovery after immutable tag reservation
 
-- **Status:** accepted
+- **Status:** superseded in part by [0013](0013-record-observed-github-governance-limitations.md)
 - **Date:** 2026-07-21
 
 ## Context
@@ -38,9 +38,13 @@ mirrors, complete bundles, private metadata captures, `git bundle verify`,
 `git fsck --full`, and SHA-256 manifest verification succeeded.
 
 The recovery-closing documentation may be pushed directly to private `main` as
-a one-time exception before activation of the final protection ruleset. It must
-be a non-force fast-forward. This exception does not authorize any future direct
-push; ordinary work resumes through the protected pull-request path.
+a one-time exception before the intended activation of the final protection
+ruleset. It must be a non-force fast-forward. This exception does not authorize
+any future direct push. The recovery action remains historical, but the
+instruction that ordinary work resume through a protected pull-request path is
+superseded by [0013](0013-record-observed-github-governance-limitations.md): pull
+requests remain a mandatory project convention, while `main` is unprotected and
+GitHub does not technically enforce that convention in the current configuration.
 
 ## Evidence
 

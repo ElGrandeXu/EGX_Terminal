@@ -55,6 +55,13 @@ class GitHubGovernanceTests(unittest.TestCase):
     def codes(self) -> set[str]:
         return {item.code for item in checker.audit(self.root)}
 
+    def publication_plan(self) -> dict:
+        return json.loads(self.text("governance/github-publication-plan.json"))
+
+    def write_publication_plan(self, data: dict) -> None:
+        path = self.root / "governance/github-publication-plan.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+
     def test_01_compliant_governance(self) -> None:
         self.assertEqual(checker.audit(self.root), ())
 
@@ -227,6 +234,75 @@ class GitHubGovernanceTests(unittest.TestCase):
             "",
         )
         self.assertIn("EVENT_ISOLATION", self.codes())
+
+    def test_33_schema_4_fixture_records_observed_remote_state(self) -> None:
+        data = self.publication_plan()
+        controls = data["remote_governance"]["controls"]
+        self.assertEqual(4, data["schema_version"])
+        self.assertEqual("PARTIALLY_APPLIED", data["remote_settings_status"])
+        self.assertEqual("UNAVAILABLE_ON_CURRENT_PLAN", controls["main_ruleset"]["observed_state"])
+        self.assertEqual("UNPROTECTED", controls["main_branch"]["observed_state"])
+        self.assertEqual(
+            "UNAVAILABLE_WHILE_PRIVATE",
+            controls["private_vulnerability_reporting"]["observed_state"],
+        )
+        self.assertEqual("DISABLED", controls["secret_scanning"]["observed_state"])
+        self.assertEqual("NOT_ACTIVE", controls["push_protection"]["observed_state"])
+        self.assertEqual("ACTIVE", controls["security_alerts"]["observed_state"])
+        self.assertEqual((), checker.audit(self.root))
+
+    def test_34_schema_3_is_rejected(self) -> None:
+        data = self.publication_plan()
+        data["schema_version"] = 3
+        self.write_publication_plan(data)
+        self.assertIn("PUBLICATION_PLAN", self.codes())
+
+    def test_35_global_applied_status_cannot_hide_limitations(self) -> None:
+        data = self.publication_plan()
+        data["remote_settings_status"] = "APPLIED"
+        self.write_publication_plan(data)
+        self.assertIn("PUBLICATION_PLAN", self.codes())
+
+    def test_36_desired_and_observed_states_are_distinct(self) -> None:
+        data = self.publication_plan()
+        control = data["remote_governance"]["controls"]["main_branch"]
+        del control["observed_state"]
+        control["state"] = "PROTECTED"
+        self.write_publication_plan(data)
+        self.assertIn("DESIRED_OBSERVED", self.codes())
+
+    def test_37_inactive_security_controls_cannot_be_declared_active(self) -> None:
+        for name in ("private_vulnerability_reporting", "secret_scanning", "push_protection"):
+            with self.subTest(control=name):
+                data = self.publication_plan()
+                data["remote_governance"]["controls"][name]["observed_state"] = "ACTIVE"
+                self.write_publication_plan(data)
+                self.assertIn("OBSERVED_STATE", self.codes())
+                shutil.copy2(
+                    SOURCE / "governance/github-publication-plan.json",
+                    self.root / "governance/github-publication-plan.json",
+                )
+
+    def test_38_main_cannot_be_declared_protected(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["controls"]["main_branch"]["observed_state"] = "PROTECTED"
+        self.write_publication_plan(data)
+        self.assertIn("OBSERVED_STATE", self.codes())
+
+    def test_39_ruleset_cannot_be_counted_as_applied(self) -> None:
+        data = self.publication_plan()
+        control = data["remote_governance"]["controls"]["main_ruleset"]
+        control["observed_state"] = "ACTIVE"
+        control["application_status"] = "APPLIED"
+        self.write_publication_plan(data)
+        self.assertIn("OBSERVED_STATE", self.codes())
+        self.assertIn("CONTROL_ACCOUNTING", self.codes())
+
+    def test_40_plan_limitation_cannot_be_presented_as_success(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["controls"]["secret_scanning"]["application_status"] = "APPLIED"
+        self.write_publication_plan(data)
+        self.assertIn("CONTROL_ACCOUNTING", self.codes())
 
 
 if __name__ == "__main__":

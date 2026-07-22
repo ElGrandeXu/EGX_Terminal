@@ -49,21 +49,30 @@ verified private artifact. This checklist does not authorize `v1.0.1`.
 - [x] The SSH policy remains `KEY_SELECTION_REQUIRED`, with no active identity
   and no key added.
 
-## Closing commit and protected workflow
+## Closing commit and current workflow
 
 - [x] One intentional closing commit uses the approved GitHub `noreply` author
   and committer identity and has the former clean HEAD as its sole parent.
 - [x] The push is a direct non-force fast-forward to private `main`, documented
   as a one-time recovery exception before final ruleset activation.
 - [x] The three private checks pass on the closing commit.
-- [x] Repository metadata, topics, features, merge policy, Actions policy,
-  security features, and the final `main-protection` ruleset match governance.
+- [x] Repository metadata, topics, features, merge policy, Actions policy, and
+  vulnerability alerts match governance.
+- [x] The observed limitations are recorded: `main` is unprotected, rulesets are
+  unavailable on the current private GitHub Free repository, Private
+  Vulnerability Reporting is unavailable while private, secret scanning is
+  disabled, and push protection is not active.
+- [x] The desired `main-protection` rules remain target configuration only; pull
+  requests are a mandatory project convention rather than active GitHub
+  enforcement.
 - [x] The final clean clone and content-only archive validations pass.
 - [x] The final history contains 38 clean commits and no experimental change.
 
 ## Future v1.0.1 mission — not authorized here
 
-- [ ] Complete PR 2 through the protected pull-request path.
+- [ ] Complete PR 2 under the mandatory project pull-request convention.
+- [ ] Re-evaluate remote controls and enable Private Vulnerability Reporting
+  before any public publication.
 - [ ] Select and record a durable SSH public signing identity.
 - [ ] Verify the repository-owned allowed-signers record offline.
 - [ ] Prepare and separately authorize the exact `v1.0.1` tag.

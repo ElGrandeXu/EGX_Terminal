@@ -13,11 +13,15 @@ supported versions.
 
 Do not open a public issue or publish a proof containing a secret. Use GitHub's
 [private vulnerability report](https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new)
-for `ElGrandeXu/EGX_Terminal`. Reports should state the impact, a minimal
-reproduction, and the affected commit, with personal data and logs redacted.
+for `ElGrandeXu/EGX_Terminal` only after that feature is enabled. Reports should
+state the impact, a minimal reproduction, and the affected commit, with personal
+data and logs redacted.
 
-Private Vulnerability Reporting is active. The project does not publish a
-personal security address as a substitute for that private channel.
+Private Vulnerability Reporting is currently unavailable while the repository
+is private. The project does not invent or publish a personal security address
+as a substitute. Enabling and verifying Private Vulnerability Reporting is a
+required gate before any public publication; until then, this policy does not
+claim that a confidential GitHub reporting channel is active.
 
 ## Scope
 

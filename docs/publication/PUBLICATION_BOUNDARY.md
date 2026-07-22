@@ -74,13 +74,19 @@ fusionnées et auto-merge désactivé.
 
 Actions est limité à `actions/checkout@*` et `actions/setup-python@*`, avec
 pinning SHA complet, token en lecture seule et approbation de pull request
-interdite. Private Vulnerability Reporting, secret scanning, push protection et
-alertes de vulnérabilité sont actifs.
+interdite. Les alertes de vulnérabilité sont actives. Private Vulnerability
+Reporting est indisponible tant que le repository reste privé, secret scanning
+est désactivé et push protection n'est pas active. Private Vulnerability
+Reporting devra être activé et vérifié avant toute publication publique ; aucune
+adresse personnelle n'est publiée comme canal de remplacement.
 
-Après le premier passage vert des trois checks privés, le ruleset
-`main-protection` impose pull request, résolution des conversations, historique
-linéaire et checks `repository / ubuntu`, `repository / windows` et
-`licensing / reuse`, tout en bloquant suppression et force-push.
+Le ruleset souhaité `main-protection` imposerait pull request, résolution des
+conversations, historique linéaire et checks `repository / ubuntu`,
+`repository / windows` et `licensing / reuse`, tout en bloquant suppression et
+force-push. Il n'est pas appliqué : les rulesets sont indisponibles sur le plan
+GitHub Free tant que le repository est privé, et `main` est actuellement non
+protégée. Le passage par pull request reste une convention obligatoire du projet,
+appliquée procéduralement et non par une protection GitHub active.
 
 Le push direct du commit de clôture est une exception unique de récupération
 privée avant activation du ruleset. Il n'autorise aucun push direct futur.
@@ -90,5 +96,6 @@ privée avant activation du ruleset. Il n'autorise aucun push direct futur.
 **`PRIVATE_RECOVERY_CLOSED`**
 
 Le canonique possède 38 commits propres, aucun Git tag, aucune release et aucune
-pull request. Il est prêt pour PR 2, sans que celle-ci soit commencée par cette
-mission.
+pull request. Il est prêt pour PR 2 selon la convention procédurale, sans que
+celle-ci soit commencée par cette mission. Les contrôles distants seront
+réévalués avant tout passage public.
