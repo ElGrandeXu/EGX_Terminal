@@ -46,3 +46,7 @@ directly and record observed versions or commits when relevant.
 - [0012 — Close canonical recovery after immutable tag reservation](0012-close-canonical-recovery-after-immutable-tag-reservation.md)
   — accepted; withdraw `v1.0.0` to verified private history, keep the canonical
   repository tagless and release-free, and reserve `v1.0.1` for later work
+- [0013 — Record observed GitHub governance limitations](0013-record-observed-github-governance-limitations.md)
+  — accepted; keep the repository private on GitHub Free, separate desired from
+  observed controls, and use procedural pull-request discipline until the
+  pre-publication re-evaluation

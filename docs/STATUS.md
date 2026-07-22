@@ -49,11 +49,16 @@
   gate.
 - **Remote settings:** description, topics, issues, disabled
   projects/wiki/discussions/Pages, squash-only merge, branch cleanup, read-only
-  Actions defaults, selected SHA-pinned actions, required full-SHA pinning, PVR,
-  secret scanning, push protection, and vulnerability alerts are applied.
-- **Ruleset:** `main-protection` is active on `main`. It requires a pull request,
-  resolved conversations, linear history, and the three named checks; deletion
-  and force-push are blocked. The administrator bypass is reserved for recovery.
+  Actions defaults, selected SHA-pinned actions, required full-SHA pinning, and
+  vulnerability alerts are applied. Private Vulnerability Reporting is
+  unavailable while private, secret scanning is disabled, and push protection
+  is not active.
+- **Ruleset and branch:** on the private GitHub Free repository,
+  `main-protection` is unavailable on the current plan and `main` is unprotected.
+  Its desired pull-request, conversation-resolution, linear-history, named-check,
+  deletion, and force-push rules remain recorded as target configuration only.
+  Pull requests are a mandatory project convention, not an active GitHub
+  protection.
 - **Repository status:** **`PRIVATE_RECOVERY_CLOSED`**. The canonical repository
   remains private, has no tag, release, or pull request, and is ready for PR 2.
   `v1.0.1` is not published; its release gate still includes selecting and
@@ -65,6 +70,7 @@
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-The active gate is PR 2 through the protected pull-request path. Only a later,
-separately authorized mission may satisfy the signing gate and create a
-`v1.0.1` tag or release.
+The active gate is PR 2 under the mandatory project pull-request convention.
+The remote controls, including Private Vulnerability Reporting, must be
+re-evaluated before public publication. Only a later, separately authorized
+mission may satisfy the signing gate and create a `v1.0.1` tag or release.

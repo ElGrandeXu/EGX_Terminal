@@ -185,12 +185,17 @@ The sole canonical repository is
 [`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). It
 remains private during this recovery closure. The temporary recovery surfaces
 were deleted only after complete local mirrors, bundles, metadata captures, and
-SHA-256 verification were retained privately outside the repository. Private
-Vulnerability Reporting, secret scanning, push protection, read-only Actions
-permissions, required full-SHA pinning, the documented merge policy, and the
-active `main-protection` ruleset are applied. The repository has 38 clean
-commits, no Git tag, no release, and no pull request. PR 2 is the next repository
-step before any separately authorized preparation of candidate `v1.0.1`.
+SHA-256 verification were retained privately outside the repository. Read-only
+Actions permissions, required full-SHA pinning, the documented merge policy,
+and security alerts are applied. On the current private GitHub Free repository,
+`main` is unprotected, the desired `main-protection` ruleset is unavailable,
+Private Vulnerability Reporting is unavailable, secret scanning is disabled,
+and push protection is not active. Pull requests remain a mandatory project
+convention rather than a GitHub-enforced protection. These controls must be
+re-evaluated, and Private Vulnerability Reporting enabled, before any public
+publication. The repository has 38 clean commits, no Git tag, no release, and
+no pull request. PR 2 is the next repository step before any separately
+authorized preparation of candidate `v1.0.1`.
 
 ## License
 

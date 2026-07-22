@@ -25,6 +25,82 @@ REQUIRED_COMMUNITY = (
 DEFERRED_FILES = ("CODE_OF_CONDUCT.md", "SUPPORT.md", ".github/CODEOWNERS", "CODEOWNERS")
 EXPECTED_CHECKS = ("repository / ubuntu", "repository / windows", "licensing / reuse")
 FINAL_REMOTE_STATUSES = {"APPLIED", "DEFERRED", "UNAVAILABLE_ON_CURRENT_PLAN"}
+EXPECTED_REMOTE_CONTROLS = {
+    "main_ruleset": {
+        "desired_state": "ACTIVE",
+        "observed_state": "UNAVAILABLE_ON_CURRENT_PLAN",
+        "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
+        "application_status": "NOT_APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
+        "http_status": 403,
+    },
+    "main_branch": {
+        "desired_state": "PROTECTED",
+        "observed_state": "UNPROTECTED",
+        "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
+        "application_status": "NOT_APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main",
+        "http_status": 200,
+    },
+    "private_vulnerability_reporting": {
+        "desired_state": "ACTIVE_BEFORE_PUBLICATION",
+        "observed_state": "UNAVAILABLE_WHILE_PRIVATE",
+        "limitation": "REQUIRES_PUBLIC_VISIBILITY",
+        "application_status": "NOT_APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/private-vulnerability-reporting",
+        "http_status": 404,
+    },
+    "secret_scanning": {
+        "desired_state": "ACTIVE",
+        "observed_state": "DISABLED",
+        "limitation": "PRIVATE_REPOSITORY_ON_GITHUB_FREE",
+        "application_status": "NOT_APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/secret-scanning/alerts",
+        "http_status": 404,
+    },
+    "push_protection": {
+        "desired_state": "ACTIVE",
+        "observed_state": "NOT_ACTIVE",
+        "limitation": "SECRET_SCANNING_DISABLED",
+        "application_status": "NOT_APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal",
+        "http_status": 200,
+    },
+    "security_alerts": {
+        "desired_state": "ACTIVE",
+        "observed_state": "ACTIVE",
+        "limitation": None,
+        "application_status": "APPLIED",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/vulnerability-alerts",
+        "http_status": 204,
+    },
+}
+EXPECTED_MAIN_RULESET = {
+    "name": "main-protection",
+    "target": "main",
+    "enforcement": "active",
+    "rules": {
+        "prevent_deletion": True,
+        "prevent_force_push": True,
+        "require_linear_history": True,
+        "require_pull_request": True,
+        "required_approvals": 0,
+        "require_conversation_resolution": True,
+        "require_branch_up_to_date": False,
+        "require_signed_commits": False,
+        "require_code_owner_review": False,
+        "required_status_checks": list(EXPECTED_CHECKS),
+    },
+    "administrative_bypass": {
+        "planned": True,
+        "scope": "Repository administrator",
+        "reason": (
+            "Document the one-time direct recovery-closing push made while the repository "
+            "was private and before this ruleset was activated."
+        ),
+        "ordinary_use": False,
+    },
+}
 EXPECTED_ACTIONS = {
     "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
@@ -369,10 +445,25 @@ def _check_workflow(root: Path, lock: dict[str, str], findings: list[Finding]) -
 def _check_plan(root: Path, findings: list[Finding]) -> None:
     relative = "governance/github-publication-plan.json"
     plan = _load_json(root / relative, relative, findings)
+    expected_sections = {
+        "schema_version",
+        "remote_settings_status",
+        "identity",
+        "visibility_strategy",
+        "metadata",
+        "features",
+        "merge_policy",
+        "actions_policy",
+        "remote_governance",
+        "community_profile",
+        "release_state",
+        "recovery_closure",
+    }
     try:
         valid = (
-            plan["schema_version"] == 3
-            and plan["remote_settings_status"] == "APPLIED"
+            set(plan) == expected_sections
+            and plan["schema_version"] == 4
+            and plan["remote_settings_status"] == "PARTIALLY_APPLIED"
             and plan["identity"]
             == {
                 "owner": "ElGrandeXu",
@@ -417,21 +508,24 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
             and plan["actions_policy"]["sha_pinning_verified_on"] == "2026-07-21"
             and plan["actions_policy"]["sha_pinning_endpoint"]
             == "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions"
-            and plan["security"]["private_vulnerability_reporting"] == "ACTIVE"
-            and plan["security"]["secret_scanning"] == "ACTIVE"
-            and plan["security"]["push_protection"] == "ACTIVE"
-            and plan["security"]["security_alerts"] == "ACTIVE"
-            and plan["main_ruleset"]["name"] == "main-protection"
-            and plan["main_ruleset"]["target"] == "main"
-            and plan["main_ruleset"]["enforcement"] == "active"
-            and plan["main_ruleset"]["rules"]["required_approvals"] == 0
-            and plan["main_ruleset"]["rules"]["prevent_deletion"] is True
-            and plan["main_ruleset"]["rules"]["prevent_force_push"] is True
-            and plan["main_ruleset"]["rules"]["require_linear_history"] is True
-            and plan["main_ruleset"]["rules"]["require_pull_request"] is True
-            and plan["main_ruleset"]["rules"]["require_conversation_resolution"] is True
-            and plan["main_ruleset"]["rules"]["required_status_checks"] == list(EXPECTED_CHECKS)
-            and plan["main_ruleset"]["administrative_bypass"]["ordinary_use"] is False
+            and plan["remote_governance"]["verified_on"] == "2026-07-22"
+            and plan["remote_governance"]["plan"] == "GITHUB_FREE"
+            and plan["remote_governance"]["observed_visibility"] == "private"
+            and set(plan["remote_governance"])
+            == {"verified_on", "plan", "observed_visibility", "controls", "procedural_fallback"}
+            and plan["remote_governance"]["procedural_fallback"]
+            == {
+                "pull_request_required": True,
+                "basis": "MANDATORY_PROJECT_CONVENTION",
+                "github_enforced": False,
+            }
+            and plan["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]
+            == EXPECTED_MAIN_RULESET
+            and plan["remote_governance"]["controls"]["main_branch"]["limitation_evidence"]
+            == {
+                "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main/protection",
+                "http_status": 403,
+            }
             and plan["community_profile"]["code_of_conduct"] == "DEFERRED_UNTIL_ENFORCEABLE"
             and plan["release_state"]
             == {
@@ -471,14 +565,63 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
         valid = False
     if not valid:
         findings.append(_finding(relative, "PUBLICATION_PLAN", "plan is incomplete or inconsistent"))
+
+    remote_governance = plan.get("remote_governance")
+    controls = remote_governance.get("controls", {}) if isinstance(remote_governance, dict) else {}
+    if not isinstance(controls, dict) or set(controls) != set(EXPECTED_REMOTE_CONTROLS):
+        findings.append(
+            _finding(relative, "STATE_MODEL", "remote controls must use the complete schema 4 state model")
+        )
+        controls = {}
+    for name, expected in EXPECTED_REMOTE_CONTROLS.items():
+        control = controls.get(name)
+        if not isinstance(control, dict):
+            findings.append(_finding(relative, "STATE_MODEL", f"{name} control is absent or invalid"))
+            continue
+        expected_keys = {
+            "desired_state",
+            "observed_state",
+            "limitation",
+            "application_status",
+            "evidence",
+        }
+        if name == "main_ruleset":
+            expected_keys.add("desired_configuration")
+        if name == "main_branch":
+            expected_keys.add("limitation_evidence")
+        if set(control) != expected_keys:
+            findings.append(
+                _finding(relative, "STATE_MODEL", f"{name} contains ambiguous or missing state fields")
+            )
+        if "desired_state" not in control or "observed_state" not in control:
+            findings.append(
+                _finding(relative, "DESIRED_OBSERVED", f"{name} must separate desired and observed state")
+            )
+        if control.get("desired_state") != expected["desired_state"]:
+            findings.append(_finding(relative, "DESIRED_STATE", f"{name} desired state is incorrect"))
+        if control.get("observed_state") != expected["observed_state"]:
+            findings.append(_finding(relative, "OBSERVED_STATE", f"{name} observed state is incorrect"))
+        if control.get("limitation") != expected["limitation"]:
+            findings.append(_finding(relative, "CONTROL_LIMITATION", f"{name} limitation is incorrect"))
+        if control.get("application_status") != expected["application_status"]:
+            findings.append(
+                _finding(relative, "CONTROL_ACCOUNTING", f"{name} application status is incorrect")
+            )
+        evidence = control.get("evidence")
+        if evidence != {"endpoint": expected["endpoint"], "http_status": expected["http_status"]}:
+            findings.append(
+                _finding(relative, "OBSERVATION_EVIDENCE", f"{name} GET evidence is incorrect")
+            )
+        if control.get("limitation") is not None and control.get("application_status") == "APPLIED":
+            findings.append(
+                _finding(relative, "CONTROL_ACCOUNTING", f"{name} is limited and cannot count as applied")
+            )
     for section in (
         "visibility_strategy",
         "metadata",
         "features",
         "merge_policy",
         "actions_policy",
-        "security",
-        "main_ruleset",
         "community_profile",
         "release_state",
         "recovery_closure",
