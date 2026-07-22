@@ -39,9 +39,10 @@ of current conventions, not a claim about every future harness convention.
 The Git history has been audited and remediated. After GitHub selected a
 personal author address for the first squash merge, the affected repository was
 made private and the canonical repository was recreated from a content-identical
-clean history. The recovery-closing commit brings that history to 38 commits,
-all using approved GitHub `noreply` metadata; the affected object was not
-imported. The active policy
+clean history. PR #2 is complete and was squash-merged as canonical HEAD
+`c708bc6af88b5e98a08fc801e476d4c16248e701`, bringing that history to 40
+commits, all using approved GitHub `noreply` metadata; the affected object was
+not imported. The active policy
 continues to accept attributable GitHub `noreply` contributors and the exact
 GitHub web committer used for squash merges, without accepting personal email
 addresses or undeclared bots; see the [identity remediation
@@ -56,7 +57,9 @@ limits of the preserved micro-kernel runtime evidence. Its former release
 metadata is preserved only in verified private evidence outside this
 repository. GitHub's immutable-release reservation prevents reuse of that
 tag name in the recreated repository. The next candidate is `v1.0.1`, but no
-`v1.0.1` tag or release exists and PR 2 remains a later step.
+`v1.0.1` tag or release exists. With PR #2 merged, the next gate is a final
+pre-publication audit. Preparation of `v1.0.1` and selection of the SSH signing
+identity may begin only afterward as separately authorized work.
 
 ## Key V1 decision
 
@@ -73,7 +76,7 @@ the payload, protocol, fixtures, graders, manifest, and recorded hashes of
 preserved artifacts remain directly auditable. The [micro-kernel final
 results](experiments/kernel-micro-v1/behavioral/final-v1/results.md) preserve the
 published historical claims, but the original aggregate and source runtime data
-are absent. The [balanced-kernel challenge
+are irrecoverable. The [balanced-kernel challenge
 results](experiments/kernel-v1/behavioral/challenge-v1/results.md) remain a
 separate historical record.
 
@@ -81,7 +84,7 @@ separate historical record.
 
 The micro-kernel scores, ties, token totals, and overhead shown below are values
 published in the historical report. Their internal arithmetic remains
-checkable, but the missing original aggregate and source runtime data prevent
+checkable, but the irrecoverable original aggregate and source runtime data prevent
 independent verification of the underlying runtime observations; see [Decision
 0014](docs/decisions/0014-micro-kernel-evidence-erratum.md).
 
@@ -208,9 +211,12 @@ Private Vulnerability Reporting is unavailable, secret scanning is disabled,
 and push protection is not active. Pull requests remain a mandatory project
 convention rather than a GitHub-enforced protection. These controls must be
 re-evaluated, and Private Vulnerability Reporting enabled, before any public
-publication. The repository has 38 clean commits, no Git tag, no release, and
-no pull request. PR 2 is the next repository step before any separately
-authorized preparation of candidate `v1.0.1`.
+publication. At canonical HEAD
+`c708bc6af88b5e98a08fc801e476d4c16248e701`, produced by the completed PR #2
+squash merge, the repository has 40 clean commits, no Git tag, no release, and
+no open pull request. The next step is the final pre-publication audit. Only
+after it passes may separate work prepare candidate `v1.0.1` and its SSH signing
+identity.
 
 ## License
 

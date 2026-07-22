@@ -54,6 +54,9 @@ Le repository affecté a été rendu privé et remplacé. Le commit fonctionnel 
 reconstruit à l'identité `noreply` avec le même tree, parent, message complet,
 sujet, dates et diff. L'objet affecté et les refs de l'ancienne pull request
 n'ont pas été importés. Le 38e commit clôt cette récupération sans force-push.
+PR #2 est ensuite terminée et mergée par squash ; le commit résultant
+`c708bc6af88b5e98a08fc801e476d4c16248e701` est le HEAD canonique et porte
+l'historique linéaire à 40 commits.
 
 Le [rapport d'historique](HISTORY_AUDIT.md), la [remédiation
 d'identité](IDENTITY_REMEDIATION.md) et les décisions [0010](../decisions/0010-recreate-public-repository-after-email-exposure.md)
@@ -73,8 +76,9 @@ La conclusion de gouvernance **`REJECT_MICRO`** associée à la V1 reste
 inchangée : aucun fichier expérimental, résultat ou protocole n'est modifié. Les
 affirmations runtime publiées restent historiques et ne remplacent pas
 l'agrégat et les données runtime sources absents. `v1.0.1` est la prochaine
-candidate, mais aucun tag ou release de ce nom n'existe. PR 2 reste une étape
-ultérieure séparée.
+candidate, mais aucun tag ou release de ce nom n'existe. PR #2 est terminée et
+mergée. La prochaine étape est l'audit final de prépublication ; la préparation
+séparée de `v1.0.1` et de la signature SSH ne peut commencer qu'ensuite.
 
 ## Gouvernance GitHub
 
@@ -106,7 +110,10 @@ privée avant activation du ruleset. Il n'autorise aucun push direct futur.
 
 **`PRIVATE_RECOVERY_CLOSED`**
 
-Le canonique possède 38 commits propres, aucun Git tag, aucune release et aucune
-pull request. Il est prêt pour PR 2 selon la convention procédurale, sans que
-celle-ci soit commencée par cette mission. Les contrôles distants seront
-réévalués avant tout passage public.
+Au checkpoint du merge de PR #2, le canonique possède 40 commits propres, aucun
+Git tag, aucune release et aucune pull request ouverte. Son HEAD
+`c708bc6af88b5e98a08fc801e476d4c16248e701` est issu du squash merge de cette
+PR. L'audit final de prépublication est désormais la prochaine étape. Les
+contrôles distants seront réévalués avant tout passage public ; ensuite
+seulement pourront commencer la préparation séparée de `v1.0.1` et de la
+signature SSH.
