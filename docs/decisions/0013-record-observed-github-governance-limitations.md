@@ -1,7 +1,12 @@
 # 0013 — Record observed GitHub governance limitations
 
-- **Status:** accepted
+- **Status:** superseded in part by 0015
 - **Date:** 2026-07-22
+
+Decision 0015 supersedes only this record's current choice to keep the
+repository private. The observations, evidence, rationale, and private-phase
+limitations below remain the historical record of the state audited on
+2026-07-22.
 
 ## Context
 

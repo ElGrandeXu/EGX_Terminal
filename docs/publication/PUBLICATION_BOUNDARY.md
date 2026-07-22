@@ -5,8 +5,10 @@
 La V1 conserve un workspace de recherche LLM-agnostique, à racine neutre, avec
 ses principes, décisions, contrôles et artefacts reproductibles dans les limites
 documentées. Le seul repository canonique est `ElGrandeXu/EGX_Terminal`. Il
-reste privé pendant cette clôture de récupération et ne possède actuellement
-aucun Git tag ni aucune release GitHub.
+est en phase durable **`PUBLICATION_TRANSITION`** : la cible publique est
+autorisée mais son application n'est pas déduite de cette documentation. La
+visibilité et les protections effectives doivent être vérifiées directement sur
+GitHub, et le projet n'est pas partageable avant la fin du rapport post-public.
 
 ## Surface canonique incluse
 
@@ -75,44 +77,54 @@ repository recréé ; aucun contournement n'est poursuivi.
 La conclusion de gouvernance **`REJECT_MICRO`** associée à la V1 reste
 inchangée : aucun fichier expérimental, résultat ou protocole n'est modifié. Les
 affirmations runtime publiées restent historiques et ne remplacent pas
-l'agrégat et les données runtime sources absents. `v1.0.1` est la prochaine
-candidate, mais aucun tag ou release de ce nom n'existe. PR #2 est terminée et
-mergée. La prochaine étape est l'audit final de prépublication ; la préparation
-séparée de `v1.0.1` et de la signature SSH ne peut commencer qu'ensuite.
+l'agrégat et les données runtime sources absents. Au checkpoint prétransition du
+22 juillet 2026, aucun tag ni aucune release n'était présent. La transition
+interdit d'en créer. `v1.0.1` et sa signature SSH restent une mission ultérieure
+séparée. PR #2 demeure dans l'historique de récupération.
 
 ## Gouvernance GitHub
 
-La description, la homepage vide et les dix topics définis par la gouvernance
-sont appliqués. Les issues sont actives ; projects, wiki, discussions et Pages
-sont désactivés. Les merges sont squash-only avec suppression des branches
-fusionnées et auto-merge désactivé.
+Au checkpoint privé du 22 juillet 2026, la description, la homepage vide et les
+dix topics définis par la gouvernance étaient appliqués. Les issues étaient
+actives ; projects, wiki, discussions et Pages étaient désactivés. Les merges
+étaient squash-only avec suppression des branches fusionnées et auto-merge
+désactivé.
 
-Actions est limité à `actions/checkout@*` et `actions/setup-python@*`, avec
+Au checkpoint privé `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515` observé le
+22 juillet 2026, Actions était limité à `actions/checkout@*` et
+`actions/setup-python@*`, avec
 pinning SHA complet, token en lecture seule et approbation de pull request
-interdite. Les alertes de vulnérabilité sont actives. Private Vulnerability
-Reporting est indisponible tant que le repository reste privé, secret scanning
-est désactivé et push protection n'est pas active. Private Vulnerability
-Reporting devra être activé et vérifié avant toute publication publique ; aucune
-adresse personnelle n'est publiée comme canal de remplacement.
+interdite. Les alertes de vulnérabilité étaient actives, Private Vulnerability
+Reporting indisponible, secret scanning désactivé et push protection inactive.
+L'état effectif doit désormais être relu par API.
+
+La future mission atomique vérifiera d'abord une visibilité privée, passera le
+repository en public, activera immédiatement PVR et vérifiera mécaniquement son
+accessibilité. Aucun canal confidentiel n'est prétendu actif avant cette étape
+et aucune adresse personnelle n'est publiée comme remplacement. Si PVR ou une
+protection critique ne peut pas être appliqué ou vérifié, la mission s'arrête et
+le projet reste non partageable.
 
 Le ruleset souhaité `main-protection` imposerait pull request, résolution des
 conversations, historique linéaire et checks `repository / ubuntu`,
 `repository / windows` et `licensing / reuse`, tout en bloquant suppression et
-force-push. Il n'est pas appliqué : les rulesets sont indisponibles sur le plan
-GitHub Free tant que le repository est privé, et `main` est actuellement non
-protégée. Le passage par pull request reste une convention obligatoire du projet,
-appliquée procéduralement et non par une protection GitHub active.
+force-push, sans aucun acteur ou rôle de bypass. Au checkpoint privé, il n'était
+pas appliqué : les rulesets étaient indisponibles sur le plan GitHub Free et
+`main` était non protégée. L'application effective future doit être vérifiée par
+API.
 
 Le push direct du commit de clôture est une exception unique de récupération
 privée avant activation du ruleset. Il n'autorise aucun push direct futur.
 
 ## État
 
-**`PRIVATE_RECOVERY_CLOSED`**
+**`PUBLICATION_TRANSITION`**
 
-Le commit `c708bc6af88b5e98a08fc801e476d4c16248e701` est le squash-merge commit de
-PR #2. À ce checkpoint historique, l'historique linéaire comptait 40 commits.
-Le canonique ne possède aucun Git tag ni aucune release. L'audit final de
-prépublication est désormais la prochaine étape. Les contrôles distants seront
-réévalués avant tout passage public ; ensuite seulement pourront commencer la
-préparation séparée de `v1.0.1` et de la signature SSH.
+Le commit `c708bc6af88b5e98a08fc801e476d4c16248e701` reste le squash-merge commit
+historique de PR #2 et son checkpoint comptait 40 commits. Le pré-audit ultérieur
+au checkpoint `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, alors composé de 41
+commits sur `main`, n'a détecté aucune fuite matérielle et a clos F-001 avec
+douze surfaces Packages HTTP 200 et zéro package. Ces nombres sont historiques,
+jamais des compteurs courants. La cible publique est autorisée mais non affirmée
+appliquée ; tags, releases et préparation de `v1.0.1` restent interdits dans
+cette transition.

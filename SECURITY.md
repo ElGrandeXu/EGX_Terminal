@@ -2,26 +2,33 @@
 
 ## Supported versions
 
-There is currently no published release or Git tag. The private canonical
-`main` branch is examined on a best-effort basis. Historical `v1.0.0` was
-withdrawn during privacy remediation and is not a downloadable supported
-release. No long-term-support window or backport promise is made. Archived
-experiments are research evidence, not supported products or independently
-supported versions.
+At the 2026-07-22 pretransition checkpoint
+`23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, the canonical repository had no
+published release or Git tag. The guarded transition does not authorize either.
+Historical `v1.0.0` was withdrawn during privacy remediation and is not a
+downloadable supported release. No long-term-support window or backport promise
+is made. Archived experiments are research evidence, not supported products or
+independently supported versions.
 
 ## Reporting a vulnerability
 
-Do not open a public issue or publish a proof containing a secret. Use GitHub's
-[private vulnerability report](https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new)
-for `ElGrandeXu/EGX_Terminal` only after that feature is enabled. Reports should
-state the impact, a minimal reproduction, and the affected commit, with personal
-data and logs redacted.
+Do not open a public issue or publish a proof containing a secret. During
+`PUBLICATION_TRANSITION`, effective visibility and reporting availability must
+be verified directly on GitHub; this document does not infer them.
 
-Private Vulnerability Reporting is currently unavailable while the repository
-is private. The project does not invent or publish a personal security address
-as a substitute. Enabling and verifying Private Vulnerability Reporting is a
-required gate before any public publication; until then, this policy does not
-claim that a confidential GitHub reporting channel is active.
+The executable transition sequence starts with a private-repository preflight,
+changes the repository to public, immediately activates Private Vulnerability
+Reporting, and then mechanically verifies its accessibility. Before successful
+activation and verification, the project claims no active confidential
+reporting channel and is not considered shareable. If activation or verification
+fails, the transition stops with that non-shareable status. No personal address
+is published as a fallback.
+
+Once PVR is verified active, GitHub's
+[private vulnerability report](https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new)
+is the recommended reporting channel for `ElGrandeXu/EGX_Terminal`. Reports
+should state the impact, a minimal reproduction, and the affected commit, with
+personal data and logs redacted.
 
 ## Scope
 

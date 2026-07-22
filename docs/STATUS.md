@@ -1,9 +1,11 @@
 # Status
 
-- **Phase:** canonical recovery is closed on a private repository with no Git
-  tag or published release. PR #2 is complete and merged; the next gate is the
-  final pre-publication audit. `v1.0.1` remains only the next candidate and has
-  not been created.
+- **Phase:** **`PUBLICATION_TRANSITION`**. [Decision
+  0015](decisions/0015-authorize-guarded-public-transition.md) authorizes a
+  controlled public transition but does not assert that it has been applied.
+  Effective visibility and protections must be verified directly on GitHub. The
+  project is not shareable until post-public verification is complete;
+  `v1.0.1` remains a separate later mission.
 - **Mission 24:** complete. Its final governance campaign is closed.
 - **Final doctrine verdict:** **`REJECT_MICRO`**. The historical report publishes
   totals of 229,923 tokens for the baseline and 247,972 for the micro, with an
@@ -49,8 +51,20 @@
   manifest](../experiments/kernel-micro-v1/behavioral/final-v1/manifest.json) are
   unchanged. Private recovery bundles and the Mission 35 capture remain outside
   the repository.
-- **Release state:** the canonical repository has no Git tag and no published
-  release. `v1.0.0` is a historical release withdrawn during privacy
+- **Pretransition audit:** on 2026-07-22, checkpoint
+  `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515` contained 41 commits on `main`.
+  This is a historical count, not a current counter. Git content, pull requests,
+  logs, workflows, and licenses were audited without a material leak being
+  detected, but the completed audit's initial executive verdict was
+  **`PUBLICATION_BLOCKED`**: the F-001 Packages audit was inaccessible, and
+  F-002 through F-005 required governance and documentation corrections. F-001
+  later closed separately after twelve authorized Packages surfaces returned
+  HTTP 200 with zero packages. The schema 5 transition change remediates F-002
+  through F-005; a merged-HEAD re-audit remains mandatory before public
+  transition.
+- **Release state:** at that checkpoint, the canonical repository had no Git tag
+  or published release. The transition forbids creating either. `v1.0.0` is a
+  historical release withdrawn during privacy
   remediation; its former target, tag object, and release record exist only in
   verified private evidence. The terminal **`REJECT_MICRO`** governance verdict
   it documented remains unchanged; Decision 0014 records the limits of the
@@ -59,23 +73,24 @@
   lock, publication plan, hashed REUSE locks, hardened workflow, JSON/TOML, Git
   integrity, REUSE, link checks, and the full active test suite form the current
   gate.
-- **Remote settings:** description, topics, issues, disabled
+- **Remote settings observed on 2026-07-22:** description, topics, issues, disabled
   projects/wiki/discussions/Pages, squash-only merge, branch cleanup, read-only
   Actions defaults, selected SHA-pinned actions, required full-SHA pinning, and
-  vulnerability alerts are applied. Private Vulnerability Reporting is
-  unavailable while private, secret scanning is disabled, and push protection
-  is not active.
-- **Ruleset and branch:** on the private GitHub Free repository,
-  `main-protection` is unavailable on the current plan and `main` is unprotected.
+  vulnerability alerts were applied at the private checkpoint. Private
+  Vulnerability Reporting was unavailable, secret scanning was disabled, and
+  push protection was not active.
+- **Ruleset and branch observed on 2026-07-22:** on the private GitHub Free
+  repository, `main-protection` was unavailable and `main` was unprotected.
   Its desired pull-request, conversation-resolution, linear-history, named-check,
   deletion, and force-push rules remain recorded as target configuration only.
-  Pull requests are a mandatory project convention, not an active GitHub
-  protection.
-- **Repository status:** **`PRIVATE_RECOVERY_CLOSED`**. The canonical repository
-  remains private and has no tag or release. `v1.0.1` is not published. The
-  final pre-publication audit is the next gate; only afterward may separate
-  preparation select and record a durable SSH signing identity for the
-  candidate release.
+  That target has no bypass actor or role. Effective enforcement must be checked
+  by API rather than inferred from this dated observation.
+- **Repository status:** **`PUBLICATION_TRANSITION`**. The target visibility is
+  public, authorization is recorded, and application is not claimed. The future
+  mission must audit the merged HEAD, verify a private preflight, change
+  visibility, activate and verify PVR immediately, apply and verify critical
+  controls, and complete anonymous post-public checks. Failure of a critical
+  control stops the mission and preserves the non-shareable status.
 - **Email privacy:** the GitHub account setting is
   `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`; future web operations require it
   to remain enabled and the scanner accepts no personal-address fallback.
@@ -83,8 +98,7 @@
   other advanced capabilities remain unimplemented and require demonstrated need
   plus a separate decision.
 
-PR #2 is complete and merged. The active gate is the final pre-publication
-audit, including re-evaluation of remote controls and Private Vulnerability
-Reporting before public publication. Only a later, separately authorized
-mission may prepare `v1.0.1`, satisfy the SSH signing gate, and create a tag or
-release.
+PR #2 and the recovery history remain part of the preserved incident record.
+During `PUBLICATION_TRANSITION`, no tag or release may be created. Only a later,
+separately authorized mission may prepare `v1.0.1`, satisfy the SSH-signing gate,
+and create a tag or release.

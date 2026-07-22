@@ -49,9 +49,12 @@ directly and record observed versions or commits when relevant.
   while replacing the protected-path assumption with procedural pull-request
   discipline
 - [0013 — Record observed GitHub governance limitations](0013-record-observed-github-governance-limitations.md)
-  — accepted; keep the repository private on GitHub Free, separate desired from
-  observed controls, and use procedural pull-request discipline until the
-  pre-publication re-evaluation
+  — superseded by 0015 only for the current choice to stay private; its dated
+  private-phase observations, rationale, and desired/observed distinction remain
+  the historical record
 - [0014 — Erratum sur les preuves du micro-kernel](0014-micro-kernel-evidence-erratum.md)
   — accepted; governs the reading of runtime evidence associated with 0004
   while preserving its terminal verdict
+- [0015 — Authorize a guarded public transition](0015-authorize-guarded-public-transition.md)
+  — accepted; authorize but do not apply a public transition, with immediate
+  post-visibility PVR, no ruleset bypass, and fail-closed verification
