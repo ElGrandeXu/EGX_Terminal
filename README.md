@@ -49,17 +49,21 @@ addresses or undeclared bots; see the [identity remediation
 report](docs/publication/IDENTITY_REMEDIATION.md) and run
 `python scripts/check_git_history.py --fail-on-review` to verify the gate.
 
-The canonical repository currently has no Git tag and no published release.
-`v1.0.0` is retained only as a historical release record withdrawn during the
+At the 2026-07-22 pretransition checkpoint
+`23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, `main` contained 41 commits and
+the canonical repository had no Git tag or published release. This count is a
+historical checkpoint, not a current counter. `v1.0.0` is retained only as a
+historical release record withdrawn during the
 privacy remediation; its terminal governance conclusions remain in force, while
 [Decision 0014](docs/decisions/0014-micro-kernel-evidence-erratum.md) records the
 limits of the preserved micro-kernel runtime evidence. Its former release
 metadata is preserved only in verified private evidence outside this
 repository. GitHub's immutable-release reservation prevents reuse of that
-tag name in the recreated repository. The next candidate is `v1.0.1`, but no
-`v1.0.1` tag or release exists. With PR #2 merged, the next gate is a final
-pre-publication audit. Preparation of `v1.0.1` and selection of the SSH signing
-identity may begin only afterward as separately authorized work.
+tag name in the recreated repository. [Decision
+0015](docs/decisions/0015-authorize-guarded-public-transition.md) authorizes, but
+does not apply, a controlled public transition. Tags and releases remain
+prohibited throughout that transition; `v1.0.1` and its SSH-signing gate remain
+a separate later mission.
 
 ## Key V1 decision
 
@@ -200,20 +204,21 @@ These are documented project principles, not an automatically injected payload.
 ## Current status
 
 The sole canonical repository is
-[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). It
-remains private during this recovery closure. The temporary recovery surfaces
+[`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). Its
+durable phase is **`PUBLICATION_TRANSITION`**: public visibility is authorized
+but is not asserted to be applied, and effective visibility and protections must
+be verified directly on GitHub. The temporary recovery surfaces
 were deleted only after complete local mirrors, bundles, metadata captures, and
 SHA-256 verification were retained privately outside the repository. Read-only
 Actions permissions, required full-SHA pinning, the documented merge policy,
-and security alerts are applied. On the current private GitHub Free repository,
-`main` is unprotected, the desired `main-protection` ruleset is unavailable,
-Private Vulnerability Reporting is unavailable, secret scanning is disabled,
-and push protection is not active. Pull requests remain a mandatory project
-convention rather than a GitHub-enforced protection. These controls must be
-re-evaluated, and Private Vulnerability Reporting enabled, before any public
-publication. PR #2 is complete, and the repository has no Git tag or published
-release. The next step is the final pre-publication audit. Only after it passes
-may separate work prepare candidate `v1.0.1` and its SSH signing identity.
+and security alerts were observed applied at the 2026-07-22 private checkpoint.
+At that same checkpoint, `main` was unprotected, `main-protection` was
+unavailable, PVR was unavailable, secret scanning was disabled, and push
+protection was inactive. The future atomic mission must audit the merged HEAD,
+change visibility, activate and verify PVR immediately, then apply and verify
+the no-bypass ruleset and remaining public controls. The project is not
+shareable until post-public verification is complete. Tags, releases, and
+`v1.0.1` preparation remain outside this transition.
 
 ## License
 

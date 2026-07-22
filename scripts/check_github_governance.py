@@ -24,45 +24,44 @@ REQUIRED_COMMUNITY = (
 )
 DEFERRED_FILES = ("CODE_OF_CONDUCT.md", "SUPPORT.md", ".github/CODEOWNERS", "CODEOWNERS")
 EXPECTED_CHECKS = ("repository / ubuntu", "repository / windows", "licensing / reuse")
-FINAL_REMOTE_STATUSES = {"APPLIED", "DEFERRED", "UNAVAILABLE_ON_CURRENT_PLAN"}
 EXPECTED_REMOTE_CONTROLS = {
     "main_ruleset": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNAVAILABLE_ON_CURRENT_PLAN",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
         "http_status": 403,
     },
     "main_branch": {
-        "desired_state": "PROTECTED",
+        "desired_state": "PROTECTED_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNPROTECTED",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main",
         "http_status": 200,
     },
     "private_vulnerability_reporting": {
-        "desired_state": "ACTIVE_BEFORE_PUBLICATION",
+        "desired_state": "ACTIVE_IMMEDIATELY_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNAVAILABLE_WHILE_PRIVATE",
         "limitation": "REQUIRES_PUBLIC_VISIBILITY",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/private-vulnerability-reporting",
         "http_status": 404,
     },
     "secret_scanning": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "DISABLED",
         "limitation": "PRIVATE_REPOSITORY_ON_GITHUB_FREE",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/secret-scanning/alerts",
         "http_status": 404,
     },
     "push_protection": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_IF_AVAILABLE_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "NOT_ACTIVE",
         "limitation": "SECRET_SCANNING_DISABLED",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal",
         "http_status": 200,
     },
@@ -70,7 +69,7 @@ EXPECTED_REMOTE_CONTROLS = {
         "desired_state": "ACTIVE",
         "observed_state": "ACTIVE",
         "limitation": None,
-        "application_status": "APPLIED",
+        "application_status": "APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/vulnerability-alerts",
         "http_status": 204,
     },
@@ -79,6 +78,7 @@ EXPECTED_MAIN_RULESET = {
     "name": "main-protection",
     "target": "main",
     "enforcement": "active",
+    "bypass_actors": [],
     "rules": {
         "prevent_deletion": True,
         "prevent_force_push": True,
@@ -91,16 +91,21 @@ EXPECTED_MAIN_RULESET = {
         "require_code_owner_review": False,
         "required_status_checks": list(EXPECTED_CHECKS),
     },
-    "administrative_bypass": {
-        "planned": True,
-        "scope": "Repository administrator",
-        "reason": (
-            "Document the one-time direct recovery-closing push made while the repository "
-            "was private and before this ruleset was activated."
-        ),
-        "ordinary_use": False,
-    },
 }
+EXPECTED_TRANSITION_SEQUENCE = (
+    "VERIFY_PRIVATE_PREFLIGHT",
+    "SET_PUBLIC_VISIBILITY",
+    "ACTIVATE_PRIVATE_VULNERABILITY_REPORTING_IMMEDIATELY",
+    "VERIFY_PRIVATE_VULNERABILITY_REPORTING",
+    "APPLY_AND_VERIFY_POST_PUBLIC_CONTROLS",
+    "VERIFY_ANONYMOUS_PUBLIC_ACCESS",
+    "COMPLETE_POST_PUBLIC_REPORT",
+)
+EXPECTED_PACKAGE_SURFACES = tuple(
+    (api_scope, package_type)
+    for api_scope in ("authenticated-user", "owner-public")
+    for package_type in ("npm", "maven", "rubygems", "docker", "nuget", "container")
+)
 EXPECTED_ACTIONS = {
     "actions/checkout": "3d3c42e5aac5ba805825da76410c181273ba90b1",
     "actions/setup-python": "5fda3b95a4ea91299a34e894583c3862153e4b97",
@@ -447,9 +452,13 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     plan = _load_json(root / relative, relative, findings)
     expected_sections = {
         "schema_version",
+        "publication_phase",
         "remote_settings_status",
         "identity",
         "visibility_strategy",
+        "publication_transition",
+        "prepublication_audit",
+        "packages_audit",
         "metadata",
         "features",
         "merge_policy",
@@ -462,8 +471,9 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     try:
         valid = (
             set(plan) == expected_sections
-            and plan["schema_version"] == 4
-            and plan["remote_settings_status"] == "PARTIALLY_APPLIED"
+            and plan["schema_version"] == 5
+            and plan["publication_phase"] == "PUBLICATION_TRANSITION"
+            and plan["remote_settings_status"] == "TRANSITION_AUTHORIZED_NOT_APPLIED"
             and plan["identity"]
             == {
                 "owner": "ElGrandeXu",
@@ -472,8 +482,59 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
                 "default_branch": "main",
             }
             and plan["visibility_strategy"]["initial_visibility"] == "private"
-            and plan["visibility_strategy"]["target_visibility"] == "private"
-            and plan["visibility_strategy"]["observed_visibility"] == "private"
+            and plan["visibility_strategy"]["target_visibility"] == "public"
+            and plan["visibility_strategy"]["pretransition_observation"]
+            == {
+                "observed_on": "2026-07-22",
+                "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+                "commit_count": 41,
+                "visibility": "private",
+            }
+            and plan["visibility_strategy"]["transition_status"] == "AUTHORIZED_NOT_APPLIED"
+            and plan["visibility_strategy"]["current_remote_state_source"] == "GITHUB_API"
+            and plan["visibility_strategy"]["status"] == "PUBLICATION_TRANSITION"
+            and plan["publication_transition"]
+            == {
+                "authorized_by": "docs/decisions/0015-authorize-guarded-public-transition.md",
+                "status": "AUTHORIZED_NOT_APPLIED",
+                "post_merge_head_audit_required": True,
+                "preflight_required_visibility": "private",
+                "sequence": list(EXPECTED_TRANSITION_SEQUENCE),
+                "failure_policy": {
+                    "stop_if_critical_control_cannot_be_applied_or_verified": True,
+                    "shareable_until_complete": False,
+                },
+                "git_tag_creation_allowed": False,
+                "github_release_creation_allowed": False,
+                "v1.0.1_mission": "SEPARATE_LATER_MISSION",
+            }
+            and plan["prepublication_audit"]
+            == {
+                "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+                "commit_count": 41,
+                "git_content_audited": True,
+                "pull_requests_audited": True,
+                "logs_audited": True,
+                "workflows_audited": True,
+                "licenses_audited": True,
+                "material_leak_detected": False,
+                "status": "CLOSED_ON_2026-07-22",
+            }
+            and plan["packages_audit"]["finding"] == "F-001"
+            and plan["packages_audit"]["closed_on"] == "2026-07-22"
+            and plan["packages_audit"]["authorized_surface_count"] == 12
+            and plan["packages_audit"]["http_200_surface_count"] == 12
+            and plan["packages_audit"]["package_count"] == 0
+            and plan["packages_audit"]["status"] == "CLOSED"
+            and tuple(
+                (item["api_scope"], item["package_type"])
+                for item in plan["packages_audit"]["surfaces"]
+            )
+            == EXPECTED_PACKAGE_SURFACES
+            and all(
+                item["http_status"] == 200 and item["package_count"] == 0
+                for item in plan["packages_audit"]["surfaces"]
+            )
             and plan["metadata"]["description"]
             == "Evidence-led research for inspectable, LLM-agnostic terminal environments."
             and plan["metadata"]["homepage"] == ""
@@ -508,16 +569,26 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
             and plan["actions_policy"]["sha_pinning_verified_on"] == "2026-07-21"
             and plan["actions_policy"]["sha_pinning_endpoint"]
             == "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions"
-            and plan["remote_governance"]["verified_on"] == "2026-07-22"
-            and plan["remote_governance"]["plan"] == "GITHUB_FREE"
-            and plan["remote_governance"]["observed_visibility"] == "private"
+            and plan["actions_policy"]["fork_workflow_write_tokens"] is False
+            and plan["actions_policy"]["automatic_approval_for_untrusted_workflow_changes"] is False
+            and plan["actions_policy"]["post_public_target"]
+            == "RETAIN_MINIMAL_PERMISSIONS_AND_PRUDENT_FORK_POLICY"
+            and plan["remote_governance"]["observation"]
+            == {
+                "verified_on": "2026-07-22",
+                "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+                "plan": "GITHUB_FREE",
+                "visibility": "private",
+            }
+            and plan["remote_governance"]["current_state_source"]
+            == "VERIFY_DIRECTLY_WITH_GITHUB_API"
             and set(plan["remote_governance"])
-            == {"verified_on", "plan", "observed_visibility", "controls", "procedural_fallback"}
+            == {"observation", "current_state_source", "controls", "procedural_fallback"}
             and plan["remote_governance"]["procedural_fallback"]
             == {
                 "pull_request_required": True,
                 "basis": "MANDATORY_PROJECT_CONVENTION",
-                "github_enforced": False,
+                "github_enforced_at_pretransition_checkpoint": False,
             }
             and plan["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]
             == EXPECTED_MAIN_RULESET
@@ -529,7 +600,12 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
             and plan["community_profile"]["code_of_conduct"] == "DEFERRED_UNTIL_ENFORCEABLE"
             and plan["release_state"]
             == {
-                "current_releases": [],
+                "pretransition_observation": {
+                    "observed_on": "2026-07-22",
+                    "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+                    "canonical_git_tag_count": 0,
+                    "canonical_github_release_count": 0,
+                },
                 "historical_releases": [
                     {
                         "tag": "v1.0.0",
@@ -539,9 +615,8 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
                     }
                 ],
                 "next_candidate": "v1.0.1",
-                "canonical_git_tag_count": 0,
-                "canonical_github_release_count": 0,
-                "status": "APPLIED",
+                "transition_creation_allowed": False,
+                "status": "DEFERRED_TO_SEPARATE_MISSION",
             }
             and plan["recovery_closure"]
             == {
@@ -551,14 +626,14 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
                 "temporary_repositories_backed_up_locally": True,
                 "temporary_repositories_deleted": True,
                 "private_evidence_outside_repository": True,
-                "direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
+                "historical_direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
                 "future_direct_push_authorized": False,
                 "force_push_used": False,
                 "git_tag_created": False,
                 "github_release_created": False,
                 "pull_request_created": False,
                 "experimental_evidence_modified": False,
-                "status": "APPLIED",
+                "status": "HISTORICAL_CLOSED",
             }
         )
     except (KeyError, TypeError):
@@ -566,7 +641,42 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     if not valid:
         findings.append(_finding(relative, "PUBLICATION_PLAN", "plan is incomplete or inconsistent"))
 
+    visibility = plan.get("visibility_strategy", {})
+    if not isinstance(visibility, dict) or visibility.get("target_visibility") != "public":
+        findings.append(_finding(relative, "FINAL_TARGET", "authorized final visibility must be public"))
+    if not isinstance(visibility, dict) or visibility.get("transition_status") != "AUTHORIZED_NOT_APPLIED":
+        findings.append(
+            _finding(relative, "TRANSITION_STATE", "visibility transition must remain authorized but not applied")
+        )
+    transition = plan.get("publication_transition", {})
+    if not isinstance(transition, dict) or transition.get("status") != "AUTHORIZED_NOT_APPLIED":
+        findings.append(
+            _finding(relative, "TRANSITION_STATE", "publication transition must remain authorized but not applied")
+        )
+    if plan.get("remote_settings_status") in {"APPLIED", "COMPLETE", "SUCCESS"} or (
+        isinstance(transition, dict) and transition.get("status") in {"APPLIED", "COMPLETE", "SUCCESS"}
+    ):
+        findings.append(
+            _finding(relative, "PREMATURE_SUCCESS", "an unexecuted transition cannot claim global success")
+        )
+    if not isinstance(transition, dict) or transition.get("sequence") != list(EXPECTED_TRANSITION_SEQUENCE):
+        findings.append(
+            _finding(relative, "PVR_SEQUENCE", "PVR must be activated immediately after public visibility")
+        )
+
+    observation = visibility.get("pretransition_observation", {}) if isinstance(visibility, dict) else {}
     remote_governance = plan.get("remote_governance")
+    if (
+        not isinstance(observation, dict)
+        or observation.get("visibility") != "private"
+        or visibility.get("current_remote_state_source") != "GITHUB_API"
+        or not isinstance(remote_governance, dict)
+        or remote_governance.get("current_state_source") != "VERIFY_DIRECTLY_WITH_GITHUB_API"
+    ):
+        findings.append(
+            _finding(relative, "DESIRED_OBSERVED", "target, checkpoint observation, and current API truth must be distinct")
+        )
+
     controls = remote_governance.get("controls", {}) if isinstance(remote_governance, dict) else {}
     if not isinstance(controls, dict) or set(controls) != set(EXPECTED_REMOTE_CONTROLS):
         findings.append(
@@ -616,18 +726,27 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
             findings.append(
                 _finding(relative, "CONTROL_ACCOUNTING", f"{name} is limited and cannot count as applied")
             )
-    for section in (
-        "visibility_strategy",
-        "metadata",
-        "features",
-        "merge_policy",
-        "actions_policy",
-        "community_profile",
-        "release_state",
-        "recovery_closure",
-    ):
-        if not isinstance(plan.get(section), dict) or plan[section].get("status") not in FINAL_REMOTE_STATUSES:
-            findings.append(_finding(relative, "REMOTE_STATUS", f"{section} does not have a final status"))
+
+    ruleset = controls.get("main_ruleset", {}).get("desired_configuration", {})
+    if not isinstance(ruleset, dict):
+        ruleset = {}
+    bypass_keys = [(key, value) for key, value in ruleset.items() if "bypass" in key.lower()]
+    if bypass_keys != [("bypass_actors", [])]:
+        findings.append(_finding(relative, "BYPASS", "target ruleset must contain no bypass actor or role"))
+    rules = ruleset.get("rules", {})
+    if not isinstance(rules, dict):
+        rules = {}
+    if rules.get("required_status_checks") != list(EXPECTED_CHECKS):
+        findings.append(_finding(relative, "RULESET_CHECKS", "target ruleset must retain all three checks"))
+    if rules.get("prevent_force_push") is not True or rules.get("prevent_deletion") is not True:
+        findings.append(
+            _finding(relative, "BRANCH_MUTATION", "target ruleset must prevent force-push and deletion")
+        )
+    pvr = controls.get("private_vulnerability_reporting", {})
+    if not isinstance(pvr, dict) or pvr.get("desired_state") != "ACTIVE_IMMEDIATELY_AFTER_PUBLIC_VISIBILITY":
+        findings.append(
+            _finding(relative, "PVR_SEQUENCE", "PVR cannot be required before public visibility")
+        )
 
 
 def _matches(pattern: str, path: str) -> bool:

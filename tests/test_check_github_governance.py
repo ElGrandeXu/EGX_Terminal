@@ -133,12 +133,12 @@ class GitHubGovernanceTests(unittest.TestCase):
         path.write_text(json.dumps(data), encoding="utf-8")
         self.assertIn("PUBLICATION_PLAN", self.codes())
 
-    def test_17b_planned_remote_status_is_rejected_after_publication(self) -> None:
+    def test_17b_unapproved_remote_status_is_rejected(self) -> None:
         path = self.root / "governance/github-publication-plan.json"
         data = json.loads(path.read_text(encoding="utf-8"))
-        data["metadata"]["status"] = "PLANNED_NOT_APPLIED"
+        data["remote_settings_status"] = "PLANNED_NOT_APPLIED"
         path.write_text(json.dumps(data), encoding="utf-8")
-        self.assertIn("REMOTE_STATUS", self.codes())
+        self.assertIn("PUBLICATION_PLAN", self.codes())
 
     def test_18_path_with_spaces(self) -> None:
         self.assertIn(" ", str(self.root))
@@ -235,11 +235,17 @@ class GitHubGovernanceTests(unittest.TestCase):
         )
         self.assertIn("EVENT_ISOLATION", self.codes())
 
-    def test_33_schema_4_fixture_records_observed_remote_state(self) -> None:
+    def test_33_schema_5_fixture_separates_transition_target_and_observation(self) -> None:
         data = self.publication_plan()
         controls = data["remote_governance"]["controls"]
-        self.assertEqual(4, data["schema_version"])
-        self.assertEqual("PARTIALLY_APPLIED", data["remote_settings_status"])
+        self.assertEqual(5, data["schema_version"])
+        self.assertEqual("PUBLICATION_TRANSITION", data["publication_phase"])
+        self.assertEqual("public", data["visibility_strategy"]["target_visibility"])
+        self.assertEqual(
+            "private",
+            data["visibility_strategy"]["pretransition_observation"]["visibility"],
+        )
+        self.assertEqual("AUTHORIZED_NOT_APPLIED", data["publication_transition"]["status"])
         self.assertEqual("UNAVAILABLE_ON_CURRENT_PLAN", controls["main_ruleset"]["observed_state"])
         self.assertEqual("UNPROTECTED", controls["main_branch"]["observed_state"])
         self.assertEqual(
@@ -251,9 +257,9 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertEqual("ACTIVE", controls["security_alerts"]["observed_state"])
         self.assertEqual((), checker.audit(self.root))
 
-    def test_34_schema_3_is_rejected(self) -> None:
+    def test_34_schema_4_is_rejected(self) -> None:
         data = self.publication_plan()
-        data["schema_version"] = 3
+        data["schema_version"] = 4
         self.write_publication_plan(data)
         self.assertIn("PUBLICATION_PLAN", self.codes())
 
@@ -303,6 +309,70 @@ class GitHubGovernanceTests(unittest.TestCase):
         data["remote_governance"]["controls"]["secret_scanning"]["application_status"] = "APPLIED"
         self.write_publication_plan(data)
         self.assertIn("CONTROL_ACCOUNTING", self.codes())
+
+    def test_41_final_target_must_be_public(self) -> None:
+        data = self.publication_plan()
+        data["visibility_strategy"]["target_visibility"] = "private"
+        self.write_publication_plan(data)
+        self.assertIn("FINAL_TARGET", self.codes())
+
+    def test_42_transition_cannot_be_presented_as_applied(self) -> None:
+        data = self.publication_plan()
+        data["publication_transition"]["status"] = "APPLIED"
+        data["visibility_strategy"]["transition_status"] = "APPLIED"
+        self.write_publication_plan(data)
+        self.assertIn("TRANSITION_STATE", self.codes())
+        self.assertIn("PREMATURE_SUCCESS", self.codes())
+
+    def test_43_nonempty_bypass_list_is_rejected(self) -> None:
+        data = self.publication_plan()
+        ruleset = data["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]
+        ruleset["bypass_actors"] = ["Repository administrator"]
+        self.write_publication_plan(data)
+        self.assertIn("BYPASS", self.codes())
+
+    def test_44_administrative_bypass_object_is_rejected(self) -> None:
+        data = self.publication_plan()
+        ruleset = data["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]
+        ruleset["administrative_bypass"] = {"planned": True}
+        self.write_publication_plan(data)
+        self.assertIn("BYPASS", self.codes())
+
+    def test_45_pvr_before_public_visibility_is_rejected(self) -> None:
+        data = self.publication_plan()
+        pvr = data["remote_governance"]["controls"]["private_vulnerability_reporting"]
+        pvr["desired_state"] = "ACTIVE_BEFORE_PUBLICATION"
+        self.write_publication_plan(data)
+        self.assertIn("PVR_SEQUENCE", self.codes())
+
+    def test_46_pvr_must_immediately_follow_visibility_change(self) -> None:
+        data = self.publication_plan()
+        sequence = data["publication_transition"]["sequence"]
+        sequence.insert(2, "APPLY_MAIN_RULESET")
+        self.write_publication_plan(data)
+        self.assertIn("PVR_SEQUENCE", self.codes())
+
+    def test_47_required_checks_cannot_be_lost(self) -> None:
+        data = self.publication_plan()
+        rules = data["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]["rules"]
+        rules["required_status_checks"].pop()
+        self.write_publication_plan(data)
+        self.assertIn("RULESET_CHECKS", self.codes())
+
+    def test_48_force_push_and_deletion_must_remain_blocked(self) -> None:
+        for key in ("prevent_force_push", "prevent_deletion"):
+            with self.subTest(rule=key):
+                data = self.publication_plan()
+                rules = data["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]["rules"]
+                rules[key] = False
+                self.write_publication_plan(data)
+                self.assertIn("BRANCH_MUTATION", self.codes())
+
+    def test_49_current_state_must_remain_api_verified(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["current_state_source"] = "DOCUMENTATION"
+        self.write_publication_plan(data)
+        self.assertIn("DESIRED_OBSERVED", self.codes())
 
 
 if __name__ == "__main__":

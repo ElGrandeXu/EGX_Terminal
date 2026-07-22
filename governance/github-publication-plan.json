@@ -1,6 +1,7 @@
 {
-  "schema_version": 4,
-  "remote_settings_status": "PARTIALLY_APPLIED",
+  "schema_version": 5,
+  "publication_phase": "PUBLICATION_TRANSITION",
+  "remote_settings_status": "TRANSITION_AUTHORIZED_NOT_APPLIED",
   "identity": {
     "owner": "ElGrandeXu",
     "repository": "EGX_Terminal",
@@ -9,10 +10,71 @@
   },
   "visibility_strategy": {
     "initial_visibility": "private",
-    "target_visibility": "private",
-    "observed_visibility": "private",
-    "reason": "Keep the recreated canonical repository private through recovery closure and the future pull-request preparation phase.",
-    "status": "APPLIED"
+    "target_visibility": "public",
+    "pretransition_observation": {
+      "observed_on": "2026-07-22",
+      "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+      "commit_count": 41,
+      "visibility": "private"
+    },
+    "transition_status": "AUTHORIZED_NOT_APPLIED",
+    "current_remote_state_source": "GITHUB_API",
+    "status": "PUBLICATION_TRANSITION"
+  },
+  "publication_transition": {
+    "authorized_by": "docs/decisions/0015-authorize-guarded-public-transition.md",
+    "status": "AUTHORIZED_NOT_APPLIED",
+    "post_merge_head_audit_required": true,
+    "preflight_required_visibility": "private",
+    "sequence": [
+      "VERIFY_PRIVATE_PREFLIGHT",
+      "SET_PUBLIC_VISIBILITY",
+      "ACTIVATE_PRIVATE_VULNERABILITY_REPORTING_IMMEDIATELY",
+      "VERIFY_PRIVATE_VULNERABILITY_REPORTING",
+      "APPLY_AND_VERIFY_POST_PUBLIC_CONTROLS",
+      "VERIFY_ANONYMOUS_PUBLIC_ACCESS",
+      "COMPLETE_POST_PUBLIC_REPORT"
+    ],
+    "failure_policy": {
+      "stop_if_critical_control_cannot_be_applied_or_verified": true,
+      "shareable_until_complete": false
+    },
+    "git_tag_creation_allowed": false,
+    "github_release_creation_allowed": false,
+    "v1.0.1_mission": "SEPARATE_LATER_MISSION"
+  },
+  "prepublication_audit": {
+    "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+    "commit_count": 41,
+    "git_content_audited": true,
+    "pull_requests_audited": true,
+    "logs_audited": true,
+    "workflows_audited": true,
+    "licenses_audited": true,
+    "material_leak_detected": false,
+    "status": "CLOSED_ON_2026-07-22"
+  },
+  "packages_audit": {
+    "finding": "F-001",
+    "closed_on": "2026-07-22",
+    "authorized_surface_count": 12,
+    "http_200_surface_count": 12,
+    "package_count": 0,
+    "surfaces": [
+      {"api_scope": "authenticated-user", "package_type": "npm", "http_status": 200, "package_count": 0},
+      {"api_scope": "authenticated-user", "package_type": "maven", "http_status": 200, "package_count": 0},
+      {"api_scope": "authenticated-user", "package_type": "rubygems", "http_status": 200, "package_count": 0},
+      {"api_scope": "authenticated-user", "package_type": "docker", "http_status": 200, "package_count": 0},
+      {"api_scope": "authenticated-user", "package_type": "nuget", "http_status": 200, "package_count": 0},
+      {"api_scope": "authenticated-user", "package_type": "container", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "npm", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "maven", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "rubygems", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "docker", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "nuget", "http_status": 200, "package_count": 0},
+      {"api_scope": "owner-public", "package_type": "container", "http_status": 200, "package_count": 0}
+    ],
+    "status": "CLOSED"
   },
   "metadata": {
     "description": "Evidence-led research for inspectable, LLM-agnostic terminal environments.",
@@ -29,7 +91,7 @@
       "qwen",
       "open-source"
     ],
-    "status": "APPLIED"
+    "status": "APPLIED_AT_PRETRANSITION_CHECKPOINT"
   },
   "features": {
     "issues": true,
@@ -40,7 +102,7 @@
     "pages": false,
     "releases_allowed": true,
     "release_before_remote_validation": false,
-    "status": "APPLIED"
+    "status": "APPLIED_AT_PRETRANSITION_CHECKPOINT"
   },
   "merge_policy": {
     "squash_merge": true,
@@ -50,7 +112,7 @@
     "delete_merged_branches": true,
     "auto_merge": false,
     "linear_history": true,
-    "status": "APPLIED"
+    "status": "APPLIED_AT_PRETRANSITION_CHECKPOINT"
   },
   "actions_policy": {
     "github_token_default": "read",
@@ -65,19 +127,25 @@
     "sha_pinning_verified_on": "2026-07-21",
     "sha_pinning_endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/actions/permissions",
     "automatic_approval_for_untrusted_workflow_changes": false,
-    "status": "APPLIED"
+    "post_public_target": "RETAIN_MINIMAL_PERMISSIONS_AND_PRUDENT_FORK_POLICY",
+    "status": "APPLIED_AT_PRETRANSITION_CHECKPOINT"
   },
   "remote_governance": {
-    "verified_on": "2026-07-22",
-    "plan": "GITHUB_FREE",
-    "observed_visibility": "private",
+    "observation": {
+      "verified_on": "2026-07-22",
+      "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+      "plan": "GITHUB_FREE",
+      "visibility": "private"
+    },
+    "current_state_source": "VERIFY_DIRECTLY_WITH_GITHUB_API",
     "controls": {
       "main_ruleset": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
         "desired_configuration": {
           "name": "main-protection",
           "target": "main",
           "enforcement": "active",
+          "bypass_actors": [],
           "rules": {
             "prevent_deletion": true,
             "prevent_force_push": true,
@@ -93,27 +161,21 @@
               "repository / windows",
               "licensing / reuse"
             ]
-          },
-          "administrative_bypass": {
-            "planned": true,
-            "scope": "Repository administrator",
-            "reason": "Document the one-time direct recovery-closing push made while the repository was private and before this ruleset was activated.",
-            "ordinary_use": false
           }
         },
         "observed_state": "UNAVAILABLE_ON_CURRENT_PLAN",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
           "http_status": 403
         }
       },
       "main_branch": {
-        "desired_state": "PROTECTED",
+        "desired_state": "PROTECTED_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNPROTECTED",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main",
           "http_status": 200
@@ -124,30 +186,30 @@
         }
       },
       "private_vulnerability_reporting": {
-        "desired_state": "ACTIVE_BEFORE_PUBLICATION",
+        "desired_state": "ACTIVE_IMMEDIATELY_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNAVAILABLE_WHILE_PRIVATE",
         "limitation": "REQUIRES_PUBLIC_VISIBILITY",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/private-vulnerability-reporting",
           "http_status": 404
         }
       },
       "secret_scanning": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "DISABLED",
         "limitation": "PRIVATE_REPOSITORY_ON_GITHUB_FREE",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/secret-scanning/alerts",
           "http_status": 404
         }
       },
       "push_protection": {
-        "desired_state": "ACTIVE",
+        "desired_state": "ACTIVE_IF_AVAILABLE_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "NOT_ACTIVE",
         "limitation": "SECRET_SCANNING_DISABLED",
-        "application_status": "NOT_APPLIED",
+        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal",
           "http_status": 200
@@ -157,7 +219,7 @@
         "desired_state": "ACTIVE",
         "observed_state": "ACTIVE",
         "limitation": null,
-        "application_status": "APPLIED",
+        "application_status": "APPLIED_AT_PRETRANSITION_CHECKPOINT",
         "evidence": {
           "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/vulnerability-alerts",
           "http_status": 204
@@ -167,7 +229,7 @@
     "procedural_fallback": {
       "pull_request_required": true,
       "basis": "MANDATORY_PROJECT_CONVENTION",
-      "github_enforced": false
+      "github_enforced_at_pretransition_checkpoint": false
     }
   },
   "community_profile": {
@@ -179,10 +241,15 @@
     "security": "PRESENT",
     "code_of_conduct": "DEFERRED_UNTIL_ENFORCEABLE",
     "profile_completion_claim": "NOT_CLAIMED",
-    "status": "APPLIED"
+    "status": "APPLIED_AT_PRETRANSITION_CHECKPOINT"
   },
   "release_state": {
-    "current_releases": [],
+    "pretransition_observation": {
+      "observed_on": "2026-07-22",
+      "checkpoint": "23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515",
+      "canonical_git_tag_count": 0,
+      "canonical_github_release_count": 0
+    },
     "historical_releases": [
       {
         "tag": "v1.0.0",
@@ -192,9 +259,8 @@
       }
     ],
     "next_candidate": "v1.0.1",
-    "canonical_git_tag_count": 0,
-    "canonical_github_release_count": 0,
-    "status": "APPLIED"
+    "transition_creation_allowed": false,
+    "status": "DEFERRED_TO_SEPARATE_MISSION"
   },
   "recovery_closure": {
     "starting_head": "dee7a7c97ad6991746d7de35f6d7ddb290bb895e",
@@ -203,13 +269,13 @@
     "temporary_repositories_backed_up_locally": true,
     "temporary_repositories_deleted": true,
     "private_evidence_outside_repository": true,
-    "direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
+    "historical_direct_push_exception": "AUTHORIZED_ONCE_WHILE_PRIVATE_BEFORE_RULESET_ACTIVATION",
     "future_direct_push_authorized": false,
     "force_push_used": false,
     "git_tag_created": false,
     "github_release_created": false,
     "pull_request_created": false,
     "experimental_evidence_modified": false,
-    "status": "APPLIED"
+    "status": "HISTORICAL_CLOSED"
   }
 }
