@@ -44,8 +44,9 @@ directly and record observed versions or commits when relevant.
   — superseded current-release state; retains the contemporaneous release-policy
   rationale before privacy remediation
 - [0012 — Close canonical recovery after immutable tag reservation](0012-close-canonical-recovery-after-immutable-tag-reservation.md)
-  — accepted; withdraw `v1.0.0` to verified private history, keep the canonical
-  repository tagless and release-free, and reserve `v1.0.1` for later work
+  — superseded in part by 0013; retain the recovery and withdrawn-release facts,
+  while replacing the protected-path assumption with procedural pull-request
+  discipline
 - [0013 — Record observed GitHub governance limitations](0013-record-observed-github-governance-limitations.md)
   — accepted; keep the repository private on GitHub Free, separate desired from
   observed controls, and use procedural pull-request discipline until the
