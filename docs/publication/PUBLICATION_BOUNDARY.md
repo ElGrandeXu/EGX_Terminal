@@ -55,8 +55,8 @@ reconstruit à l'identité `noreply` avec le même tree, parent, message complet
 sujet, dates et diff. L'objet affecté et les refs de l'ancienne pull request
 n'ont pas été importés. Le 38e commit clôt cette récupération sans force-push.
 PR #2 est ensuite terminée et mergée par squash ; le commit résultant
-`c708bc6af88b5e98a08fc801e476d4c16248e701` est le HEAD canonique et porte
-l'historique linéaire à 40 commits.
+`c708bc6af88b5e98a08fc801e476d4c16248e701` est son commit de squash merge et
+établit le checkpoint historique d'un historique linéaire de 40 commits.
 
 Le [rapport d'historique](HISTORY_AUDIT.md), la [remédiation
 d'identité](IDENTITY_REMEDIATION.md) et les décisions [0010](../decisions/0010-recreate-public-repository-after-email-exposure.md)
@@ -110,10 +110,9 @@ privée avant activation du ruleset. Il n'autorise aucun push direct futur.
 
 **`PRIVATE_RECOVERY_CLOSED`**
 
-Au checkpoint du merge de PR #2, le canonique possède 40 commits propres, aucun
-Git tag, aucune release et aucune pull request ouverte. Son HEAD
-`c708bc6af88b5e98a08fc801e476d4c16248e701` est issu du squash merge de cette
-PR. L'audit final de prépublication est désormais la prochaine étape. Les
-contrôles distants seront réévalués avant tout passage public ; ensuite
-seulement pourront commencer la préparation séparée de `v1.0.1` et de la
-signature SSH.
+Le commit `c708bc6af88b5e98a08fc801e476d4c16248e701` est le squash-merge commit de
+PR #2. À ce checkpoint historique, l'historique linéaire comptait 40 commits.
+Le canonique ne possède aucun Git tag ni aucune release. L'audit final de
+prépublication est désormais la prochaine étape. Les contrôles distants seront
+réévalués avant tout passage public ; ensuite seulement pourront commencer la
+préparation séparée de `v1.0.1` et de la signature SSH.

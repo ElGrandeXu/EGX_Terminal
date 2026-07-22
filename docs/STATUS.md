@@ -37,10 +37,9 @@
   records the private replacement of the affected repository. The functional commit was
   reconstructed with the same tree, parent, complete message, dates, diff,
   paths, modes, and contents, using only approved `noreply` identities. The
-  recovery-closing documentation preserved that clean history. The completed
-  PR #2 squash merge is canonical HEAD
-  `c708bc6af88b5e98a08fc801e476d4c16248e701` and brings the canonical history
-  to 40 commits.
+  recovery-closing documentation preserved that clean history. The PR #2
+  squash-merge commit `c708bc6af88b5e98a08fc801e476d4c16248e701`
+  established the 40-commit canonical recovery checkpoint.
 - **Canonical-object boundary:** the canonical repository was newly created from
   the cleaned history with no object carrying the former metadata and no
   inherited pull request. Temporary recovery repositories were deleted only
@@ -73,10 +72,10 @@
   Pull requests are a mandatory project convention, not an active GitHub
   protection.
 - **Repository status:** **`PRIVATE_RECOVERY_CLOSED`**. The canonical repository
-  remains private and, at the PR #2 merge checkpoint, has no tag, release, or
-  open pull request. `v1.0.1` is not published. The final pre-publication audit
-  is the next gate; only afterward may separate preparation select and record a
-  durable SSH signing identity for the candidate release.
+  remains private and has no tag or release. `v1.0.1` is not published. The
+  final pre-publication audit is the next gate; only afterward may separate
+  preparation select and record a durable SSH signing identity for the
+  candidate release.
 - **Email privacy:** the GitHub account setting is
   `EMAIL_PRIVACY_SETTING_NOT_API_VERIFIABLE`; future web operations require it
   to remain enabled and the scanner accepts no personal-address fallback.

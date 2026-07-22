@@ -39,10 +39,10 @@ of current conventions, not a claim about every future harness convention.
 The Git history has been audited and remediated. After GitHub selected a
 personal author address for the first squash merge, the affected repository was
 made private and the canonical repository was recreated from a content-identical
-clean history. PR #2 is complete and was squash-merged as canonical HEAD
-`c708bc6af88b5e98a08fc801e476d4c16248e701`, bringing that history to 40
-commits, all using approved GitHub `noreply` metadata; the affected object was
-not imported. The active policy
+clean history. PR #2 is complete and was squash-merged as commit
+`c708bc6af88b5e98a08fc801e476d4c16248e701`, establishing a 40-commit
+linear-history checkpoint. All commits in that checkpoint use approved GitHub
+`noreply` metadata; the affected object was not imported. The active policy
 continues to accept attributable GitHub `noreply` contributors and the exact
 GitHub web committer used for squash merges, without accepting personal email
 addresses or undeclared bots; see the [identity remediation
@@ -211,12 +211,9 @@ Private Vulnerability Reporting is unavailable, secret scanning is disabled,
 and push protection is not active. Pull requests remain a mandatory project
 convention rather than a GitHub-enforced protection. These controls must be
 re-evaluated, and Private Vulnerability Reporting enabled, before any public
-publication. At canonical HEAD
-`c708bc6af88b5e98a08fc801e476d4c16248e701`, produced by the completed PR #2
-squash merge, the repository has 40 clean commits, no Git tag, no release, and
-no open pull request. The next step is the final pre-publication audit. Only
-after it passes may separate work prepare candidate `v1.0.1` and its SSH signing
-identity.
+publication. PR #2 is complete, and the repository has no Git tag or published
+release. The next step is the final pre-publication audit. Only after it passes
+may separate work prepare candidate `v1.0.1` and its SSH signing identity.
 
 ## License
 
