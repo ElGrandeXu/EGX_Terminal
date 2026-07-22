@@ -50,9 +50,11 @@ report](docs/publication/IDENTITY_REMEDIATION.md) and run
 
 The canonical repository currently has no Git tag and no published release.
 `v1.0.0` is retained only as a historical release record withdrawn during the
-privacy remediation; its experimental conclusions remain valid, while its
-former release metadata is preserved only in verified private evidence outside
-this repository. GitHub's immutable-release reservation prevents reuse of that
+privacy remediation; its terminal governance conclusions remain in force, while
+[Decision 0014](docs/decisions/0014-micro-kernel-evidence-erratum.md) records the
+limits of the preserved micro-kernel runtime evidence. Its former release
+metadata is preserved only in verified private evidence outside this
+repository. GitHub's immutable-release reservation prevents reuse of that
 tag name in the recreated repository. The next candidate is `v1.0.1`, but no
 `v1.0.1` tag or release exists and PR 2 remains a later step.
 
@@ -63,22 +65,35 @@ available as documentation, while any future capability or adapter must be
 explicit and opt-in. Hidden instruction injection is outside the V1 boundary.
 
 The final reasoning is recorded in the [micro-kernel evaluation
-(0004)](docs/decisions/0004-micro-kernel-final-evaluation.md) and the [neutral-root
-decision (0005)](docs/decisions/0005-ship-v1-with-neutral-root.md). The underlying
-evidence remains in the [micro-kernel final
-results](experiments/kernel-micro-v1/behavioral/final-v1/results.md) and the
-[balanced-kernel challenge
-results](experiments/kernel-v1/behavioral/challenge-v1/results.md).
+(0004)](docs/decisions/0004-micro-kernel-final-evaluation.md), its [runtime-evidence
+erratum (0014)](docs/decisions/0014-micro-kernel-evidence-erratum.md), and the
+[neutral-root decision
+(0005)](docs/decisions/0005-ship-v1-with-neutral-root.md). For the micro-kernel,
+the payload, protocol, fixtures, graders, manifest, and recorded hashes of
+preserved artifacts remain directly auditable. The [micro-kernel final
+results](experiments/kernel-micro-v1/behavioral/final-v1/results.md) preserve the
+published historical claims, but the original aggregate and source runtime data
+are absent. The [balanced-kernel challenge
+results](experiments/kernel-v1/behavioral/challenge-v1/results.md) remain a
+separate historical record.
 
 ## Experimental results
+
+The micro-kernel scores, ties, token totals, and overhead shown below are values
+published in the historical report. Their internal arithmetic remains
+checkable, but the missing original aggregate and source runtime data prevent
+independent verification of the underlying runtime observations; see [Decision
+0014](docs/decisions/0014-micro-kernel-evidence-erratum.md).
 
 | Experiment | Verdict | Functional success (baseline / candidate) | Primary wins (baseline / candidate) | Ties | False completions (baseline / candidate) | Token overhead | Pre-registered ceiling |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | Balanced kernel | `REJECTED_AS_BALANCED` | One baseline cell unavailable after scoring | 2 / 0 | 3 complete pairs | 0/5 / 2/6 | +19.166% on the five complete pairs | n/a |
 | Micro-kernel | `REJECT_MICRO` | 5/5 / 5/5 | 0 / 0 | 5 | 0 / 0 | +7.85% ([exact value: 7.850019354305572%](experiments/kernel-micro-v1/behavioral/final-v1/results.md)) | 5% |
 
-The micro-kernel produced complete behavioral ties across all five pairs, but it
-failed the pre-registered token budget. The balanced result's +19.166% is a
+According to the historical micro-kernel report, all five pairs were behavioral
+ties and the published token overhead exceeded the pre-registered budget. The
+terminal governance verdict remains **`REJECT_MICRO`**; this summary does not
+revalidate the unavailable runtime sources. The balanced result's +19.166% is a
 descriptive total for the five complete pairs; the six-pair overhead is
 unavailable because one baseline observation was lost after scoring. Neither
 rejection is presented as a promotion.

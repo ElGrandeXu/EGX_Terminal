@@ -101,6 +101,9 @@ HTTP result, and verification date separately.
 The local and clean-clone gates cover the neutral root, public-surface heuristic,
 licensing, Git history and all refs, Markdown links, GitHub governance, tests,
 REUSE, JSON and TOML parsing, Git integrity, the locked experimental archive
-hash, and the ten frozen Mission 24 results. A source archive without `.git`
-runs only the content-applicable subset and never simulates absent history or
-historical release objects.
+hash, and the byte identity of the ten files listed under `frozen_files` in the
+Mission 24 manifest. This gate verifies the integrity of preserved files, not
+the source runtime observations or the absent original aggregate; see
+[decision 0014](../decisions/0014-micro-kernel-evidence-erratum.md). A source
+archive without `.git` runs only the content-applicable subset and never
+simulates absent history or historical release objects.

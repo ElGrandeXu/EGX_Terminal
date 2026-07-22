@@ -24,10 +24,14 @@ restent consultables et les protocoles peuvent être choisis volontairement.
 - La [décision 0003](0003-balanced-kernel-rejection.md) classe le kernel équilibré
   **`REJECTED_AS_BALANCED`** après zéro victoire primaire observée et deux
   victoires de la baseline sur les cinq paires complètes.
-- La [décision 0004](0004-micro-kernel-final-evaluation.md) classe le micro-kernel
-  **`REJECT_MICRO`**. La baseline a consommé 229 923 tokens et le micro 247 972,
-  soit **7,850019354305572 %** d'overhead, au-dessus du plafond pré-enregistré de
-  5 %.
+- La décision [0004](0004-micro-kernel-final-evaluation.md) classe le micro-kernel
+  **`REJECT_MICRO`**. Son [rapport historique](../../experiments/kernel-micro-v1/behavioral/final-v1/results.md)
+  publie des totaux de 229 923 tokens pour la baseline et de 247 972 pour le
+  micro, soit **7,850019354305572 %** d'overhead publié, au-dessus du plafond
+  pré-enregistré de 5 %. La [décision 0014](0014-micro-kernel-evidence-erratum.md)
+  gouverne la lecture de ces valeurs historiquement publiées : leur cohérence
+  arithmétique interne reste contrôlable, mais les données runtime sources et
+  l'agrégat original sont absents.
 - Les deux décisions interdisent leur promotion comme doctrine V1. La décision
   0004 clôt aussi toute troisième variante et toute nouvelle campagne doctrinale
   pour la V1.
@@ -72,7 +76,12 @@ réinterpréter.
   découverte automatique.
 - Utiliser un protocole documenté devient un choix explicite de la mission ou du
   contributeur; l'absence d'adaptateur automatique est intentionnelle.
-- Les preuves négatives restent auditables sans modifier les archives.
+- Les artefacts directement auditables et le record décisionnel conservé des
+  résultats négatifs restent disponibles sans modifier les archives. Pour la
+  décision 0004, cette auditabilité se limite au payload, au protocole et à sa
+  règle de décision, aux fixtures, aux graders, au manifeste et aux hashes des
+  artefacts conservés ; elle ne s'étend pas à la preuve runtime irrécouvrable,
+  conformément à la décision 0014.
 
 ## Garde-fous
 

@@ -53,8 +53,10 @@ remain outside the repository.
 
 The complete local suite, a no-hardlink clean clone, private CI, and an anonymous
 clone validate the 36-commit replacement history. The locked `kernel-v1` hash,
-both experimental archives, and the ten frozen Mission 24 results remain
-unchanged.
+both experimental archives, and the ten files listed under `frozen_files` in
+the Mission 24 manifest remain byte-identical. This preserved-file integrity
+does not establish preservation of the original runtime aggregate; see
+[decision 0014](0014-micro-kernel-evidence-erratum.md).
 
 ## Consequences
 

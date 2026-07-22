@@ -24,7 +24,8 @@ directly and record observed versions or commits when relevant.
 - [0003 — Rejet du kernel équilibré](0003-balanced-kernel-rejection.md) — rejected
   balanced payload; archived evidence; inactive static micro candidate
 - [0004 — Évaluation finale du micro-kernel](0004-micro-kernel-final-evaluation.md)
-  — `REJECT_MICRO`; no always-on doctrine and no further V1 doctrine benchmark
+  — terminal `REJECT_MICRO`; no always-on doctrine and no further V1 doctrine
+  benchmark; runtime evidence reading governed by 0014
 - [0005 — Publication de la V1 avec une racine neutre](0005-ship-v1-with-neutral-root.md)
   — accepted; no automatically discovered root instructions in V1
 - [0006 — Adopter des licences Apache et CC par fichier](0006-adopt-file-scoped-apache-and-cc-licensing.md)
@@ -51,3 +52,6 @@ directly and record observed versions or commits when relevant.
   — accepted; keep the repository private on GitHub Free, separate desired from
   observed controls, and use procedural pull-request discipline until the
   pre-publication re-evaluation
+- [0014 — Erratum sur les preuves du micro-kernel](0014-micro-kernel-evidence-erratum.md)
+  — accepted; governs the reading of runtime evidence associated with 0004
+  while preserving its terminal verdict

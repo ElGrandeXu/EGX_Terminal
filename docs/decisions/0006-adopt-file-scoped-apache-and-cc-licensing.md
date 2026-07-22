@@ -59,7 +59,10 @@ L'attribution des archives est exclusivement externe. Aucun fichier sous
 `experiments/kernel-v1/` ou `experiments/kernel-micro-v1/` n'est modifié. Le hash
 agrégé de `kernel-v1` reste
 `c6c6c00f81e063d70c20c105a01a0a10b55568d34e198f1fa4b4a5580b7c87f0`,
-et les résultats gelés de Mission 24 restent octet-identiques.
+et les dix fichiers listés sous `frozen_files` dans le manifeste Mission 24
+restent octet-identiques. Cette intégrité ne prouve pas la conservation de
+l'agrégat runtime original, comme le précise la
+[décision 0014](0014-micro-kernel-evidence-erratum.md).
 
 Les faits, noms de tiers, marques, URLs, versions, hashes, commandes et courtes
 citations attribuées ne sont pas revendiqués comme créations de Maxime. Tout

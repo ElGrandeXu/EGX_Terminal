@@ -3,10 +3,14 @@
 - **Phase:** canonical recovery is closed on a private repository with no Git
   tag or published release. PR 2 is the next step; `v1.0.1` is only the next
   candidate and has not been created.
-- **Mission 24:** complete. Its final ten-cell campaign is closed and unchanged.
-- **Final doctrine verdict:** **`REJECT_MICRO`**. Baseline used 229,923 tokens;
-  micro used 247,972; overhead was 7.850019354305572%, above the frozen 5%
-  ceiling. The earlier balanced candidate was already rejected.
+- **Mission 24:** complete. Its final governance campaign is closed.
+- **Final doctrine verdict:** **`REJECT_MICRO`**. The historical report publishes
+  totals of 229,923 tokens for the baseline and 247,972 for the micro, with an
+  overhead of 7.850019354305572% above the frozen 5% ceiling. These values remain
+  internally arithmetically checkable, but the original aggregate and source
+  runtime data are absent; [Decision 0014](decisions/0014-micro-kernel-evidence-erratum.md)
+  governs their interpretation. The earlier balanced candidate was already
+  rejected.
 - **Benchmark phase:** closed. No kernel adjustment, third variant, payload
   change, threshold reinterpretation, or further V1 doctrine benchmark is
   permitted.
@@ -14,8 +18,10 @@
   selects a neutral root with no automatically discovered harness instructions,
   active kernel, adapter, or hidden injection. Principles remain documented and
   protocols are selected explicitly on demand.
-- **Historical evidence:** `experiments/kernel-v1/` and
-  `experiments/kernel-micro-v1/` remain immutable inactive archives.
+- **Historical record:** `experiments/kernel-v1/` and
+  `experiments/kernel-micro-v1/` remain immutable inactive archives. For the
+  micro-kernel, preserved definition artifacts are directly auditable, while
+  published runtime claims are not independently verifiable from source data.
 - **Licensing:** [Decision 0006](decisions/0006-adopt-file-scoped-apache-and-cc-licensing.md)
   remains accepted. `REUSE.toml` gives every tracked non-exempt file exactly one
   effective license; the dependency-free checker and `reuse 6.2.0` pass.
@@ -36,13 +42,16 @@
   inherited pull request. Temporary recovery repositories were deleted only
   after verified private local backups were retained outside this repository.
 - **Integrity:** the locked `kernel-v1` hash, both experimental archives, and the
-  ten frozen Mission 24 results are unchanged. Private recovery bundles and the
-  Mission 35 capture remain outside the repository.
+  ten files listed under `frozen_files` in the [Mission 24
+  manifest](../experiments/kernel-micro-v1/behavioral/final-v1/manifest.json) are
+  unchanged. Private recovery bundles and the Mission 35 capture remain outside
+  the repository.
 - **Release state:** the canonical repository has no Git tag and no published
   release. `v1.0.0` is a historical release withdrawn during privacy
   remediation; its former target, tag object, and release record exist only in
-  verified private evidence. The experimental conclusions it documented remain
-  unchanged.
+  verified private evidence. The terminal **`REJECT_MICRO`** governance verdict
+  it documented remains unchanged; Decision 0014 records the limits of the
+  preserved runtime evidence.
 - **Local governance:** the release policy, neutral-surface registry, action
   lock, publication plan, hashed REUSE locks, hardened workflow, JSON/TOML, Git
   integrity, REUSE, link checks, and the full active test suite form the current
