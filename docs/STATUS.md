@@ -55,8 +55,13 @@
   `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515` contained 41 commits on `main`.
   This is a historical count, not a current counter. Git content, pull requests,
   logs, workflows, and licenses were audited without a material leak being
-  detected. F-001 closed after twelve authorized Packages surfaces returned
-  HTTP 200 with zero packages.
+  detected, but the completed audit's initial executive verdict was
+  **`PUBLICATION_BLOCKED`**: the F-001 Packages audit was inaccessible, and
+  F-002 through F-005 required governance and documentation corrections. F-001
+  later closed separately after twelve authorized Packages surfaces returned
+  HTTP 200 with zero packages. The schema 5 transition change remediates F-002
+  through F-005; a merged-HEAD re-audit remains mandatory before public
+  transition.
 - **Release state:** at that checkpoint, the canonical repository had no Git tag
   or published release. The transition forbids creating either. `v1.0.0` is a
   historical release withdrawn during privacy

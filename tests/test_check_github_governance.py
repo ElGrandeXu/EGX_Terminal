@@ -246,6 +246,19 @@ class GitHubGovernanceTests(unittest.TestCase):
             data["visibility_strategy"]["pretransition_observation"]["visibility"],
         )
         self.assertEqual("AUTHORIZED_NOT_APPLIED", data["publication_transition"]["status"])
+        self.assertEqual(
+            "COMPLETED_PUBLICATION_BLOCKED",
+            data["prepublication_audit"]["status"],
+        )
+        self.assertEqual(
+            "PUBLICATION_BLOCKED",
+            data["prepublication_audit"]["executive_verdict"],
+        )
+        self.assertEqual(
+            "INITIAL_PACKAGES_AUDIT_INACCESSIBLE_THEN_CLOSED_SEPARATELY",
+            data["prepublication_audit"]["finding_disposition"]["F-001"],
+        )
+        self.assertTrue(data["prepublication_audit"]["merged_head_reaudit_required"])
         self.assertEqual("UNAVAILABLE_ON_CURRENT_PLAN", controls["main_ruleset"]["observed_state"])
         self.assertEqual("UNPROTECTED", controls["main_branch"]["observed_state"])
         self.assertEqual(
@@ -373,6 +386,34 @@ class GitHubGovernanceTests(unittest.TestCase):
         data["remote_governance"]["current_state_source"] = "DOCUMENTATION"
         self.write_publication_plan(data)
         self.assertIn("DESIRED_OBSERVED", self.codes())
+
+    def test_50_blocked_preaudit_cannot_be_rewritten_as_success(self) -> None:
+        for status in ("PUBLICATION_READY", "PASSED", "COMPLETED"):
+            with self.subTest(status=status):
+                data = self.publication_plan()
+                data["prepublication_audit"]["status"] = status
+                self.write_publication_plan(data)
+                self.assertIn("PREAUDIT_VERDICT", self.codes())
+
+    def test_51_executive_verdict_cannot_be_rewritten_as_ready(self) -> None:
+        data = self.publication_plan()
+        data["prepublication_audit"]["executive_verdict"] = "PUBLICATION_READY"
+        self.write_publication_plan(data)
+        self.assertIn("PREAUDIT_VERDICT", self.codes())
+
+    def test_52_merged_head_reaudit_remains_required(self) -> None:
+        data = self.publication_plan()
+        data["prepublication_audit"]["merged_head_reaudit_required"] = False
+        self.write_publication_plan(data)
+        self.assertIn("PREAUDIT_FOLLOWUP", self.codes())
+
+    def test_53_incomplete_remote_controls_report_schema_5(self) -> None:
+        data = self.publication_plan()
+        del data["remote_governance"]["controls"]["push_protection"]
+        self.write_publication_plan(data)
+        messages = [item.message for item in checker.audit(self.root) if item.code == "STATE_MODEL"]
+        self.assertTrue(any("schema 5" in message for message in messages))
+        self.assertFalse(any("schema 4" in message for message in messages))
 
 
 if __name__ == "__main__":

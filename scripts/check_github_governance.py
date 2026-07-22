@@ -518,7 +518,16 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
                 "workflows_audited": True,
                 "licenses_audited": True,
                 "material_leak_detected": False,
-                "status": "CLOSED_ON_2026-07-22",
+                "status": "COMPLETED_PUBLICATION_BLOCKED",
+                "executive_verdict": "PUBLICATION_BLOCKED",
+                "finding_disposition": {
+                    "F-001": "INITIAL_PACKAGES_AUDIT_INACCESSIBLE_THEN_CLOSED_SEPARATELY",
+                    "F-002_TO_F-005": (
+                        "INITIAL_GOVERNANCE_AND_DOCUMENTATION_CORRECTIONS_REQUIRED_"
+                        "THEN_REMEDIATED_BY_SCHEMA_5_TRANSITION_CHANGE"
+                    ),
+                },
+                "merged_head_reaudit_required": True,
             }
             and plan["packages_audit"]["finding"] == "F-001"
             and plan["packages_audit"]["closed_on"] == "2026-07-22"
@@ -641,6 +650,38 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     if not valid:
         findings.append(_finding(relative, "PUBLICATION_PLAN", "plan is incomplete or inconsistent"))
 
+    prepublication_audit = plan.get("prepublication_audit", {})
+    if (
+        not isinstance(prepublication_audit, dict)
+        or prepublication_audit.get("status") != "COMPLETED_PUBLICATION_BLOCKED"
+        or prepublication_audit.get("executive_verdict") != "PUBLICATION_BLOCKED"
+    ):
+        findings.append(
+            _finding(
+                relative,
+                "PREAUDIT_VERDICT",
+                "completed prepublication audit must preserve its PUBLICATION_BLOCKED verdict",
+            )
+        )
+    if not isinstance(prepublication_audit, dict) or (
+        prepublication_audit.get("finding_disposition")
+        != {
+            "F-001": "INITIAL_PACKAGES_AUDIT_INACCESSIBLE_THEN_CLOSED_SEPARATELY",
+            "F-002_TO_F-005": (
+                "INITIAL_GOVERNANCE_AND_DOCUMENTATION_CORRECTIONS_REQUIRED_"
+                "THEN_REMEDIATED_BY_SCHEMA_5_TRANSITION_CHANGE"
+            ),
+        }
+        or prepublication_audit.get("merged_head_reaudit_required") is not True
+    ):
+        findings.append(
+            _finding(
+                relative,
+                "PREAUDIT_FOLLOWUP",
+                "finding disposition and merged-HEAD re-audit must remain explicit",
+            )
+        )
+
     visibility = plan.get("visibility_strategy", {})
     if not isinstance(visibility, dict) or visibility.get("target_visibility") != "public":
         findings.append(_finding(relative, "FINAL_TARGET", "authorized final visibility must be public"))
@@ -680,7 +721,7 @@ def _check_plan(root: Path, findings: list[Finding]) -> None:
     controls = remote_governance.get("controls", {}) if isinstance(remote_governance, dict) else {}
     if not isinstance(controls, dict) or set(controls) != set(EXPECTED_REMOTE_CONTROLS):
         findings.append(
-            _finding(relative, "STATE_MODEL", "remote controls must use the complete schema 4 state model")
+            _finding(relative, "STATE_MODEL", "remote controls must use the complete schema 5 state model")
         )
         controls = {}
     for name, expected in EXPECTED_REMOTE_CONTROLS.items():

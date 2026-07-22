@@ -10,14 +10,19 @@ observed and correctly separated desired GitHub controls from controls actually
 available on the private GitHub Free repository. Its observations and rationale
 remain historical facts.
 
-The prepublication audit closed on 2026-07-22 at checkpoint
+The prepublication audit completed on 2026-07-22 at checkpoint
 `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, then 41 commits on `main`. That
 count describes this historical checkpoint only; it is never a permanent
 counter for the current branch or repository. Git content, pull requests, logs,
-workflows, and licenses were audited without a material leak being detected.
+workflows, and licenses were audited without a material leak being detected. Its
+initial executive verdict was **`PUBLICATION_BLOCKED`**: F-001 recorded an
+inaccessible Packages audit, while F-002 through F-005 required governance and
+documentation corrections.
 
-Finding F-001 also closed on 2026-07-22: all twelve authorized GitHub Packages
-surfaces returned HTTP 200 and reported zero packages.
+Finding F-001 later closed separately on 2026-07-22: all twelve authorized
+GitHub Packages surfaces returned HTTP 200 and reported zero packages. The
+schema 5 transition change remediates F-002 through F-005. Publication remains
+conditional on merging that change and auditing the resulting canonical HEAD.
 
 ## Decision
 
@@ -58,10 +63,13 @@ No tag or GitHub release may be created during the transition. Candidate
 - The checkpoint SHA and its 41-commit `main` history were verified locally and
   against `origin/main` on 2026-07-22 with `+0/-0` divergence.
 - The repository visibility was observed as private at that checkpoint.
-- The prepublication content, pull-request, log, workflow, and license audits
-  found no material leak.
+- The completed prepublication content, pull-request, log, workflow, and license
+  audits found no material leak but ended with the executive verdict
+  **`PUBLICATION_BLOCKED`** while F-001 through F-005 were open.
 - Twelve authenticated and owner-scoped Packages GET surfaces returned HTTP 200
-  with zero packages, closing F-001.
+  with zero packages, later closing F-001 separately.
+- The schema 5 transition change remediates F-002 through F-005; the merged-HEAD
+  re-audit remains mandatory before any public transition.
 - Decision 0013 preserves the dated evidence for controls unavailable or
   inactive during the observed private phase.
 

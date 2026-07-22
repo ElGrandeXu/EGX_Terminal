@@ -52,7 +52,13 @@
     "workflows_audited": true,
     "licenses_audited": true,
     "material_leak_detected": false,
-    "status": "CLOSED_ON_2026-07-22"
+    "status": "COMPLETED_PUBLICATION_BLOCKED",
+    "executive_verdict": "PUBLICATION_BLOCKED",
+    "finding_disposition": {
+      "F-001": "INITIAL_PACKAGES_AUDIT_INACCESSIBLE_THEN_CLOSED_SEPARATELY",
+      "F-002_TO_F-005": "INITIAL_GOVERNANCE_AND_DOCUMENTATION_CORRECTIONS_REQUIRED_THEN_REMEDIATED_BY_SCHEMA_5_TRANSITION_CHANGE"
+    },
+    "merged_head_reaudit_required": true
   },
   "packages_audit": {
     "finding": "F-001",

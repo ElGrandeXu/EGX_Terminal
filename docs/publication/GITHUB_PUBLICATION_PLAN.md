@@ -111,13 +111,17 @@ observation, authorization-not-application state, current API source of truth,
 desired post-public controls, and actually observed pretransition controls
 separately.
 
-## Closed prepublication audit
+## Completed, blocked prepublication audit
 
 At checkpoint `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, Git content, pull
 requests, logs, workflows, and licenses were audited without a material leak
-being detected. F-001 closed on 2026-07-22 after twelve authorized Packages
-surfaces returned HTTP 200 with zero packages. A fresh audit of the merged HEAD
-is mandatory before executing the transition.
+being detected. The audit completed on 2026-07-22 with the initial executive
+verdict **`PUBLICATION_BLOCKED`**: the F-001 Packages audit was inaccessible,
+while F-002 through F-005 required governance and documentation corrections.
+F-001 later closed separately after twelve authorized Packages surfaces returned
+HTTP 200 with zero packages. The schema 5 transition change remediates F-002
+through F-005. A fresh audit of the merged HEAD remains mandatory before
+executing the transition.
 
 ## Validation boundary
 
