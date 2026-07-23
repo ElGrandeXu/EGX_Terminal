@@ -19,7 +19,9 @@ import check_github_governance as checker  # noqa: E402
 
 FIXTURE_FILES = (
     "README.md",
+    "docs/QUICKSTART.md",
     "docs/STATUS.md",
+    "docs/decisions/README.md",
     "docs/publication/PUBLICATION_BOUNDARY.md",
     "docs/publication/GITHUB_PUBLICATION_PLAN.md",
     "docs/publication/RELEASE_POLICY.md",
@@ -250,7 +252,7 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertEqual("public", data["visibility_strategy"]["target_visibility"])
         self.assertEqual(
             "public",
-            data["visibility_strategy"]["current_remote_observation"]["visibility"],
+            data["visibility_strategy"]["dated_remote_observation"]["visibility"],
         )
         self.assertEqual("PUBLIC_TRANSITION_ROLLED_BACK", data["publication_transition"]["status"])
         self.assertEqual("COMPLETED_SUCCESS", data["publication_retry"]["status"])
@@ -390,9 +392,9 @@ class GitHubGovernanceTests(unittest.TestCase):
 
     def test_49_current_state_must_remain_api_verified(self) -> None:
         data = self.publication_plan()
-        data["remote_governance"]["current_state_source"] = "DOCUMENTATION"
+        data["remote_governance"]["snapshot_source"] = "DOCUMENTATION"
         self.write_publication_plan(data)
-        self.assertIn("CURRENT_REMOTE_OBSERVATION", self.codes())
+        self.assertIn("DATED_REMOTE_SNAPSHOT", self.codes())
 
     def test_50_blocked_preaudit_cannot_be_rewritten_as_success(self) -> None:
         for status in ("PUBLICATION_READY", "PASSED", "COMPLETED"):
@@ -673,7 +675,7 @@ class GitHubGovernanceTests(unittest.TestCase):
 
     def test_91_current_visibility_cannot_return_to_private(self) -> None:
         data = self.publication_plan()
-        data["visibility_strategy"]["current_remote_observation"]["visibility"] = "private"
+        data["visibility_strategy"]["dated_remote_observation"]["visibility"] = "private"
         self.write_publication_plan(data)
         codes = self.codes()
         self.assertIn("CURRENT_VISIBILITY", codes)
@@ -749,6 +751,106 @@ class GitHubGovernanceTests(unittest.TestCase):
         source = SCRIPT.read_text(encoding="utf-8")
         self.assertNotIn("def _check_plan_v5", source)
         self.assertNotIn("_check_plan_v5(", source)
+
+    def test_100_security_cannot_return_to_publication_transition(self) -> None:
+        self.replace(
+            "SECURITY.md",
+            "Private Vulnerability Reporting (PVR) is active.",
+            "Private Vulnerability Reporting (PVR) is active during `PUBLICATION_TRANSITION`.",
+        )
+        self.assertIn("SECURITY_STALE_STATE", self.codes())
+
+    def test_101_security_cannot_present_pvr_as_future(self) -> None:
+        self.replace(
+            "SECURITY.md",
+            "Private Vulnerability Reporting (PVR) is active.",
+            "Private Vulnerability Reporting (PVR) will be activated in the future.",
+        )
+        self.assertIn("SECURITY_STALE_STATE", self.codes())
+
+    def test_102_decision_0015_cannot_remain_unexecuted(self) -> None:
+        self.replace(
+            "docs/decisions/README.md",
+            "historical authorization, executed and superseded operationally\n  by the verified final public state",
+            "authorize but do not apply a public transition",
+        )
+        self.assertIn("DECISION_INDEX_STATE", self.codes())
+
+    def test_103_decision_0016_cannot_remain_conditional(self) -> None:
+        self.replace(
+            "docs/decisions/README.md",
+            "historical rollback record and bounded retry authorization; the\n  retry was executed and final publication is complete and verified",
+            "record the rollback and conditionally authorize at most one corrected retry",
+        )
+        self.assertIn("DECISION_INDEX_STATE", self.codes())
+
+    def test_104_python_prerequisite_cannot_be_generic(self) -> None:
+        self.replace("docs/QUICKSTART.md", "Python 3.11+", "Python 3")
+        findings = checker.audit(self.root)
+        self.assertTrue(
+            any(item.path == "docs/QUICKSTART.md" and item.code == "PYTHON_REQUIREMENT" for item in findings)
+        )
+
+    def test_105_ruleset_requires_up_to_date_branch(self) -> None:
+        data = self.publication_plan()
+        rules = data["remote_governance"]["controls"]["main_ruleset"]["desired_configuration"]["rules"]
+        rules["require_branch_up_to_date"] = False
+        self.write_publication_plan(data)
+        codes = self.codes()
+        self.assertIn("RULESET_UP_TO_DATE", codes)
+        self.assertNotIn("RULESET_CONFIGURATION", codes)
+
+    def test_106_security_is_in_current_document_set(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["offline_checker_contract"]["current_documents"].remove("SECURITY.md")
+        self.write_publication_plan(data)
+        self.assertIn("CURRENT_DOCUMENT_SET", self.codes())
+
+    def test_107_decision_index_is_in_current_document_set(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["offline_checker_contract"]["current_documents"].remove(
+            "docs/decisions/README.md"
+        )
+        self.write_publication_plan(data)
+        self.assertIn("CURRENT_DOCUMENT_SET", self.codes())
+
+    def test_108_snapshot_cannot_claim_live_verification(self) -> None:
+        data = self.publication_plan()
+        data["remote_governance"]["offline_checker_contract"]["live_github_state_verified"] = True
+        self.write_publication_plan(data)
+        self.assertIn("OFFLINE_SNAPSHOT_CONTRACT", self.codes())
+
+    def test_109_success_verdict_is_explicitly_offline(self) -> None:
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), "--root", str(self.root)],
+            cwd=self.root.parent,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("OFFLINE_GITHUB_GOVERNANCE_SNAPSHOT_CONSISTENT", result.stdout.strip())
+
+    def test_110_schema_remains_exactly_6(self) -> None:
+        self.assertEqual(6, self.publication_plan()["schema_version"])
+
+    def test_111_historical_facts_remain_unchanged(self) -> None:
+        data = self.publication_plan()
+        self.assertEqual(
+            "PUBLIC_TRANSITION_ROLLED_BACK",
+            data["publication_transition"]["status"],
+        )
+        self.assertEqual(1895, data["publication_transition"]["public_exposure"]["duration_seconds_approx"])
+        self.assertEqual(29951087998, data["publication_transition"]["workflow_run"]["run_id"])
+        self.assertEqual(30002915548, data["publication_retry"]["final_result"]["workflow_run"]["run_id"])
+
+    def test_112_checker_uses_no_github_process_or_network(self) -> None:
+        denied = AssertionError("GitHub process, credential, or network access is forbidden")
+        with (
+            mock.patch.object(checker.subprocess, "run", side_effect=denied),
+            mock.patch("socket.create_connection", side_effect=denied),
+            mock.patch("urllib.request.urlopen", side_effect=denied),
+        ):
+            self.assertEqual((), checker.audit(self.root))
 
 
 if __name__ == "__main__":

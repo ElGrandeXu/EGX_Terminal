@@ -143,9 +143,11 @@ effectiveness. Claude Code was not installed and was not validated.
 
 ## Quickstart
 
-The canonical local validation path requires Python 3 and a full Git clone. It
-was verified with Python 3.11.9 and Git 2.54.0; the repository does not declare
-lower minimum versions.
+The canonical local validation path requires Python 3.11+ and a full Git clone.
+It uses the standard-library `tomllib` module and is officially verified from
+Python 3.11 onward; Python 3.9 and 3.10 are not supported by this path. The
+current environment was verified with Python 3.11.9 and Git 2.54.0; Git 2.54.0
+is a verified environment, not a declared minimum.
 The checks use only the Python standard library and require no network, model, or
 agent runtime.
 
@@ -214,7 +216,9 @@ linear commits: public `workflow_dispatch` run `30002915548` passed
 `repository / ubuntu`, `repository / windows`, and `licensing / reuse`, and
 Levels A, B, and C succeeded. PVR, secret scanning, push protection,
 vulnerability alerts, and the no-bypass `main-protection` ruleset were observed
-active. Anonymous REST log downloads remained HTTP 403 and were classified
+active. The merge gate now requires the PR branch to be up to date with `main`
+and the three required checks to pass for that state. Anonymous REST log
+downloads remained HTTP 403 and were classified
 `INFO` / `PLATFORM_AMBIGUITY`, consistently with the earlier diagnosis.
 
 The first public transition and rollback remain historical facts, as do the

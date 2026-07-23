@@ -10,12 +10,14 @@ interchangeable.
 
 ## Prerequisites
 
-- Python 3, available as `python`.
+- Python 3.11+, available as `python`.
 - Git, available as `git`, for the canonical clone audit.
 
-This quickstart was verified with Python 3.11.9 and Git 2.54.0. The repository
-does not declare lower minimum versions. The active scripts use only the Python
-standard library.
+The canonical path uses the standard-library `tomllib` module and is officially
+verified from Python 3.11 onward. Python 3.9 and 3.10 are not supported by this
+path. This quickstart was verified with Python 3.11.9 and Git 2.54.0; the Git
+version is a verified environment, not a declared minimum. The active scripts
+use only the Python standard library.
 
 ## Canonical full-clone validation
 

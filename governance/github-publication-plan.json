@@ -18,16 +18,16 @@
       "visibility": "private"
     },
     "first_transition_status": "PUBLIC_TRANSITION_ROLLED_BACK",
-    "current_remote_observation": {
+    "dated_remote_observation": {
       "observed_on": "2026-07-23",
-      "checkpoint": "1d79ea37a1c614728cc7651c4d611218eaca174a",
-      "commit_count": 43,
+      "checkpoint": "fb2a350de17df8072c63ec6a36b028bcb1b64fda",
+      "commit_count": 44,
       "visibility": "public",
       "source": "GITHUB_API",
-      "qualification": "DATED_FINAL_PUBLICATION_OBSERVATION"
+      "qualification": "DATED_V1_CLOSURE_RULESET_OBSERVATION"
     },
     "retry_status": "COMPLETED_SUCCESS",
-    "current_remote_state_source": "DATED_GITHUB_API_OBSERVATION_NOT_LIVE_CHECK",
+    "snapshot_source": "DATED_GITHUB_API_SNAPSHOT_NOT_LIVE_CHECK",
     "status": "PUBLIC_REPOSITORY_VERIFIED"
   },
   "publication_transition": {
@@ -387,15 +387,46 @@
     "status": "APPLIED"
   },
   "remote_governance": {
-    "observation": {
+    "verified_remote_snapshot": {
       "verified_on": "2026-07-23",
-      "checkpoint": "1d79ea37a1c614728cc7651c4d611218eaca174a",
-      "commit_count": 43,
+      "checkpoint": "fb2a350de17df8072c63ec6a36b028bcb1b64fda",
+      "commit_count": 44,
       "plan": "GITHUB_FREE",
       "visibility": "public",
-      "qualification": "DATED_FINAL_PUBLICATION_OBSERVATION"
+      "qualification": "DATED_V1_CLOSURE_RULESET_OBSERVATION"
     },
-    "current_state_source": "DATED_GITHUB_API_OBSERVATION_NOT_LIVE_CHECK",
+    "snapshot_source": "DATED_GITHUB_API_SNAPSHOT_NOT_LIVE_CHECK",
+    "canonical_state": {
+      "branch": "main",
+      "publication_phase": "PUBLIC_REPOSITORY_VERIFIED",
+      "v1_status": "CLOSED_STABLE",
+      "final_publication_checkpoint": "1d79ea37a1c614728cc7651c4d611218eaca174a",
+      "final_publication_checkpoint_role": "HISTORICAL_VERIFIED_PUBLICATION_BASELINE",
+      "current_state_role": "CANONICAL_STATE_AFTER_V1_CLOSURE_REMEDIATION"
+    },
+    "offline_checker_contract": {
+      "mode": "OFFLINE_ONLY",
+      "validates": [
+        "DATED_REMOTE_SNAPSHOT_CONSISTENCY",
+        "CURRENT_DOCUMENT_CONSISTENCY",
+        "HISTORICAL_INVARIANTS"
+      ],
+      "live_github_state_verified": false,
+      "remote_read_required_for": [
+        "AUDITS",
+        "PUBLICATION_OPERATIONS"
+      ],
+      "current_documents": [
+        "README.md",
+        "SECURITY.md",
+        "docs/QUICKSTART.md",
+        "docs/STATUS.md",
+        "docs/decisions/README.md",
+        "docs/publication/PUBLICATION_BOUNDARY.md",
+        "docs/publication/GITHUB_PUBLICATION_PLAN.md",
+        "docs/publication/RELEASE_POLICY.md"
+      ]
+    },
     "public_window_record": "publication_transition.public_window_controls",
     "controls": {
       "main_ruleset": {
@@ -412,7 +443,7 @@
             "require_pull_request": true,
             "required_approvals": 0,
             "require_conversation_resolution": true,
-            "require_branch_up_to_date": false,
+            "require_branch_up_to_date": true,
             "require_signed_commits": false,
             "require_code_owner_review": false,
             "required_status_checks": [
@@ -426,7 +457,7 @@
         "limitation": null,
         "application_status": "APPLIED_VERIFIED",
         "evidence": {
-          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
+          "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets/19606748",
           "http_status": 200
         }
       },

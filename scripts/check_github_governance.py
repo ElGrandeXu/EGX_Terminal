@@ -28,6 +28,8 @@ CURRENT_PHASE = "PUBLIC_REPOSITORY_VERIFIED"
 CURRENT_REMOTE_STATUS = "PUBLIC_SETTINGS_OBSERVED_VERIFIED"
 FINAL_PUBLICATION_CHECKPOINT = "1d79ea37a1c614728cc7651c4d611218eaca174a"
 FINAL_PUBLICATION_COMMIT_COUNT = 43
+DATED_REMOTE_SNAPSHOT_CHECKPOINT = "fb2a350de17df8072c63ec6a36b028bcb1b64fda"
+DATED_REMOTE_SNAPSHOT_COMMIT_COUNT = 44
 FINAL_RUN_ID = 30002915548
 HISTORICAL_RUN_ID = 29951087998
 FINAL_RUN_CREATED_AT = "2026-07-23T11:23:01Z"
@@ -92,6 +94,16 @@ EXPECTED_DANGEROUS_CAPTURE_POLICY = (
     "DECIDE_DESTRUCTION_OR_RETENTION_EXPLICITLY",
     "NEVER_PUBLISH",
 )
+EXPECTED_CURRENT_DOCUMENTS = (
+    "README.md",
+    "SECURITY.md",
+    "docs/QUICKSTART.md",
+    "docs/STATUS.md",
+    "docs/decisions/README.md",
+    "docs/publication/PUBLICATION_BOUNDARY.md",
+    "docs/publication/GITHUB_PUBLICATION_PLAN.md",
+    "docs/publication/RELEASE_POLICY.md",
+)
 EXPECTED_METADATA = {
     "description": "Evidence-led research for inspectable, LLM-agnostic terminal environments.",
     "homepage": "",
@@ -139,7 +151,7 @@ EXPECTED_REMOTE_CONTROLS = {
         "observed_state": "ACTIVE",
         "limitation": None,
         "application_status": "APPLIED_VERIFIED",
-        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
+        "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets/19606748",
         "http_status": 200,
     },
     "main_branch": {
@@ -195,7 +207,7 @@ EXPECTED_MAIN_RULESET = {
         "require_pull_request": True,
         "required_approvals": 0,
         "require_conversation_resolution": True,
-        "require_branch_up_to_date": False,
+        "require_branch_up_to_date": True,
         "require_signed_commits": False,
         "require_code_owner_review": False,
         "required_status_checks": list(EXPECTED_CHECKS),
@@ -643,19 +655,28 @@ def _check_final_publication_result(relative: str, retry: dict, findings: list[F
 
 
 def _check_current_remote_governance(relative: str, remote: dict, findings: list[Finding]) -> None:
-    expected_observation = {
+    expected_snapshot = {
         "verified_on": "2026-07-23",
-        "checkpoint": FINAL_PUBLICATION_CHECKPOINT,
-        "commit_count": FINAL_PUBLICATION_COMMIT_COUNT,
+        "checkpoint": DATED_REMOTE_SNAPSHOT_CHECKPOINT,
+        "commit_count": DATED_REMOTE_SNAPSHOT_COMMIT_COUNT,
         "plan": "GITHUB_FREE",
         "visibility": "public",
-        "qualification": "DATED_FINAL_PUBLICATION_OBSERVATION",
+        "qualification": "DATED_V1_CLOSURE_RULESET_OBSERVATION",
     }
     if (
         not isinstance(remote, dict)
-        or set(remote) != {"observation", "current_state_source", "public_window_record", "controls", "procedural_fallback"}
-        or remote.get("observation") != expected_observation
-        or remote.get("current_state_source") != "DATED_GITHUB_API_OBSERVATION_NOT_LIVE_CHECK"
+        or set(remote)
+        != {
+            "verified_remote_snapshot",
+            "snapshot_source",
+            "canonical_state",
+            "offline_checker_contract",
+            "public_window_record",
+            "controls",
+            "procedural_fallback",
+        }
+        or remote.get("verified_remote_snapshot") != expected_snapshot
+        or remote.get("snapshot_source") != "DATED_GITHUB_API_SNAPSHOT_NOT_LIVE_CHECK"
         or remote.get("public_window_record") != "publication_transition.public_window_controls"
         or remote.get("procedural_fallback")
         != {
@@ -665,7 +686,51 @@ def _check_current_remote_governance(relative: str, remote: dict, findings: list
         }
     ):
         findings.append(
-            _finding(relative, "CURRENT_REMOTE_OBSERVATION", "dated final remote observation is incomplete or ambiguous")
+            _finding(relative, "DATED_REMOTE_SNAPSHOT", "dated remote snapshot is incomplete or ambiguous")
+        )
+
+    if remote.get("canonical_state") != {
+        "branch": "main",
+        "publication_phase": CURRENT_PHASE,
+        "v1_status": "CLOSED_STABLE",
+        "final_publication_checkpoint": FINAL_PUBLICATION_CHECKPOINT,
+        "final_publication_checkpoint_role": "HISTORICAL_VERIFIED_PUBLICATION_BASELINE",
+        "current_state_role": "CANONICAL_STATE_AFTER_V1_CLOSURE_REMEDIATION",
+    }:
+        findings.append(
+            _finding(
+                relative,
+                "CANONICAL_STATE",
+                "current canonical state must remain distinct from the historical final-publication checkpoint",
+            )
+        )
+
+    offline_contract = remote.get("offline_checker_contract", {})
+    if (
+        not isinstance(offline_contract, dict)
+        or offline_contract.get("mode") != "OFFLINE_ONLY"
+        or offline_contract.get("validates")
+        != [
+            "DATED_REMOTE_SNAPSHOT_CONSISTENCY",
+            "CURRENT_DOCUMENT_CONSISTENCY",
+            "HISTORICAL_INVARIANTS",
+        ]
+        or offline_contract.get("live_github_state_verified") is not False
+        or offline_contract.get("remote_read_required_for") != ["AUDITS", "PUBLICATION_OPERATIONS"]
+    ):
+        findings.append(
+            _finding(
+                relative,
+                "OFFLINE_SNAPSHOT_CONTRACT",
+                "offline checker cannot claim live GitHub verification and remote reads remain separately required",
+            )
+        )
+    if (
+        not isinstance(offline_contract, dict)
+        or offline_contract.get("current_documents") != list(EXPECTED_CURRENT_DOCUMENTS)
+    ):
+        findings.append(
+            _finding(relative, "CURRENT_DOCUMENT_SET", "offline snapshot document set is incomplete or reordered")
         )
 
     controls = remote.get("controls", {}) if isinstance(remote, dict) else {}
@@ -695,12 +760,24 @@ def _check_current_remote_governance(relative: str, remote: dict, findings: list
     ruleset = controls.get("main_ruleset", {}).get("desired_configuration", {})
     if not isinstance(ruleset, dict):
         ruleset = {}
-    if ruleset != EXPECTED_MAIN_RULESET:
+    comparable_ruleset = json.loads(json.dumps(ruleset)) if isinstance(ruleset, dict) else {}
+    comparable_rules = comparable_ruleset.get("rules", {})
+    if isinstance(comparable_rules, dict):
+        comparable_rules["require_branch_up_to_date"] = True
+    if comparable_ruleset != EXPECTED_MAIN_RULESET:
         findings.append(_finding(relative, "RULESET_CONFIGURATION", "main-protection configuration is incomplete"))
     bypass_keys = [(key, value) for key, value in ruleset.items() if "bypass" in key.lower()]
     if bypass_keys != [("bypass_actors", [])]:
         findings.append(_finding(relative, "BYPASS", "main-protection must contain no bypass actor or role"))
     rules = ruleset.get("rules", {}) if isinstance(ruleset.get("rules", {}), dict) else {}
+    if rules.get("require_branch_up_to_date") is not True:
+        findings.append(
+            _finding(
+                relative,
+                "RULESET_UP_TO_DATE",
+                "main-protection must require pull-request branches to be up to date",
+            )
+        )
     if rules.get("required_status_checks") != list(EXPECTED_CHECKS):
         findings.append(_finding(relative, "RULESET_CHECKS", "main-protection must retain all three checks"))
     if rules.get("prevent_force_push") is not True or rules.get("prevent_deletion") is not True:
@@ -715,6 +792,24 @@ def _check_current_documents(root: Path, findings: list[Finding]) -> None:
             "repository is public",
             "Levels A, B, and C succeeded",
             "No tag or release is active",
+            "Python 3.11+",
+            "Python 3.9 and 3.10 are not supported",
+            "up to date with `main`",
+        ),
+        "SECURITY.md": (
+            "The canonical repository is public",
+            "Private Vulnerability Reporting (PVR) is active",
+            "https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new",
+            "Do not open a public issue containing a secret",
+            "the impact",
+            "a minimal reproduction",
+            "the affected commit",
+            "sanitized data and logs",
+        ),
+        "docs/QUICKSTART.md": (
+            "Python 3.11+",
+            "standard-library `tomllib`",
+            "Python 3.9 and 3.10 are not supported",
         ),
         "docs/STATUS.md": (
             CURRENT_PHASE,
@@ -722,6 +817,12 @@ def _check_current_documents(root: Path, findings: list[Finding]) -> None:
             FINAL_PUBLICATION_CHECKPOINT,
             "all passed",
             "no tag or release is active",
+            "up to date with `main`",
+        ),
+        "docs/decisions/README.md": (
+            "historical authorization, executed and superseded operationally by the verified final public state",
+            "historical rollback record and bounded retry authorization; the retry was executed and final publication is complete and verified",
+            "historical non-strict required-check setting was later hardened",
         ),
         "docs/publication/PUBLICATION_BOUNDARY.md": (
             CURRENT_PHASE,
@@ -754,13 +855,37 @@ def _check_current_documents(root: Path, findings: list[Finding]) -> None:
         normalized = re.sub(r"\s+", " ", text)
         missing = [declaration for declaration in declarations if declaration not in normalized]
         if missing:
+            code = (
+                "PYTHON_REQUIREMENT"
+                if relative in {"README.md", "docs/QUICKSTART.md"}
+                and missing[0] in {"Python 3.11+", "standard-library `tomllib`", "Python 3.9 and 3.10 are not supported"}
+                else "DOCUMENT_CURRENT_STATE"
+            )
             findings.append(
-                _finding(relative, "DOCUMENT_CURRENT_STATE", f"missing current declaration: {missing[0]}")
+                _finding(relative, code, f"missing current declaration: {missing[0]}")
             )
         for token in stale_tokens:
             if token in text:
                 findings.append(
                     _finding(relative, "DOCUMENT_STALE_STATE", f"obsolete current-state token remains: {token}")
+                )
+        if relative == "SECURITY.md":
+            stale_security = (
+                r"PUBLICATION_TRANSITION",
+                r"private-repository preflight",
+                r"not considered shareable",
+                r"(?:PVR|Private Vulnerability Reporting).{0,100}\b(?:will|future)\b",
+                r"\b(?:will|future)\b.{0,100}(?:PVR|Private Vulnerability Reporting)",
+            )
+            if any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in stale_security):
+                findings.append(
+                    _finding(relative, "SECURITY_STALE_STATE", "security policy describes a future publication state")
+                )
+        if relative == "docs/decisions/README.md":
+            stale_decisions = ("authorize but do not apply", "conditionally authorize at most one corrected retry")
+            if any(token in normalized for token in stale_decisions):
+                findings.append(
+                    _finding(relative, "DECISION_INDEX_STATE", "decision index presents an executed action as future")
                 )
 
 
@@ -837,21 +962,21 @@ def _check_plan_v6(relative: str, plan: dict, findings: list[Finding]) -> None:
         or visibility.get("status") != CURRENT_PHASE
     ):
         findings.append(_finding(relative, "FINAL_RETRY_STATUS", "corrected publication must remain completed"))
-    current = visibility.get("current_remote_observation", {}) if isinstance(visibility, dict) else {}
+    current = visibility.get("dated_remote_observation", {}) if isinstance(visibility, dict) else {}
     if (
         current
         != {
             "observed_on": "2026-07-23",
-            "checkpoint": FINAL_PUBLICATION_CHECKPOINT,
-            "commit_count": FINAL_PUBLICATION_COMMIT_COUNT,
+            "checkpoint": DATED_REMOTE_SNAPSHOT_CHECKPOINT,
+            "commit_count": DATED_REMOTE_SNAPSHOT_COMMIT_COUNT,
             "visibility": "public",
             "source": "GITHUB_API",
-            "qualification": "DATED_FINAL_PUBLICATION_OBSERVATION",
+            "qualification": "DATED_V1_CLOSURE_RULESET_OBSERVATION",
         }
-        or visibility.get("current_remote_state_source") != "DATED_GITHUB_API_OBSERVATION_NOT_LIVE_CHECK"
+        or visibility.get("snapshot_source") != "DATED_GITHUB_API_SNAPSHOT_NOT_LIVE_CHECK"
     ):
         findings.append(
-            _finding(relative, "CURRENT_VISIBILITY", "dated current observation must declare verified public visibility")
+            _finding(relative, "CURRENT_VISIBILITY", "dated closure snapshot must declare verified public visibility")
         )
 
     # A. Immutable historical facts from the first transition and rollback.
@@ -1401,7 +1526,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         for item in findings:
             print(f"  - {item.path} [{item.code}] {item.message}")
         return 1
-    print(f"GitHub governance accepted for {root}: community files, CI, locks, publication plan, and REUSE coverage are coherent.")
+    print("OFFLINE_GITHUB_GOVERNANCE_SNAPSHOT_CONSISTENT")
     return 0
 
 

@@ -21,6 +21,10 @@
 - **Observation boundary:** these are dated GitHub API observations from the
   final public verification. The offline governance checker validates their
   internal consistency and does not claim to query GitHub in real time.
+- **V1 closure hardening:** the active `main-protection` ruleset now requires
+  each pull-request branch to be up to date with `main` before the three named
+  checks can satisfy the merge gate. This later hardening does not rewrite the
+  final-publication checkpoint or its historical observation.
 
 ## Final publication verification
 
