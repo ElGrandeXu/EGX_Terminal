@@ -2,10 +2,10 @@
 
 This record explains the machine-readable
 [`github-publication-plan.json`](../../governance/github-publication-plan.json).
-The durable phase is **`PUBLICATION_RETRY_PREPARATION`**. The canonical
-repository is private and non-shareable; the first public transition was
-executed and rolled back; and one corrected retry is conditionally authorized
-but has not been applied. This record authorizes no tag or release.
+The durable phase is **`PUBLIC_REPOSITORY_VERIFIED`**. The canonical repository
+is public, and the corrected final publication was applied and verified at
+`1d79ea37a1c614728cc7651c4d611218eaca174a`. The first public transition and
+rollback remain historical facts. This record authorizes no tag or release.
 
 ## Canonical repository and historical recovery
 
@@ -46,8 +46,8 @@ During the interval:
 After return to GitHub Free private visibility, PVR and `main-protection` became
 unavailable, secret scanning was disabled, push protection became inactive, and
 `main` was observed unprotected. Vulnerability alerts and the minimal Actions
-policy remained applied. The manifest distinguishes these current observations
-from the controls verified during the public window.
+policy remained applied. The manifest preserves these as dated post-rollback
+observations, distinct from both the first public window and final publication.
 
 ## Anonymous log diagnosis
 
@@ -117,9 +117,9 @@ are undocumented. The project therefore claims neither that it is active nor
 that it expired, and does not assert `CREDENTIAL_ROTATION_REQUIRED` without new
 evidence. Future captures exclude the field at collection time.
 
-## Conditional retry protocol
+## Corrected protocol and final result
 
-Before the one permitted retry:
+The one permitted corrected attempt required:
 
 1. merge the governance pull request;
 2. audit the resulting merged HEAD while private;
@@ -127,20 +127,23 @@ Before the one permitted retry:
 4. verify the corrected collection and verification harness; and
 5. confirm that no new blocker exists.
 
-After public visibility and immediate restoration of the verified public
-protections, dispatch `.github/workflows/validate.yml` on `main` using
-`workflow_dispatch`. The API response must supply `workflow_run_id`, `run_url`,
-and `html_url`. The run ID must be new and created entirely after the public
-change. Do not rerun `29951087998`, create an empty commit, or create a temporary
-branch. Verify exactly the three named jobs, then perform Levels A, B, and C.
+After public visibility and restoration of the verified public protections,
+`.github/workflows/validate.yml` was dispatched on `main`. Public run
+`30002915548` was created at `2026-07-23T11:23:01Z`, was recorded successful by
+its `2026-07-23T11:26:08Z` update, and used `workflow_dispatch`, attempt 1, at
+checkpoint `1d79ea37a1c614728cc7651c4d611218eaca174a`. The three named jobs and
+Levels A, B, and C passed. The generalized anonymous HTTP 403 result remained
+non-blocking `INFO` / `PLATFORM_AMBIGUITY`.
 
-If all checks pass, the final report may establish the public state. If a
-critical check fails, rollback returns the repository to private and
-non-shareable status while preserving the second attempt as historical
-evidence. A third attempt requires a new ADR.
+At final verification, the repository was public; PVR, secret scanning, push
+protection, vulnerability alerts, and active no-bypass `main-protection` were
+observed; and there were zero open pull requests, tags, releases, packages, or
+forks. These are dated observations, not live claims by the offline checker.
 
-No retry may weaken protections or create a tag or release. `v1.0.1`, including
-its SSH-signing gate, remains a separate later mission.
+Historical run `29951087998` remains retained and non-reusable. The corrected
+attempt did not weaken protections or create a tag or release. `v1.0.1`,
+including its SSH-signing gate, remains a separate later mission and is not
+prepared.
 
 ## Validation boundary
 
@@ -149,5 +152,6 @@ history and refs, Markdown links, GitHub governance, tests, REUSE, JSON and TOML
 Git integrity, and preserved experimental hashes. It verifies file integrity,
 not the missing source runtime observations governed by
 [Decision 0014](../decisions/0014-micro-kernel-evidence-erratum.md). The first
-transition and conditional retry are governed by
-[Decision 0016](../decisions/0016-record-public-transition-rollback.md).
+transition and authorization for the corrected attempt are governed by
+[Decision 0016](../decisions/0016-record-public-transition-rollback.md); the
+verified final result is recorded in the schema 6 manifest.

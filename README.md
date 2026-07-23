@@ -61,10 +61,12 @@ metadata is preserved only in verified private evidence outside this
 repository. GitHub's immutable-release reservation prevents reuse of that
 tag name in the recreated repository. [Decision
 0016](docs/decisions/0016-record-public-transition-rollback.md) records the
-first controlled public transition and its rollback. The repository is private
-and non-shareable while one corrected retry is conditionally prepared. Tags and
-releases remain prohibited; `v1.0.1` and its SSH-signing gate remain a separate
-later mission.
+first controlled public transition and its rollback. The corrected final
+publication was subsequently applied and verified: the repository is public,
+Levels A, B, and C passed, and public run
+[`30002915548`](https://github.com/ElGrandeXu/EGX_Terminal/actions/runs/30002915548)
+succeeded. No tag or release is active; `v1.0.1` and its SSH-signing gate remain
+a separate later mission.
 
 ## Key V1 decision
 
@@ -206,19 +208,19 @@ These are documented project principles, not an automatically injected payload.
 
 The sole canonical repository is
 [`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). Its
-durable phase is **`PUBLICATION_RETRY_PREPARATION`**: a first public exposure on
-2026-07-23 was rolled back under the protocol then in force, the repository is
-currently private, and a second transition has not been applied. The temporary recovery surfaces
-were deleted only after complete local mirrors, bundles, metadata captures, and
-SHA-256 verification were retained privately outside the repository. Read-only
-Actions permissions, required full-SHA pinning, the documented merge policy,
-and security alerts remain governed. Public-only controls verified during the
-first window became unavailable or inactive again after rollback on the current
-GitHub Free private repository. A single retry requires a merged-HEAD audit,
-the corrected anonymous/external-account/owner verification model, a new
-`workflow_dispatch` run created while public, and the same no-bypass
-protections. The project is not shareable until all retry checks complete.
-Tags, releases, and `v1.0.1` preparation remain outside this transition.
+durable phase is **`PUBLIC_REPOSITORY_VERIFIED`**. The final publication was
+validated at checkpoint `1d79ea37a1c614728cc7651c4d611218eaca174a` with 43
+linear commits: public `workflow_dispatch` run `30002915548` passed
+`repository / ubuntu`, `repository / windows`, and `licensing / reuse`, and
+Levels A, B, and C succeeded. PVR, secret scanning, push protection,
+vulnerability alerts, and the no-bypass `main-protection` ruleset were observed
+active. Anonymous REST log downloads remained HTTP 403 and were classified
+`INFO` / `PLATFORM_AMBIGUITY`, consistently with the earlier diagnosis.
+
+The first public transition and rollback remain historical facts, as do the
+identity remediation and repository recreation. The dated remote observations
+are not a claim that the offline checker queries GitHub in real time. No tag or
+release is active, and `v1.0.1` preparation remains outside this mission.
 
 ## License
 

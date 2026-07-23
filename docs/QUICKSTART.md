@@ -67,6 +67,37 @@ requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification 3.3; CI
 builds it from the official sdist using the dedicated hashed build and runtime
 locks. It is not a project runtime dependency.
 
+## Inspect the historical micro pre-registration checks
+
+The active suite on `main` is the current canonical suite, and the experimental
+archives are frozen. Two checks in the historical micro suite validate the
+byte-exact root surfaces that existed at the execution commit. Those `AGENTS.md`
+and `CLAUDE.md` surfaces are deliberately absent from the current neutral root,
+so running the historical file directly from `main` produces two expected
+`active root file drift` errors.
+
+Inspect that historical consistency from the exact execution commit
+`2ab865268891e2c6a450299d4c82217a95ad78ec` in a disposable worktree:
+
+```console
+git -c core.autocrlf=false worktree add --detach <temporary-path> 2ab865268891e2c6a450299d4c82217a95ad78ec
+cd <temporary-path>
+python -B experiments/kernel-micro-v1/behavioral/final-v1/test_final_v1.py -v
+```
+
+All 16 tests should pass. The command-level `core.autocrlf=false` is required
+because this commit predates the repository's line-ending policy and its frozen
+hash checks are byte-exact. After returning to the canonical clone, remove the
+temporary worktree:
+
+```console
+git worktree remove <temporary-path>
+```
+
+This procedure inspects historical pre-registration consistency. It does not
+restore the missing aggregate, revalidate irrecoverable runtime observations,
+rerun the behavioral campaign, or change **`REJECT_MICRO`**.
+
 ## GitHub source archive: content-only validation
 
 A generated `.zip` or `.tar.gz` source archive has no `.git` directory. It can

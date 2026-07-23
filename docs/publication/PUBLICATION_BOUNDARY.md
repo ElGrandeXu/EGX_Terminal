@@ -7,12 +7,12 @@ ses principes, décisions, contrôles et artefacts reproductibles dans leurs
 limites documentées. Le seul repository canonique est
 `ElGrandeXu/EGX_Terminal`.
 
-La phase durable est **`PUBLICATION_RETRY_PREPARATION`**. Le repository est
-actuellement privé et non partageable. Une première bascule publique a été
-exécutée puis rollbackée ; une seconde tentative unique est conditionnellement
-autorisée, mais n'est pas appliquée. La documentation ne permet jamais de
-déduire la visibilité ou les protections effectives : elles doivent être relues
-sur GitHub.
+La phase durable est **`PUBLIC_REPOSITORY_VERIFIED`**. Le repository est public
+et la publication finale a été vérifiée au checkpoint
+`1d79ea37a1c614728cc7651c4d611218eaca174a`. Une première bascule publique et
+son rollback restent des faits historiques. Les observations distantes
+enregistrées ici sont datées ; le checker offline ne permet jamais d'en déduire
+l'état GitHub en temps réel.
 
 ## Surface canonique incluse
 
@@ -78,31 +78,30 @@ téléchargements REST anonymes des logs. Les mêmes résultats sur
 d'une restriction liée à l'origine privée du run EGX ni d'une vulnérabilité du
 repository.
 
-## Seconde tentative conditionnelle
+## Publication finale vérifiée
 
-Avant toute seconde bascule, cette PR doit être mergée, le nouveau HEAD audité
-en privé, un compte GitHub externe préexistant de Niveau B préparé, le harness
-corrigé vérifié et l'absence de nouveau blocker confirmée.
+La tentative corrigée a respecté les prérequis historiques : merge de la PR de
+gouvernance, audit du nouveau HEAD, compte externe préexistant de Niveau B,
+harness corrigé et absence de nouveau blocker. Les protections publiques ont
+été réappliquées sans affaiblissement.
 
-Pendant la bascule, les protections publiques doivent être immédiatement
-réappliquées et vérifiées. Un nouveau run doit être créé sur `main` par
-`workflow_dispatch`, entièrement après le passage public, puis ses trois jobs
-exacts doivent réussir. Le run historique `29951087998` ne doit être ni
-réutilisé, ni rerun, ni supprimé. Aucun commit vide ou branche temporaire n'est
-autorisé.
+Le nouveau run public `30002915548`, créé sur `main` par `workflow_dispatch`,
+a réussi en tentative unique au checkpoint
+`1d79ea37a1c614728cc7651c4d611218eaca174a`. Ses trois jobs exacts,
+`repository / ubuntu`, `repository / windows` et `licensing / reuse`, ont
+réussi. Le run historique `29951087998` reste distinct, non réutilisé, non
+rerun et conservé.
 
 Le Niveau A vérifie la surface internet anonyme, y compris les téléchargements
 REST de logs comparés à des témoins. Un HTTP 403 généralisé est `INFO` et
 `PLATFORM_AMBIGUITY`, pas un blocker absolu si B et C réussissent. Le Niveau B
 utilise un compte externe sans collaboration, invitation, équipe ou droit privé
 et doit lire les trois jobs et leurs logs ; son échec est critique et impose un
-rollback. Le Niveau C propriétaire télécharge et scanne les logs complets,
-contrôle les protections et alertes, et ne conserve aucune URL signée.
-
-Après succès des trois niveaux, un rapport peut établir l'état public. Après un
-éventuel second rollback, le repository reste privé et non partageable et la
-tentative devient une preuve historique. Une troisième tentative exige une
-nouvelle ADR.
+rollback selon le protocole alors en vigueur. Le Niveau C propriétaire
+télécharge et scanne les logs complets, contrôle les protections et alertes, et
+ne conserve aucune URL signée. Les trois niveaux ont réussi lors de la
+publication finale ; les HTTP 403 anonymes sont restés `INFO` /
+`PLATFORM_AMBIGUITY` et non bloquants parce que B et C ont réussi.
 
 ## Historique, release et état
 
@@ -111,9 +110,9 @@ de récupération restent documentés par les décisions 0010 à 0013. La releas
 `v1.0.0` reste un enregistrement historique retiré, non actif dans le repository
 recréé. La réservation GitHub de son nom n'est pas contournée.
 
-**État courant : `PUBLICATION_RETRY_PREPARATION`, visibilité privée,
-repository non partageable.**
+**État courant déclaré : `PUBLIC_REPOSITORY_VERIFIED`, visibilité publique.**
 
-Aucun tag ou release ne peut être créé pendant cette phase ou la tentative
-conditionnelle. `v1.0.1` et sa signature SSH restent une mission ultérieure
-séparée. Aucun affaiblissement des protections n'est autorisé.
+PVR, secret scanning, push protection, vulnerability alerts et le ruleset actif
+`main-protection` sans bypass ont été observés lors de la vérification finale.
+Aucun tag ou release n'est actif. `v1.0.1` et sa signature SSH restent une
+mission ultérieure séparée et ne sont pas préparés ici.
