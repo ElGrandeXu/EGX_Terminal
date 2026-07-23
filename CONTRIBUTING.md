@@ -40,7 +40,9 @@ commit or another persistent part of the history.
 
 ## Required local validation
 
-Run the canonical sequence from the repository root:
+Install REUSE 6.2.0 from the hashed locks as described in the
+[quickstart](docs/QUICKSTART.md#prerequisites), then run the canonical sequence
+from the repository root:
 
 ```console
 python scripts/check_neutral_root.py
@@ -58,6 +60,10 @@ reuse lint
 The three history modes are designed to run from the current contribution
 branch. They audit `main`, the bounded current branch, and its permitted
 `origin` transport ref without treating that branch as a permanent public root.
+`--all-refs` covers only refs already present in the clone. Publication and
+privacy audits must additionally follow the quickstart's
+[public pull-request head procedure](docs/QUICKSTART.md#publication-only-audit-of-public-pull-request-heads)
+in a disposable clone.
 Declared stable tags are additionally checked against
 `governance/release-policy.json`; contributors must not create, move, or replace
 a release tag as part of an ordinary pull request.
@@ -67,6 +73,14 @@ a release tag as part of an ordinary pull request.
 Do not modify files directly under `experiments/kernel-v1/` or
 `experiments/kernel-micro-v1/`. A new experiment belongs in a new space with its
 own provenance, protocol, observable success condition, and stopping criterion.
+
+For a new confirmatory experiment, publish the frozen protocol in a distinct
+commit before the first measured execution. Protocol and results must not first
+appear in the same commit. Preserve sanitized source observations, aggregates,
+tool events, exclusions, and artifact hashes; unavailable measurements are
+recorded as unavailable, never as zero. Promotion requires a pre-registered
+useful effect. Behavioral parity without such an effect is `INCONCLUSIVE`, not
+evidence for promotion.
 
 ## Licensing and provenance
 

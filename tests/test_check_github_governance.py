@@ -194,6 +194,22 @@ class GitHubGovernanceTests(unittest.TestCase):
         )
         self.assertIn("REUSE_LOCK", self.codes())
 
+    def test_26a_windows_reuse_hash_cannot_be_removed(self) -> None:
+        self.replace(
+            "governance/requirements-reuse-6.2.0.txt",
+            " \\\n    --hash=sha256:de8a88e63464af587c950061a5e6a67d3632e36df62b986892331d4620a35c01",
+            "",
+        )
+        self.assertIn("REUSE_LOCK", self.codes())
+
+    def test_26b_windows_dependency_marker_cannot_be_widened(self) -> None:
+        self.replace(
+            "governance/requirements-reuse-6.2.0.txt",
+            'colorama==0.4.6 ; sys_platform == "win32"',
+            "colorama==0.4.6",
+        )
+        self.assertIn("REUSE_LOCK", self.codes())
+
     def test_27_content_only_mode_needs_no_git_metadata(self) -> None:
         result = subprocess.run(
             [sys.executable, str(SCRIPT), "--content-only", "--root", str(self.root)],
@@ -733,10 +749,10 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertIn("FINAL_RUN_ID", codes)
 
     def test_97_current_document_cannot_diverge_from_manifest(self) -> None:
-        self.replace("README.md", "repository is public", "repository is private")
+        self.replace("README.md", "PUBLIC_REPOSITORY_VERIFIED", "PUBLICATION_RETRY_PREPARATION")
         codes = self.codes()
         self.assertIn("DOCUMENT_CURRENT_STATE", codes)
-        self.assertNotIn("CURRENT_VISIBILITY", codes)
+        self.assertIn("DOCUMENT_STALE_STATE", codes)
 
     def test_98_audit_is_offline(self) -> None:
         denied = AssertionError("network or subprocess access is forbidden")
@@ -768,21 +784,21 @@ class GitHubGovernanceTests(unittest.TestCase):
         )
         self.assertIn("SECURITY_STALE_STATE", self.codes())
 
-    def test_102_decision_0015_cannot_remain_unexecuted(self) -> None:
+    def test_102_decision_narrative_can_be_reworded(self) -> None:
         self.replace(
             "docs/decisions/README.md",
             "historical authorization, executed and superseded operationally\n  by the verified final public state",
-            "authorize but do not apply a public transition",
+            "historical authorization; the verified public result now supersedes its operational role",
         )
-        self.assertIn("DECISION_INDEX_STATE", self.codes())
+        self.assertEqual((), checker.audit(self.root))
 
-    def test_103_decision_0016_cannot_remain_conditional(self) -> None:
+    def test_103_documented_run_id_is_not_a_duplicate_machine_invariant(self) -> None:
         self.replace(
-            "docs/decisions/README.md",
-            "historical rollback record and bounded retry authorization; the\n  retry was executed and final publication is complete and verified",
-            "record the rollback and conditionally authorize at most one corrected retry",
+            "README.md",
+            "30002915548",
+            "a documented final workflow run",
         )
-        self.assertIn("DECISION_INDEX_STATE", self.codes())
+        self.assertEqual((), checker.audit(self.root))
 
     def test_104_python_prerequisite_cannot_be_generic(self) -> None:
         self.replace("docs/QUICKSTART.md", "Python 3.11+", "Python 3")
@@ -790,6 +806,14 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertTrue(
             any(item.path == "docs/QUICKSTART.md" and item.code == "PYTHON_REQUIREMENT" for item in findings)
         )
+
+    def test_104a_reuse_hashed_install_is_required(self) -> None:
+        self.replace(
+            "docs/QUICKSTART.md",
+            "governance/requirements-reuse-build-6.2.0.txt",
+            "install reuse from an unspecified source",
+        )
+        self.assertIn("REUSE_PREREQUISITE", self.codes())
 
     def test_105_ruleset_requires_up_to_date_branch(self) -> None:
         data = self.publication_plan()

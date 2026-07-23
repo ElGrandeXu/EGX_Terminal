@@ -6,6 +6,10 @@ documentation and research are licensed under CC-BY-4.0. REUSE.toml is the
 machine-readable authority that assigns one license to each covered file; full
 license texts are in LICENSES/.
 
+Because this repository intentionally uses more than one file-scoped license,
+GitHub's single-license summary may display `Other` or `NOASSERTION`. That UI
+label does not replace the per-file assignments in `REUSE.toml`.
+
 Third-party material, if any, remains subject to its own rights and licenses.
 Nothing here grants rights in third-party names, trademarks, or other rights.
 See docs/publication/LICENSING.md for the detailed policy.

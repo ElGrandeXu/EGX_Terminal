@@ -143,13 +143,16 @@ effectiveness. Claude Code was not installed and was not validated.
 
 ## Quickstart
 
-The canonical local validation path requires Python 3.11+ and a full Git clone.
+The canonical local validation path requires Python 3.11+, a full Git clone,
+and REUSE 6.2.0 installed from the repository's hashed locks as described in the
+[detailed quickstart](docs/QUICKSTART.md#prerequisites).
 It uses the standard-library `tomllib` module and is officially verified from
 Python 3.11 onward; Python 3.9 and 3.10 are not supported by this path. The
 current environment was verified with Python 3.11.9 and Git 2.54.0; Git 2.54.0
 is a verified environment, not a declared minimum.
-The checks use only the Python standard library and require no network, model, or
-agent runtime.
+The active project checks use only the Python standard library. Installing the
+separate REUSE validator requires package-index access; validation itself
+requires no network, model, or agent runtime.
 
 From the repository root:
 

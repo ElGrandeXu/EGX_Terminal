@@ -12,12 +12,27 @@ interchangeable.
 
 - Python 3.11+, available as `python`.
 - Git, available as `git`, for the canonical clone audit.
+- An isolated Python 3.11 environment for REUSE 6.2.0.
 
 The canonical path uses the standard-library `tomllib` module and is officially
 verified from Python 3.11 onward. Python 3.9 and 3.10 are not supported by this
 path. This quickstart was verified with Python 3.11.9 and Git 2.54.0; the Git
 version is a verified environment, not a declared minimum. The active scripts
-use only the Python standard library.
+use only the Python standard library. REUSE is a separate licensing validator,
+not a project runtime dependency.
+
+After activating an isolated Python 3.11 environment, install the exact REUSE
+build and runtime dependencies used by CI:
+
+```console
+python -m pip install --disable-pip-version-check --require-hashes -r governance/requirements-reuse-build-6.2.0.txt
+python -m pip install --disable-pip-version-check --require-hashes --no-build-isolation -r governance/requirements-reuse-6.2.0.txt
+reuse --version
+```
+
+The final command must report REUSE 6.2.0. Dependency installation requires
+PyPI access; after installation, every repository validation below runs without
+network access.
 
 ## Canonical full-clone validation
 
@@ -68,6 +83,25 @@ The governance checks use only the standard library and make no network
 requests. `reuse lint` uses REUSE 6.2.0 to validate REUSE Specification 3.3; CI
 builds it from the official sdist using the dedicated hashed build and runtime
 locks. It is not a project runtime dependency.
+
+## Publication-only audit of public pull-request heads
+
+`--all-refs` means every ref present in the local clone. A normal GitHub clone
+does not fetch `refs/pull/*/head`, even though those refs remain publicly
+addressable. A publication or privacy audit must therefore use a disposable
+clone and fetch them explicitly:
+
+```console
+git clone --no-tags https://github.com/ElGrandeXu/EGX_Terminal.git <temporary-audit-clone>
+git -C <temporary-audit-clone> fetch --no-tags origin "+refs/pull/*/head:refs/remotes/origin/pull/*/head"
+python <temporary-audit-clone>/scripts/check_git_history.py --root <temporary-audit-clone> --all-refs --fail-on-review
+```
+
+The checker accepts only the exact
+`refs/remotes/origin/pull/<positive-number>/head` shape in this mode and scans
+each head's reachable commits, metadata, trees, and blobs. It still ignores
+unreachable objects and reflogs. Delete the disposable clone after reviewing
+the report; do not fetch these refs into the ordinary working clone.
 
 ## Inspect the historical micro pre-registration checks
 

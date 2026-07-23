@@ -1,21 +1,27 @@
-# Runtime lock resolved on 2026-07-21 for CPython 3.11 on Ubuntu x86_64.
+# Runtime lock resolved for CPython 3.11 on Ubuntu x86_64 and Windows x86-64.
 # reuse 6.2.0 has no compatible CPython 3.11 wheel, so CI installs the locked
 # PyPI sdist with --no-build-isolation after the separate hashed build lock.
-# Regenerate with pip download in a clean Linux CPython 3.11 environment, hash
-# every selected artifact, compare each digest with the PyPI JSON API, then run
-# the exact CI installation and `reuse lint` in a new empty virtual environment.
+# Regenerate with pip download in clean Linux and Windows CPython 3.11
+# environments, hash every selected artifact, compare each digest with the PyPI
+# JSON API, then run the exact installation and `reuse lint` in new empty
+# virtual environments.
 attrs==26.1.0 \
     --hash=sha256:c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309
 boolean.py==5.0 \
     --hash=sha256:ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9
+charset-normalizer==3.4.4 ; sys_platform == "win32" \
+    --hash=sha256:5ae497466c7901d54b639cf42d5b8c1b6a4fead55215500d2f486d34db48d016
 click==8.4.2 \
     --hash=sha256:e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76
+colorama==0.4.6 ; sys_platform == "win32" \
+    --hash=sha256:4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6
 Jinja2==3.1.6 \
     --hash=sha256:85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67
 license-expression==30.4.4 \
     --hash=sha256:421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4
 MarkupSafe==3.0.3 \
-    --hash=sha256:0bf2a864d67e76e5c9a34dc26ec616a66b9888e25e7b9460e1c76d3293bd9dbf
+    --hash=sha256:0bf2a864d67e76e5c9a34dc26ec616a66b9888e25e7b9460e1c76d3293bd9dbf \
+    --hash=sha256:de8a88e63464af587c950061a5e6a67d3632e36df62b986892331d4620a35c01
 python-debian==1.1.1 \
     --hash=sha256:f98ae013e8e5310e49041cc3860a7105df73af73d4ff1d8afb474770d328a6ad
 python-magic==0.4.27 \

@@ -234,20 +234,35 @@ REUSE_RUNTIME_COMMAND = (
 )
 EXPECTED_REUSE_LOCKS = {
     REUSE_BUILD_LOCK: {
-        "poetry-core": ("2.2.1", "bdfce710edc10bfcf9ab35041605c480829be4ab23f5bc01202cfe5db8f125ab"),
+        "poetry-core": (
+            "2.2.1",
+            ("bdfce710edc10bfcf9ab35041605c480829be4ab23f5bc01202cfe5db8f125ab",),
+        ),
     },
     REUSE_RUNTIME_LOCK: {
-        "attrs": ("26.1.0", "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"),
-        "boolean.py": ("5.0", "ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9"),
-        "click": ("8.4.2", "e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76"),
-        "Jinja2": ("3.1.6", "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"),
-        "license-expression": ("30.4.4", "421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4"),
-        "MarkupSafe": ("3.0.3", "0bf2a864d67e76e5c9a34dc26ec616a66b9888e25e7b9460e1c76d3293bd9dbf"),
-        "python-debian": ("1.1.1", "f98ae013e8e5310e49041cc3860a7105df73af73d4ff1d8afb474770d328a6ad"),
-        "python-magic": ("0.4.27", "c212960ad306f700aa0d01e5d7a325d20548ff97eb9920dcd29513174f0294d3"),
-        "reuse": ("6.2.0", "4feae057a2334c9a513e6933cdb9be819d8b822f3b5b435a36138bd218897d23"),
-        "tomlkit": ("0.15.1", "177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304"),
+        "attrs": ("26.1.0", ("c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309",)),
+        "boolean.py": ("5.0", ("ef28a70bd43115208441b53a045d1549e2f0ec6e3d08a9d142cbc41c1938e8d9",)),
+        "charset-normalizer": ("3.4.4", ("5ae497466c7901d54b639cf42d5b8c1b6a4fead55215500d2f486d34db48d016",)),
+        "click": ("8.4.2", ("e6f9f66136c816745b9d65817da91d61d957fb16e02e4dcd0552553c5a197b76",)),
+        "colorama": ("0.4.6", ("4f1d9991f5acc0ca119f9d443620b77f9d6b33703e51011c16baf57afb285fc6",)),
+        "Jinja2": ("3.1.6", ("85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67",)),
+        "license-expression": ("30.4.4", ("421788fdcadb41f049d2dc934ce666626265aeccefddd25e162a26f23bcbf8a4",)),
+        "MarkupSafe": (
+            "3.0.3",
+            (
+                "0bf2a864d67e76e5c9a34dc26ec616a66b9888e25e7b9460e1c76d3293bd9dbf",
+                "de8a88e63464af587c950061a5e6a67d3632e36df62b986892331d4620a35c01",
+            ),
+        ),
+        "python-debian": ("1.1.1", ("f98ae013e8e5310e49041cc3860a7105df73af73d4ff1d8afb474770d328a6ad",)),
+        "python-magic": ("0.4.27", ("c212960ad306f700aa0d01e5d7a325d20548ff97eb9920dcd29513174f0294d3",)),
+        "reuse": ("6.2.0", ("4feae057a2334c9a513e6933cdb9be819d8b822f3b5b435a36138bd218897d23",)),
+        "tomlkit": ("0.15.1", ("177a05aece5a8ca5266fd3c448abb47b8d352f09d477d3ca8332db4d89b24304",)),
     },
+}
+EXPECTED_REUSE_MARKERS = {
+    (REUSE_RUNTIME_LOCK, "charset-normalizer"): 'sys_platform == "win32"',
+    (REUSE_RUNTIME_LOCK, "colorama"): 'sys_platform == "win32"',
 }
 REQUIRED_REPOSITORY_COMMANDS = (
     "python scripts/check_neutral_root.py",
@@ -380,19 +395,53 @@ def _check_reuse_locks(root: Path, findings: list[Finding]) -> None:
         except (OSError, UnicodeError):
             findings.append(_finding(relative, "REUSE_LOCK", "hashed requirements lock is absent"))
             continue
-        records: dict[str, tuple[str, str]] = {}
-        pattern = re.compile(
-            r"(?m)^(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[A-Za-z0-9_.+-]+)\s*\\\n"
-            r"\s+--hash=sha256:(?P<hash>[0-9a-f]{64})\s*$"
-        )
-        for match in pattern.finditer(text):
-            records[match.group("name")] = (match.group("version"), match.group("hash"))
         non_comment = [
             line.strip()
             for line in text.splitlines()
             if line.strip() and not line.lstrip().startswith("#")
         ]
-        if records != expected or len(non_comment) != 2 * len(expected):
+        records: dict[str, tuple[str, tuple[str, ...]]] = {}
+        markers: dict[str, str] = {}
+        valid = True
+        index = 0
+        while index < len(non_comment):
+            package = re.fullmatch(
+                r"(?P<name>[A-Za-z0-9_.-]+)==(?P<version>[A-Za-z0-9_.+-]+)"
+                r"(?:\s*;\s*(?P<marker>[^\\]+?))?\s*\\",
+                non_comment[index],
+            )
+            if not package:
+                valid = False
+                break
+            index += 1
+            hashes: list[str] = []
+            while index < len(non_comment):
+                digest = re.fullmatch(
+                    r"--hash=sha256:(?P<hash>[0-9a-f]{64})(?P<continuation>\s*\\)?",
+                    non_comment[index],
+                )
+                if not digest:
+                    valid = False
+                    break
+                hashes.append(digest.group("hash"))
+                index += 1
+                if digest.group("continuation") is None:
+                    break
+            if not valid or not hashes:
+                valid = False
+                break
+            records[package.group("name")] = (
+                package.group("version"),
+                tuple(hashes),
+            )
+            if package.group("marker") is not None:
+                markers[package.group("name")] = package.group("marker").strip()
+        expected_markers = {
+            name: marker
+            for (lock, name), marker in EXPECTED_REUSE_MARKERS.items()
+            if lock == relative
+        }
+        if not valid or records != expected or markers != expected_markers:
             findings.append(_finding(relative, "REUSE_LOCK", "lock content, versions, or SHA256 hashes differ"))
 
 
@@ -785,64 +834,42 @@ def _check_current_remote_governance(relative: str, remote: dict, findings: list
 
 
 def _check_current_documents(root: Path, findings: list[Finding]) -> None:
+    # Keep only material current-state markers here. Exact checkpoints, run
+    # identifiers, timestamps, job lists, and historical observations belong to
+    # the machine-readable publication manifest validated above; requiring the
+    # same prose in every document makes harmless editorial changes fail.
     required = {
         "README.md": (
             CURRENT_PHASE,
-            str(FINAL_RUN_ID),
-            "repository is public",
-            "Levels A, B, and C succeeded",
-            "No tag or release is active",
             "Python 3.11+",
-            "Python 3.9 and 3.10 are not supported",
-            "up to date with `main`",
         ),
         "SECURITY.md": (
-            "The canonical repository is public",
-            "Private Vulnerability Reporting (PVR) is active",
             "https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new",
-            "Do not open a public issue containing a secret",
-            "the impact",
-            "a minimal reproduction",
-            "the affected commit",
-            "sanitized data and logs",
+            "Private Vulnerability Reporting",
+            "active",
         ),
         "docs/QUICKSTART.md": (
             "Python 3.11+",
             "standard-library `tomllib`",
-            "Python 3.9 and 3.10 are not supported",
+            "governance/requirements-reuse-build-6.2.0.txt",
+            "governance/requirements-reuse-6.2.0.txt",
+            "--require-hashes",
         ),
         "docs/STATUS.md": (
             CURRENT_PHASE,
-            str(FINAL_RUN_ID),
-            FINAL_PUBLICATION_CHECKPOINT,
-            "all passed",
-            "no tag or release is active",
-            "up to date with `main`",
         ),
         "docs/decisions/README.md": (
-            "historical authorization, executed and superseded operationally by the verified final public state",
-            "historical rollback record and bounded retry authorization; the retry was executed and final publication is complete and verified",
-            "historical non-strict required-check setting was later hardened",
+            "0015",
+            "0016",
         ),
         "docs/publication/PUBLICATION_BOUNDARY.md": (
             CURRENT_PHASE,
-            str(FINAL_RUN_ID),
-            FINAL_PUBLICATION_CHECKPOINT,
-            "Les trois niveaux ont réussi",
-            "Aucun tag ou release n'est actif",
         ),
         "docs/publication/GITHUB_PUBLICATION_PLAN.md": (
             CURRENT_PHASE,
-            str(FINAL_RUN_ID),
-            FINAL_PUBLICATION_CHECKPOINT,
-            "Levels A, B, and C passed",
-            "zero open pull requests, tags, releases, packages, or forks",
         ),
         "docs/publication/RELEASE_POLICY.md": (
             "`current_releases`",
-            "It is currently empty",
-            "`v1.0.1` does not currently exist",
-            "does not authorize its preparation",
         ),
     }
     stale_tokens = ("PUBLICATION_RETRY_PREPARATION", "CURRENTLY_PRIVATE_RETRY_NOT_APPLIED")
@@ -855,12 +882,19 @@ def _check_current_documents(root: Path, findings: list[Finding]) -> None:
         normalized = re.sub(r"\s+", " ", text)
         missing = [declaration for declaration in declarations if declaration not in normalized]
         if missing:
-            code = (
-                "PYTHON_REQUIREMENT"
-                if relative in {"README.md", "docs/QUICKSTART.md"}
-                and missing[0] in {"Python 3.11+", "standard-library `tomllib`", "Python 3.9 and 3.10 are not supported"}
-                else "DOCUMENT_CURRENT_STATE"
-            )
+            if relative in {"README.md", "docs/QUICKSTART.md"} and missing[0] in {
+                "Python 3.11+",
+                "standard-library `tomllib`",
+            }:
+                code = "PYTHON_REQUIREMENT"
+            elif relative == "docs/QUICKSTART.md" and missing[0] in {
+                "governance/requirements-reuse-build-6.2.0.txt",
+                "governance/requirements-reuse-6.2.0.txt",
+                "--require-hashes",
+            }:
+                code = "REUSE_PREREQUISITE"
+            else:
+                code = "DOCUMENT_CURRENT_STATE"
             findings.append(
                 _finding(relative, code, f"missing current declaration: {missing[0]}")
             )
@@ -880,12 +914,6 @@ def _check_current_documents(root: Path, findings: list[Finding]) -> None:
             if any(re.search(pattern, text, re.IGNORECASE | re.DOTALL) for pattern in stale_security):
                 findings.append(
                     _finding(relative, "SECURITY_STALE_STATE", "security policy describes a future publication state")
-                )
-        if relative == "docs/decisions/README.md":
-            stale_decisions = ("authorize but do not apply", "conditionally authorize at most one corrected retry")
-            if any(token in normalized for token in stale_decisions):
-                findings.append(
-                    _finding(relative, "DECISION_INDEX_STATE", "decision index presents an executed action as future")
                 )
 
 

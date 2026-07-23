@@ -22,6 +22,17 @@ SHA-256
 Elle ne rejette ni les principes généraux issus des cinq audits, ni les six
 couches et frontières acceptées par la décision 0002.
 
+## Limite de pré-enregistrement public
+
+Le protocole et les résultats du pilote apparaissent pour la première fois dans
+le même commit public `bc348eca1560131fc61ca637f0a662819f519449`. Le protocole
+et les résultats du challenge apparaissent ensemble dans
+`c2cfa52ceb28a945f777bd9e5f3658344e9a9d70`. « Pré-enregistré avant inférence »
+décrit donc l'ordre opérationnel consigné par la campagne ; l'historique Git
+public ne fournit pas, pour ces deux étapes, deux timestamps indépendants
+prouvant cet ordre. Cette limite ne change pas le verdict négatif, mais interdit
+de présenter ces campagnes comme pré-enregistrées publiquement.
+
 ## Résultats observés
 
 Les faits suivants proviennent des cinq paires complètes et des six observations

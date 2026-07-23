@@ -5,7 +5,10 @@ By default, objects reachable from ``refs/heads/main`` are inspected, together
 with the current bounded contribution branch when HEAD is attached elsewhere.
 In a detached pull-request checkout, HEAD and the available local or
 ``origin/main`` base are inspected instead. Use ``--all-refs`` to inspect every
-ref while retaining the same ref-policy findings.
+ref present in the local clone while retaining the same ref-policy findings.
+GitHub pull-request head refs are not fetched by a normal clone; publication
+audits must fetch them explicitly into ``refs/remotes/origin/pull/*/head`` in a
+disposable clone before using ``--all-refs``.
 Reflogs and unreachable objects are never scanned. The default blocking blob
 limit is 524288 bytes (512 KiB).
 
@@ -1419,15 +1422,18 @@ def _ref_findings(
     github_context: GitHubPullRequestContext,
     release_policy: ReleasePolicy,
     identity_policy: PublicIdentityPolicy,
+    all_refs: bool,
 ) -> list[Finding]:
     """Classify publishable refs separately from transport refs and HEAD.
 
     ``refs/heads/*``, tags, notes, and custom refs are locally publishable and
     remain strict except for the bounded current contribution branch.
-    ``refs/remotes/*`` are transport metadata: only ``origin`` is recognized,
-    and its refs must describe the graph already audited from main, the current
-    contribution branch, or a detached pull-request checkout. HEAD names the
-    currently audited commit but is not itself a publishable ref.
+    ``refs/remotes/*`` are transport metadata: only ``origin`` is recognized.
+    Its ordinary refs must describe the graph already audited from main, the
+    current contribution branch, or a detached pull-request checkout. Explicitly
+    fetched GitHub PR heads are accepted only in ``--all-refs`` mode, where their
+    complete reachable graphs are scanned. HEAD names the currently audited
+    commit but is not itself a publishable ref.
     """
     findings: list[Finding] = []
     by_name = {ref["name"]: ref for ref in refs}
@@ -1515,6 +1521,35 @@ def _ref_findings(
                 findings.append(
                     Finding("REVIEW", "UNEXPECTED_REMOTE", name, "remote-tracking ref is not owned by origin")
                 )
+                continue
+            if re.fullmatch(r"refs/remotes/origin/pull/[1-9][0-9]*/head", name):
+                if ref["object_type"] != "commit":
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "INVALID_GITHUB_PR_HEAD",
+                            name,
+                            "GitHub pull-request head ref must resolve to a commit",
+                        )
+                    )
+                elif not all_refs:
+                    findings.append(
+                        Finding(
+                            "REVIEW",
+                            "GITHUB_PR_HEAD_NOT_SCANNED",
+                            name,
+                            "fetched GitHub pull-request head requires --all-refs",
+                        )
+                    )
+                else:
+                    findings.append(
+                        Finding(
+                            "INFO",
+                            "GITHUB_PR_HEAD",
+                            name,
+                            "explicitly fetched public pull-request head is included in the audited graph",
+                        )
+                    )
                 continue
             if ref["object_type"] != "commit" or ref["oid"] not in audited_graph:
                 findings.append(
@@ -1651,7 +1686,9 @@ def audit(
             )
         )
     findings.extend(_release_policy_findings(release_policy))
-    findings.extend(_ref_findings(root, refs, github_context, release_policy, policy))
+    findings.extend(
+        _ref_findings(root, refs, github_context, release_policy, policy, all_refs)
+    )
 
     paths_by_blob: dict[str, set[str]] = defaultdict(set)
     introduction: dict[str, str] = {}
@@ -1933,7 +1970,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--all-refs",
         action="store_true",
-        help="scan objects reachable from every ref while enforcing the bounded ref policy",
+        help="scan objects reachable from every ref present in the local clone",
     )
     parser.add_argument("--json", type=Path, metavar="PATH", help="write deterministic JSON outside the repository")
     parser.add_argument("--fail-on-review", action="store_true", help="return nonzero when REVIEW findings exist")
