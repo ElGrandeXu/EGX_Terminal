@@ -60,10 +60,11 @@ limits of the preserved micro-kernel runtime evidence. Its former release
 metadata is preserved only in verified private evidence outside this
 repository. GitHub's immutable-release reservation prevents reuse of that
 tag name in the recreated repository. [Decision
-0015](docs/decisions/0015-authorize-guarded-public-transition.md) authorizes, but
-does not apply, a controlled public transition. Tags and releases remain
-prohibited throughout that transition; `v1.0.1` and its SSH-signing gate remain
-a separate later mission.
+0016](docs/decisions/0016-record-public-transition-rollback.md) records the
+first controlled public transition and its rollback. The repository is private
+and non-shareable while one corrected retry is conditionally prepared. Tags and
+releases remain prohibited; `v1.0.1` and its SSH-signing gate remain a separate
+later mission.
 
 ## Key V1 decision
 
@@ -205,20 +206,19 @@ These are documented project principles, not an automatically injected payload.
 
 The sole canonical repository is
 [`ElGrandeXu/EGX_Terminal`](https://github.com/ElGrandeXu/EGX_Terminal). Its
-durable phase is **`PUBLICATION_TRANSITION`**: public visibility is authorized
-but is not asserted to be applied, and effective visibility and protections must
-be verified directly on GitHub. The temporary recovery surfaces
+durable phase is **`PUBLICATION_RETRY_PREPARATION`**: a first public exposure on
+2026-07-23 was rolled back under the protocol then in force, the repository is
+currently private, and a second transition has not been applied. The temporary recovery surfaces
 were deleted only after complete local mirrors, bundles, metadata captures, and
 SHA-256 verification were retained privately outside the repository. Read-only
 Actions permissions, required full-SHA pinning, the documented merge policy,
-and security alerts were observed applied at the 2026-07-22 private checkpoint.
-At that same checkpoint, `main` was unprotected, `main-protection` was
-unavailable, PVR was unavailable, secret scanning was disabled, and push
-protection was inactive. The future atomic mission must audit the merged HEAD,
-change visibility, activate and verify PVR immediately, then apply and verify
-the no-bypass ruleset and remaining public controls. The project is not
-shareable until post-public verification is complete. Tags, releases, and
-`v1.0.1` preparation remain outside this transition.
+and security alerts remain governed. Public-only controls verified during the
+first window became unavailable or inactive again after rollback on the current
+GitHub Free private repository. A single retry requires a merged-HEAD audit,
+the corrected anonymous/external-account/owner verification model, a new
+`workflow_dispatch` run created while public, and the same no-bypass
+protections. The project is not shareable until all retry checks complete.
+Tags, releases, and `v1.0.1` preparation remain outside this transition.
 
 ## License
 

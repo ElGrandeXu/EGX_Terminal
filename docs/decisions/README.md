@@ -58,3 +58,6 @@ directly and record observed versions or commits when relevant.
 - [0015 — Authorize a guarded public transition](0015-authorize-guarded-public-transition.md)
   — accepted; authorize but do not apply a public transition, with immediate
   post-visibility PVR, no ruleset bypass, and fail-closed verification
+- [0016 — Record the first public transition and rollback](0016-record-public-transition-rollback.md)
+  — accepted; record the controlled exposure and rollback, adopt Levels A/B/C,
+  and conditionally authorize at most one corrected retry
