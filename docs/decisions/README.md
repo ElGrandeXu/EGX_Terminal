@@ -34,7 +34,9 @@ directly and record observed versions or commits when relevant.
   — accepted; one controlled pre-publication rewrite to the approved ID-based
   GitHub `noreply` identity
 - [0008 — Finalize public repository governance](0008-finalize-public-repository-governance.md)
-  — accepted; maintainer-led community files, hardened CI, and private staging
+  — accepted; maintainer-led community files, hardened CI, and private staging;
+  its historical non-strict required-check setting was later hardened to require
+  branches to be up to date
 - [0009 — Publish the V1 repository](0009-publish-v1-repository.md) — superseded;
   records the initial publication sequence before repository recreation
 - [0010 — Recreate the public repository after email exposure](0010-recreate-public-repository-after-email-exposure.md)
@@ -56,8 +58,8 @@ directly and record observed versions or commits when relevant.
   — accepted; governs the reading of runtime evidence associated with 0004
   while preserving its terminal verdict
 - [0015 — Authorize a guarded public transition](0015-authorize-guarded-public-transition.md)
-  — accepted; authorize but do not apply a public transition, with immediate
-  post-visibility PVR, no ruleset bypass, and fail-closed verification
+  — accepted; historical authorization, executed and superseded operationally
+  by the verified final public state
 - [0016 — Record the first public transition and rollback](0016-record-public-transition-rollback.md)
-  — accepted; record the controlled exposure and rollback, adopt Levels A/B/C,
-  and conditionally authorize at most one corrected retry
+  — accepted; historical rollback record and bounded retry authorization; the
+  retry was executed and final publication is complete and verified

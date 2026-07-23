@@ -2,33 +2,30 @@
 
 ## Supported versions
 
-At the 2026-07-22 pretransition checkpoint
-`23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, the canonical repository had no
-published release or Git tag. The guarded transition does not authorize either.
-Historical `v1.0.0` was withdrawn during privacy remediation and is not a
-downloadable supported release. No long-term-support window or backport promise
-is made. Archived experiments are research evidence, not supported products or
-independently supported versions.
+The canonical repository is public. No Git tag or GitHub release is active;
+historical `v1.0.0` was withdrawn during privacy remediation and is not a
+supported release. No long-term-support window or backport promise is made.
+Current support concerns the canonical `main` branch. Archived experiments are
+research evidence, not supported products.
 
 ## Reporting a vulnerability
 
-Do not open a public issue or publish a proof containing a secret. During
-`PUBLICATION_TRANSITION`, effective visibility and reporting availability must
-be verified directly on GitHub; this document does not infer them.
-
-The executable transition sequence starts with a private-repository preflight,
-changes the repository to public, immediately activates Private Vulnerability
-Reporting, and then mechanically verifies its accessibility. Before successful
-activation and verification, the project claims no active confidential
-reporting channel and is not considered shareable. If activation or verification
-fails, the transition stops with that non-shareable status. No personal address
-is published as a fallback.
-
-Once PVR is verified active, GitHub's
+Private Vulnerability Reporting (PVR) is active. Use GitHub's
 [private vulnerability report](https://github.com/ElGrandeXu/EGX_Terminal/security/advisories/new)
-is the recommended reporting channel for `ElGrandeXu/EGX_Terminal`. Reports
-should state the impact, a minimal reproduction, and the affected commit, with
-personal data and logs redacted.
+as the recommended confidential reporting channel for
+`ElGrandeXu/EGX_Terminal`.
+
+Do not open a public issue containing a secret or publish a proof that exposes
+one. Reports should include:
+
+- the impact;
+- a minimal reproduction;
+- the affected commit; and
+- sanitized data and logs.
+
+Historically, confidential reporting was activated and verified as part of the
+controlled public-transition sequence. The dated transition and rollback record
+is preserved in the [publication documents](docs/publication/).
 
 ## Scope
 
