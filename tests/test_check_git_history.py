@@ -706,6 +706,45 @@ class GitHistoryTests(unittest.TestCase):
         self.assertNotIn("SECRET_SIGNATURE", self.categories(default))
         self.assertIn("SECRET_SIGNATURE", self.categories(complete))
 
+    def test_20a_fetched_github_pr_head_requires_all_refs(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            base = repo.commit()
+            repo.git("checkout", "--quiet", "-b", "pr-source")
+            repo.write("proposal.txt")
+            head = repo.commit()
+            repo.git("checkout", "--quiet", "main")
+            repo.git("branch", "-D", "pr-source")
+            repo.add_remote_ref("main", base)
+            repo.git("update-ref", "refs/remotes/origin/pull/7/head", head)
+            default = CHECK.audit(repo.root)
+            complete = CHECK.audit(repo.root, all_refs=True)
+        self.assertIn("GITHUB_PR_HEAD_NOT_SCANNED", self.categories(default))
+        self.assertIn("REVIEW", self.severities(default))
+        self.assertIn("GITHUB_PR_HEAD", self.categories(complete))
+        self.assertNotIn("GITHUB_PR_HEAD_NOT_SCANNED", self.categories(complete))
+        self.assertNotIn("REVIEW", self.severities(complete))
+        self.assertIn("refs/remotes/origin/pull/7/head", complete.selected_refs)
+
+    def test_20b_all_refs_scans_fetched_github_pr_head_content(self) -> None:
+        temporary, repo = self.repository()
+        with temporary:
+            repo.write("base.txt")
+            base = repo.commit()
+            repo.git("checkout", "--quiet", "-b", "pr-source")
+            value = "AK" + "IA" + ("P" * 16)
+            repo.write("proposal.txt", value + "\n")
+            head = repo.commit()
+            repo.git("checkout", "--quiet", "main")
+            repo.git("branch", "-D", "pr-source")
+            repo.add_remote_ref("main", base)
+            repo.git("update-ref", "refs/remotes/origin/pull/8/head", head)
+            default = CHECK.audit(repo.root)
+            complete = CHECK.audit(repo.root, all_refs=True)
+        self.assertNotIn("SECRET_SIGNATURE", self.categories(default))
+        self.assertIn("SECRET_SIGNATURE", self.categories(complete))
+
     def test_41_no_remote_is_accepted(self) -> None:
         temporary, repo = self.repository()
         with temporary:

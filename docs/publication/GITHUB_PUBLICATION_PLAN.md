@@ -117,6 +117,14 @@ are undocumented. The project therefore claims neither that it is active nor
 that it expired, and does not assert `CREDENTIAL_ROTATION_REQUIRED` without new
 evidence. Future captures exclude the field at collection time.
 
+Before the final supervised publication run, a second local attempt stopped on
+a date-parsing false negative in the verification harness. The failure did not
+show a GitHub publication or protection defect: the local parser rejected an
+otherwise valid remote timestamp. The parser diagnosis was completed before the
+final attempt, and no result from the interrupted attempt was reused as
+publication evidence. This incident is classified as a verifier defect, not as
+a failed remote transition.
+
 ## Corrected protocol and final result
 
 The one permitted corrected attempt required:

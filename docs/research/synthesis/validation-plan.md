@@ -77,6 +77,27 @@ contexte réellement vu par le modèle lorsque le host le permet afin de disting
 le texte source de l'injection effective. Aucun skill, hook, mémoire ou persona
 n'est actif dans cette expérience.
 
+## Ordre de publication et frontière de preuve
+
+Toute future campagne confirmatoire publie son protocole gelé dans un commit
+distinct, publiquement atteignable avant le premier run mesuré. Le protocole et
+les résultats ne doivent pas apparaître pour la première fois dans le même
+commit. Le manifeste de résultats référence le SHA du commit de
+pré-enregistrement ; un dry-run d'infrastructure ne peut pas être réutilisé
+comme observation confirmatoire.
+
+Conserver les observations sources assainies, agrégats, événements outils,
+exclusions, versions et hashes nécessaires à une vérification indépendante.
+Une donnée non exposée est marquée `unavailable`, jamais remplacée par zéro ou
+reconstruite depuis le rapport. Si les artefacts sources requis disparaissent,
+le résultat reste un fait historique publié mais perd son statut de preuve
+runtime reproductible.
+
+Une promotion exige l'effet utile pré-enregistré qui justifie le coût permanent.
+La seule absence de victoire de la baseline, une parité comportementale ou le
+seul respect du budget de tokens conduit à `INCONCLUSIVE`, jamais à une
+promotion.
+
 ## Ablations pré-enregistrées
 
 | ID | Élément retiré | Régression attendue si l'élément est utile | Signal de surcharge si retrait bénéfique |
