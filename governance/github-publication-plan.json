@@ -308,9 +308,7 @@
     "discussions": false,
     "sponsorship": "NOT_CONFIGURED",
     "pages": false,
-    "releases_allowed": false,
-    "release_before_remote_validation": false,
-    "status": "CURRENTLY_OBSERVED_OR_GOVERNED"
+    "status": "OBSERVED_ON_CURRENT_PRIVATE_REPOSITORY"
   },
   "merge_policy": {
     "squash_merge": true,
