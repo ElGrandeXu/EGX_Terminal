@@ -2,135 +2,152 @@
 
 This record explains the machine-readable
 [`github-publication-plan.json`](../../governance/github-publication-plan.json).
-It describes the canonical repository after privacy-remediation recovery and
-the durable **`PUBLICATION_TRANSITION`** phase. It authorizes a guarded public
-transition without asserting that the visibility change or target controls have
-already been applied. It authorizes no tag or release.
+The durable phase is **`PUBLICATION_RETRY_PREPARATION`**. The canonical
+repository is private and non-shareable; the first public transition was
+executed and rolled back; and one corrected retry is conditionally authorized
+but has not been applied. This record authorizes no tag or release.
 
-## Canonical repository
+## Canonical repository and historical recovery
 
-`ElGrandeXu/EGX_Terminal`, repository ID `1308085094`, is the sole repository
-retained for this project and its default branch is `main`. On 2026-07-22, the
-pretransition checkpoint `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515` was
-observed private with 41 commits on `main`. This is a historical checkpoint, not
-a permanent current-commit count. Effective visibility and protections must be
-verified directly through the GitHub API.
+`ElGrandeXu/EGX_Terminal`, repository ID `1308085094`, is the sole canonical
+repository and uses `main`. Its recreated history excludes the personal author
+address that caused the earlier identity incident. Private recovery evidence
+and backups remain outside this repository.
 
-Recovery had begun from 37 clean commits at
-`dee7a7c97ad6991746d7de35f6d7ddb290bb895e`; its single closing commit created
-the separate historical 38-commit checkpoint.
+The 2026-07-22 pretransition audit at
+`23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515` recorded 41 commits and initially
+returned `PUBLICATION_BLOCKED`. Its Packages gap later closed with twelve HTTP
+200 surfaces and zero packages; schema 5 remediated the remaining governance
+findings. Schemas 4 and 5 remain accurate historical records for their phases.
 
-The repository was recreated after the first consolidation squash merge used a
-personal author address. The incident was detected immediately. The functional
-commit was rebuilt with the approved GitHub `noreply` identity while preserving
-its tree, parent, complete message, author and committer dates, and diff. The
-affected object and the former pull-request refs were not imported.
+## First public transition and rollback
 
-## Private evidence and temporary repositories
+The atomic mission began from
+`c887949cbc3c6fe8aade34b2675b39545c365905`: 42 linear commits, no open pull
+request, tag, release, package, or fork, and a private-audit verdict of
+`PUBLICATION_READY` limited to that mission.
 
-Historical Git objects and incident records remain outside this repository in
-private evidence. Before deleting either temporary GitHub repository, the
-recovery process captured accessible repository metadata, branches, tags,
-releases, pull requests, issues, Actions runs, and settings; created independent
-mirror clones and complete bundles; ran `git bundle verify` and
-`git fsck --full`; and verified every retained file through a SHA-256 manifest.
+Public exposure began at `2026-07-23T08:02:57.4503878Z`. Rollback to private
+visibility completed at `2026-07-23T08:34:32.3856142Z`, approximately 31
+minutes and 35 seconds later. Repository ID, branch, SHA, and content remained
+unchanged. No material leak was detected. This does not guarantee that no third
+party viewed or copied the surface during the public interval.
 
-The temporary repositories were then deleted through GitHub. Authenticated API
-reads and their URLs return `404`, the owner repository list no longer contains
-them, and the canonical repository remains intact. Their private names, local
-storage paths, and sensitive contents are intentionally absent from this record.
+During the interval:
 
-## Release state
+- Private Vulnerability Reporting was active and verified;
+- `main-protection` was active with no bypass;
+- secret scanning, push protection, and vulnerability alerts were active;
+- the minimal Actions policy and approval for all external contributors held;
+- `repository / ubuntu`, `repository / windows`, and `licensing / reuse`
+  succeeded; and
+- zero secret-scanning alerts, packages, tags, releases, or forks were observed.
 
-The pretransition checkpoint had no Git tag and no GitHub release. `v1.0.0` is a
-historical release withdrawn during privacy remediation, not a current or
-downloadable release. Its former target, tag object, and GitHub release record
-are retained only in verified private bundles. GitHub's immutable-release
-reservation prevents reuse of its tag name in the recreated repository.
+After return to GitHub Free private visibility, PVR and `main-protection` became
+unavailable, secret scanning was disabled, push protection became inactive, and
+`main` was observed unprotected. Vulnerability alerts and the minimal Actions
+policy remained applied. The manifest distinguishes these current observations
+from the controls verified during the public window.
 
-The transition prohibits tag and release creation. `v1.0.1` and its declared
-SSH-signature gate remain a separate later mission; PR #2 remains part of the
-preserved recovery history.
+## Anonymous log diagnosis
 
-## Repository metadata and features observed on 2026-07-22
+Anonymous REST downloads of run, attempt, and job logs returned HTTP 403. The
+then-current fail-closed protocol required rollback. Subsequent equivalent tests
+against recent public runs in `actions/checkout`, `cli/cli`, and
+`astral-sh/ruff` produced the same result.
 
-The canonical description was:
+The finding is **`GENERAL_GITHUB_ANONYMOUS_LOG_RESTRICTION`** and
+**`PLATFORM_AMBIGUITY`**. No evidence connects it to the fact that EGX run
+`29951087998` originated while private, and it is not an EGX_Terminal
+vulnerability. Observed platform behavior conflicts with some GitHub REST
+documentation wording; the record does not turn that contradiction into an
+unsupported causal claim.
 
-> Evidence-led research for inspectable, LLM-agnostic terminal environments.
+Historical run `29951087998`, including successful attempt 2 and its three jobs,
+is retained as evidence. It must not be rerun, reused for retry, or deleted.
 
-The homepage was empty. The ten repository topics were `llm`, `developer-tools`,
-`cli`, `llm-agnostic`, `ai-governance`, `reproducible-research`, `opencode`,
-`ollama`, `qwen`, and `open-source`.
+## Corrected public verification model
 
-Issues were enabled. Projects, wiki, discussions, Pages, and sponsorship were
-not enabled. Merge settings allowed squash merges only, used the pull-request
-title and body, deleted merged branches, and kept auto-merge disabled.
+### Level A — anonymous internet
 
-## Actions and security
+Without a GitHub account, verify repository API metadata, HTTPS clone, ZIP and
+TAR archives, README, pull requests and commits, workflow run and job metadata,
+tags and releases, and the ruleset when GitHub exposes it publicly. Anonymous
+REST log downloads remain a test and must be compared with at least three
+public control repositories.
 
-At the checkpoint, Actions was limited to `actions/checkout@*` and
-`actions/setup-python@*`. GitHub-owned and verified-action broad allowances were
-disabled, full SHA pinning was required, the default workflow token was
-read-only, and workflows could not approve pull requests.
+A generalized HTTP 403 is `INFO` and `PLATFORM_AMBIGUITY`, not an absolute
+blocker if Levels B and C pass.
 
-At the 2026-07-22 private checkpoint, vulnerability alerts were active, PVR was
-unavailable, secret scanning was disabled, and push protection was inactive.
-These are dated observations, not claims about current remote state.
+### Level B — external GitHub account
 
-The future atomic mission must verify a private preflight, switch visibility to
-public, activate PVR immediately, and mechanically verify its accessibility. No
-confidential channel is claimed before activation and no personal security
-address is published as a substitute. Failure to apply or verify PVR or another
-critical control stops the mission and leaves the project non-shareable. The
-same mission retains minimal Actions permissions, prudent fork-workflow policy,
-vulnerability alerts, secret scanning, push protection when available, and
-anonymous post-public checks.
+Use a pre-existing account distinct from `ElGrandeXu`. It must have no
+collaboration, invitation, team membership, or private permission. Verify access
+to the Actions page, the content of all three jobs, and readable or downloadable
+logs; then verify again that the account has no repository right. A Level B
+failure is critical and requires rollback. No token for this account may enter
+the repository or retained evidence.
 
-## Desired and observed branch governance
+### Level C — authenticated owner
 
-The desired `main-protection` configuration would require these three checks:
+Download and privacy-scan complete logs. Verify administrative controls, rules
+and protections, alerts, and the absence of secrets, personal paths, and private
+email. Retain no temporary signed URL.
 
-- `repository / ubuntu`;
-- `repository / windows`; and
-- `licensing / reuse`.
+## Safe GitHub API evidence
 
-It would also block deletion and force-push, require linear history and a pull
-request, require conversation resolution, use zero mandatory approvals, not
-require an up-to-date branch, signed commits, or Code Owners, and contain no
-bypass actor or role. At the private checkpoint, the configuration was not
-applied because rulesets were unavailable on GitHub Free, and `main` was
-observed unprotected. Current enforcement must be verified by API.
+Collection uses an allowlist of required fields and never blindly serializes a
+complete response. Before writing or displaying, exclude `temp_clone_token`,
+authorization and cookie data, tokens, credentials, and temporary signed URLs.
+Replace a signed URL with `[SIGNED_URL_REDACTED]`. Record only the presence and
+name of a removed field, and hash only after sanitization.
 
-The direct fast-forward push of the closing commit is a one-time recovery
-exception while the repository is private and before ruleset activation. It is
-not precedent or authorization for future direct pushes.
+Sanitized evidence becomes immutable. Do not intentionally retain a raw
+original containing an active credential, and never silently sanitize evidence
+already declared sealed. An accidentally dangerous capture is quarantined
+privately, recorded only in redacted form, explicitly retained or destroyed,
+and never published. The governance checker verifies these declarations; it is
+not a general evidence scanner and does not inspect temporary directories.
 
-Until the no-bypass ruleset is verified, using a pull request remains a mandatory
-project convention. Schema 5 records the public target, dated private
-observation, authorization-not-application state, current API source of truth,
-desired post-public controls, and actually observed pretransition controls
-separately.
+GitHub's `temp_clone_token` field was briefly displayed in a private local
+terminal. GitHub classifies it as a temporary clone credential. No public
+exposure, misuse, or persistence in Git or Actions was detected, and the old
+value is absent from retained evidence. Its exact TTL and revocation mechanism
+are undocumented. The project therefore claims neither that it is active nor
+that it expired, and does not assert `CREDENTIAL_ROTATION_REQUIRED` without new
+evidence. Future captures exclude the field at collection time.
 
-## Completed, blocked prepublication audit
+## Conditional retry protocol
 
-At checkpoint `23cd5c596159fda6866e0fdc6ef0ba7bcf0d2515`, Git content, pull
-requests, logs, workflows, and licenses were audited without a material leak
-being detected. The audit completed on 2026-07-22 with the initial executive
-verdict **`PUBLICATION_BLOCKED`**: the F-001 Packages audit was inaccessible,
-while F-002 through F-005 required governance and documentation corrections.
-F-001 later closed separately after twelve authorized Packages surfaces returned
-HTTP 200 with zero packages. The schema 5 transition change remediates F-002
-through F-005. A fresh audit of the merged HEAD remains mandatory before
-executing the transition.
+Before the one permitted retry:
+
+1. merge the governance pull request;
+2. audit the resulting merged HEAD while private;
+3. prepare the pre-existing Level B account;
+4. verify the corrected collection and verification harness; and
+5. confirm that no new blocker exists.
+
+After public visibility and immediate restoration of the verified public
+protections, dispatch `.github/workflows/validate.yml` on `main` using
+`workflow_dispatch`. The API response must supply `workflow_run_id`, `run_url`,
+and `html_url`. The run ID must be new and created entirely after the public
+change. Do not rerun `29951087998`, create an empty commit, or create a temporary
+branch. Verify exactly the three named jobs, then perform Levels A, B, and C.
+
+If all checks pass, the final report may establish the public state. If a
+critical check fails, rollback returns the repository to private and
+non-shareable status while preserving the second attempt as historical
+evidence. A third attempt requires a new ADR.
+
+No retry may weaken protections or create a tag or release. `v1.0.1`, including
+its SSH-signing gate, remains a separate later mission.
 
 ## Validation boundary
 
-The local and clean-clone gates cover the neutral root, public-surface heuristic,
-licensing, Git history and all refs, Markdown links, GitHub governance, tests,
-REUSE, JSON and TOML parsing, Git integrity, the locked experimental archive
-hash, and the byte identity of the ten files listed under `frozen_files` in the
-Mission 24 manifest. This gate verifies the integrity of preserved files, not
-the source runtime observations or the absent original aggregate; see
-[decision 0014](../decisions/0014-micro-kernel-evidence-erratum.md). A source
-archive without `.git` runs only the content-applicable subset and never
-simulates absent history or historical release objects.
+The local gate covers the neutral root, public-surface heuristic, licensing, Git
+history and refs, Markdown links, GitHub governance, tests, REUSE, JSON and TOML,
+Git integrity, and preserved experimental hashes. It verifies file integrity,
+not the missing source runtime observations governed by
+[Decision 0014](../decisions/0014-micro-kernel-evidence-erratum.md). The first
+transition and conditional retry are governed by
+[Decision 0016](../decisions/0016-record-public-transition-rollback.md).

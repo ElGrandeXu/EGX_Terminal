@@ -235,31 +235,26 @@ class GitHubGovernanceTests(unittest.TestCase):
         )
         self.assertIn("EVENT_ISOLATION", self.codes())
 
-    def test_33_schema_5_fixture_separates_transition_target_and_observation(self) -> None:
+    def test_33_schema_6_fixture_records_rollback_and_retry(self) -> None:
         data = self.publication_plan()
         controls = data["remote_governance"]["controls"]
-        self.assertEqual(5, data["schema_version"])
-        self.assertEqual("PUBLICATION_TRANSITION", data["publication_phase"])
+        self.assertEqual(6, data["schema_version"])
+        self.assertEqual("PUBLICATION_RETRY_PREPARATION", data["publication_phase"])
         self.assertEqual("public", data["visibility_strategy"]["target_visibility"])
         self.assertEqual(
             "private",
-            data["visibility_strategy"]["pretransition_observation"]["visibility"],
+            data["visibility_strategy"]["current_remote_observation"]["visibility"],
         )
-        self.assertEqual("AUTHORIZED_NOT_APPLIED", data["publication_transition"]["status"])
+        self.assertEqual("PUBLIC_TRANSITION_ROLLED_BACK", data["publication_transition"]["status"])
         self.assertEqual(
-            "COMPLETED_PUBLICATION_BLOCKED",
-            data["prepublication_audit"]["status"],
+            "CONDITIONALLY_AUTHORIZED_NOT_APPLIED",
+            data["publication_retry"]["status"],
         )
-        self.assertEqual(
-            "PUBLICATION_BLOCKED",
-            data["prepublication_audit"]["executive_verdict"],
+        self.assertEqual(1895, data["publication_transition"]["public_exposure"]["duration_seconds_approx"])
+        self.assertFalse(
+            data["publication_transition"]["public_exposure"]["third_party_access_or_copying_excluded"]
         )
-        self.assertEqual(
-            "INITIAL_PACKAGES_AUDIT_INACCESSIBLE_THEN_CLOSED_SEPARATELY",
-            data["prepublication_audit"]["finding_disposition"]["F-001"],
-        )
-        self.assertTrue(data["prepublication_audit"]["merged_head_reaudit_required"])
-        self.assertEqual("UNAVAILABLE_ON_CURRENT_PLAN", controls["main_ruleset"]["observed_state"])
+        self.assertEqual("UNAVAILABLE_ON_CURRENT_PRIVATE_PLAN", controls["main_ruleset"]["observed_state"])
         self.assertEqual("UNPROTECTED", controls["main_branch"]["observed_state"])
         self.assertEqual(
             "UNAVAILABLE_WHILE_PRIVATE",
@@ -270,11 +265,13 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.assertEqual("ACTIVE", controls["security_alerts"]["observed_state"])
         self.assertEqual((), checker.audit(self.root))
 
-    def test_34_schema_4_is_rejected(self) -> None:
+    def test_34_schema_below_6_is_rejected(self) -> None:
         data = self.publication_plan()
-        data["schema_version"] = 4
-        self.write_publication_plan(data)
-        self.assertIn("PUBLICATION_PLAN", self.codes())
+        for schema in (4, 5):
+            with self.subTest(schema=schema):
+                data["schema_version"] = schema
+                self.write_publication_plan(data)
+                self.assertIn("SCHEMA_VERSION", self.codes())
 
     def test_35_global_applied_status_cannot_hide_limitations(self) -> None:
         data = self.publication_plan()
@@ -288,7 +285,7 @@ class GitHubGovernanceTests(unittest.TestCase):
         del control["observed_state"]
         control["state"] = "PROTECTED"
         self.write_publication_plan(data)
-        self.assertIn("DESIRED_OBSERVED", self.codes())
+        self.assertIn("OBSERVED_STATE", self.codes())
 
     def test_37_inactive_security_controls_cannot_be_declared_active(self) -> None:
         for name in ("private_vulnerability_reporting", "secret_scanning", "push_protection"):
@@ -315,13 +312,13 @@ class GitHubGovernanceTests(unittest.TestCase):
         control["application_status"] = "APPLIED"
         self.write_publication_plan(data)
         self.assertIn("OBSERVED_STATE", self.codes())
-        self.assertIn("CONTROL_ACCOUNTING", self.codes())
+        self.assertIn("APPLICATION_STATUS", self.codes())
 
     def test_40_plan_limitation_cannot_be_presented_as_success(self) -> None:
         data = self.publication_plan()
         data["remote_governance"]["controls"]["secret_scanning"]["application_status"] = "APPLIED"
         self.write_publication_plan(data)
-        self.assertIn("CONTROL_ACCOUNTING", self.codes())
+        self.assertIn("APPLICATION_STATUS", self.codes())
 
     def test_41_final_target_must_be_public(self) -> None:
         data = self.publication_plan()
@@ -329,13 +326,13 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.write_publication_plan(data)
         self.assertIn("FINAL_TARGET", self.codes())
 
-    def test_42_transition_cannot_be_presented_as_applied(self) -> None:
+    def test_42_first_transition_cannot_be_erased_or_presented_as_success(self) -> None:
         data = self.publication_plan()
-        data["publication_transition"]["status"] = "APPLIED"
-        data["visibility_strategy"]["transition_status"] = "APPLIED"
-        self.write_publication_plan(data)
-        self.assertIn("TRANSITION_STATE", self.codes())
-        self.assertIn("PREMATURE_SUCCESS", self.codes())
+        for status in ("NOT_APPLIED", "PUBLIC_TRANSITION_SUCCEEDED"):
+            with self.subTest(status=status):
+                data["publication_transition"]["status"] = status
+                self.write_publication_plan(data)
+                self.assertIn("FIRST_TRANSITION_STATE", self.codes())
 
     def test_43_nonempty_bypass_list_is_rejected(self) -> None:
         data = self.publication_plan()
@@ -356,14 +353,13 @@ class GitHubGovernanceTests(unittest.TestCase):
         pvr = data["remote_governance"]["controls"]["private_vulnerability_reporting"]
         pvr["desired_state"] = "ACTIVE_BEFORE_PUBLICATION"
         self.write_publication_plan(data)
-        self.assertIn("PVR_SEQUENCE", self.codes())
+        self.assertIn("DESIRED_STATE", self.codes())
 
-    def test_46_pvr_must_immediately_follow_visibility_change(self) -> None:
+    def test_46_public_exposure_timeline_is_required(self) -> None:
         data = self.publication_plan()
-        sequence = data["publication_transition"]["sequence"]
-        sequence.insert(2, "APPLY_MAIN_RULESET")
+        del data["publication_transition"]["public_exposure"]["started_at"]
         self.write_publication_plan(data)
-        self.assertIn("PVR_SEQUENCE", self.codes())
+        self.assertIn("EXPOSURE_TIMELINE", self.codes())
 
     def test_47_required_checks_cannot_be_lost(self) -> None:
         data = self.publication_plan()
@@ -407,13 +403,105 @@ class GitHubGovernanceTests(unittest.TestCase):
         self.write_publication_plan(data)
         self.assertIn("PREAUDIT_FOLLOWUP", self.codes())
 
-    def test_53_incomplete_remote_controls_report_schema_5(self) -> None:
+    def test_53_incomplete_remote_controls_report_schema_6(self) -> None:
         data = self.publication_plan()
         del data["remote_governance"]["controls"]["push_protection"]
         self.write_publication_plan(data)
         messages = [item.message for item in checker.audit(self.root) if item.code == "STATE_MODEL"]
-        self.assertTrue(any("schema 5" in message for message in messages))
-        self.assertFalse(any("schema 4" in message for message in messages))
+        self.assertTrue(any("schema 6" in message for message in messages))
+
+    def test_54_exposure_duration_is_required(self) -> None:
+        data = self.publication_plan()
+        del data["publication_transition"]["public_exposure"]["duration_seconds_approx"]
+        self.write_publication_plan(data)
+        self.assertIn("EXPOSURE_TIMELINE", self.codes())
+
+    def test_55_irreversible_exposure_uncertainty_is_required(self) -> None:
+        data = self.publication_plan()
+        data["publication_transition"]["public_exposure"]["third_party_access_or_copying_excluded"] = True
+        self.write_publication_plan(data)
+        self.assertIn("EXPOSURE_UNCERTAINTY", self.codes())
+
+    def test_56_general_anonymous_403_cannot_be_absolute_blocker(self) -> None:
+        data = self.publication_plan()
+        data["log_access_diagnostic"]["anonymous_rest_failure_absolute_blocker"] = True
+        self.write_publication_plan(data)
+        self.assertIn("LOG_ACCESS_CLASSIFICATION", self.codes())
+
+    def test_57_level_b_is_mandatory_and_non_collaborating(self) -> None:
+        data = self.publication_plan()
+        data["public_verification_model"]["level_b"]["required"] = False
+        data["public_verification_model"]["level_b"]["collaboration_allowed"] = True
+        self.write_publication_plan(data)
+        self.assertIn("LEVEL_B", self.codes())
+
+    def test_58_historical_run_cannot_be_reused(self) -> None:
+        data = self.publication_plan()
+        data["publication_retry"]["prohibited_run_ids"] = []
+        self.write_publication_plan(data)
+        self.assertIn("RUN_REUSE", self.codes())
+
+    def test_59_workflow_dispatch_and_new_run_are_required(self) -> None:
+        data = self.publication_plan()
+        data["publication_retry"]["workflow_dispatch_required"] = False
+        data["publication_retry"]["new_run_id_required"] = False
+        self.write_publication_plan(data)
+        self.assertIn("WORKFLOW_DISPATCH", self.codes())
+
+    def test_60_retry_cannot_exceed_one(self) -> None:
+        data = self.publication_plan()
+        data["publication_retry"]["maximum_attempts"] = 2
+        self.write_publication_plan(data)
+        self.assertIn("RETRY_LIMIT", self.codes())
+
+    def test_61_retry_cannot_be_presented_as_applied(self) -> None:
+        data = self.publication_plan()
+        data["publication_retry"]["status"] = "APPLIED"
+        self.write_publication_plan(data)
+        self.assertIn("RETRY_STATE", self.codes())
+
+    def test_62_temp_clone_token_must_be_excluded_before_capture(self) -> None:
+        data = self.publication_plan()
+        data["credential_handling"]["future_collection"] = "RAW_RETENTION_ALLOWED"
+        self.write_publication_plan(data)
+        self.assertIn("CREDENTIAL_COLLECTION", self.codes())
+
+    def test_63_old_credential_activity_or_expiry_cannot_be_claimed(self) -> None:
+        for key in ("historical_value_active_claim", "historical_value_expired_claim"):
+            with self.subTest(claim=key):
+                data = self.publication_plan()
+                data["credential_handling"][key] = True
+                self.write_publication_plan(data)
+                self.assertIn("CREDENTIAL_CLAIM", self.codes())
+                shutil.copy2(
+                    SOURCE / "governance/github-publication-plan.json",
+                    self.root / "governance/github-publication-plan.json",
+                )
+
+    def test_64_no_bypass_and_three_checks_are_required(self) -> None:
+        data = self.publication_plan()
+        data["publication_transition"]["public_window_controls"]["main_ruleset"]["bypass_actors"] = ["admin"]
+        data["publication_retry"]["required_checks"].pop()
+        self.write_publication_plan(data)
+        self.assertIn("BYPASS", self.codes())
+        self.assertIn("RETRY_LIMIT", self.codes())
+
+    def test_65_retry_cannot_authorize_tag_or_release(self) -> None:
+        data = self.publication_plan()
+        data["publication_retry"]["git_tag_creation_allowed"] = True
+        data["publication_retry"]["github_release_creation_allowed"] = True
+        self.write_publication_plan(data)
+        self.assertIn("RELEASE_PROHIBITION", self.codes())
+
+    def test_66_workflow_dispatch_trigger_cannot_be_removed(self) -> None:
+        self.replace(".github/workflows/validate.yml", "  workflow_dispatch:\n", "")
+        self.assertIn("TRIGGERS", self.codes())
+
+    def test_67_credential_value_cannot_be_serialized(self) -> None:
+        data = self.publication_plan()
+        data["credential_handling"]["temp_clone_token_value"] = "[forbidden]"
+        self.write_publication_plan(data)
+        self.assertIn("CREDENTIAL_COLLECTION", self.codes())
 
 
 if __name__ == "__main__":

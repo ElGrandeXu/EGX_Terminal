@@ -26,18 +26,18 @@ DEFERRED_FILES = ("CODE_OF_CONDUCT.md", "SUPPORT.md", ".github/CODEOWNERS", "COD
 EXPECTED_CHECKS = ("repository / ubuntu", "repository / windows", "licensing / reuse")
 EXPECTED_REMOTE_CONTROLS = {
     "main_ruleset": {
-        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
-        "observed_state": "UNAVAILABLE_ON_CURRENT_PLAN",
+        "desired_state": "ACTIVE_DURING_PUBLIC_VISIBILITY",
+        "observed_state": "UNAVAILABLE_ON_CURRENT_PRIVATE_PLAN",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "UNAVAILABLE_AFTER_ROLLBACK",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/rulesets",
         "http_status": 403,
     },
     "main_branch": {
-        "desired_state": "PROTECTED_AFTER_PUBLIC_VISIBILITY",
+        "desired_state": "PROTECTED_DURING_PUBLIC_VISIBILITY",
         "observed_state": "UNPROTECTED",
         "limitation": "PRIVATE_REPOSITORY_REQUIRES_GITHUB_PRO_OR_PUBLIC",
-        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "UNAVAILABLE_AFTER_ROLLBACK",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/branches/main",
         "http_status": 200,
     },
@@ -45,23 +45,23 @@ EXPECTED_REMOTE_CONTROLS = {
         "desired_state": "ACTIVE_IMMEDIATELY_AFTER_PUBLIC_VISIBILITY",
         "observed_state": "UNAVAILABLE_WHILE_PRIVATE",
         "limitation": "REQUIRES_PUBLIC_VISIBILITY",
-        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "UNAVAILABLE_AFTER_ROLLBACK",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/private-vulnerability-reporting",
         "http_status": 404,
     },
     "secret_scanning": {
-        "desired_state": "ACTIVE_AFTER_PUBLIC_VISIBILITY",
+        "desired_state": "ACTIVE_DURING_PUBLIC_VISIBILITY",
         "observed_state": "DISABLED",
         "limitation": "PRIVATE_REPOSITORY_ON_GITHUB_FREE",
-        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "INACTIVE_AFTER_ROLLBACK",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/secret-scanning/alerts",
         "http_status": 404,
     },
     "push_protection": {
-        "desired_state": "ACTIVE_IF_AVAILABLE_AFTER_PUBLIC_VISIBILITY",
+        "desired_state": "ACTIVE_DURING_PUBLIC_VISIBILITY",
         "observed_state": "NOT_ACTIVE",
         "limitation": "SECRET_SCANNING_DISABLED",
-        "application_status": "NOT_APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "INACTIVE_AFTER_ROLLBACK",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal",
         "http_status": 200,
     },
@@ -69,7 +69,7 @@ EXPECTED_REMOTE_CONTROLS = {
         "desired_state": "ACTIVE",
         "observed_state": "ACTIVE",
         "limitation": None,
-        "application_status": "APPLIED_AT_PRETRANSITION_CHECKPOINT",
+        "application_status": "APPLIED",
         "endpoint": "GET /repos/ElGrandeXu/EGX_Terminal/vulnerability-alerts",
         "http_status": 204,
     },
@@ -447,9 +447,436 @@ def _check_workflow(root: Path, lock: dict[str, str], findings: list[Finding]) -
             findings.append(_finding(".github/workflows/validate.yml", "UNKNOWN_RUN_COMMAND", command))
 
 
+def _check_plan_v6(relative: str, plan: dict, findings: list[Finding]) -> None:
+    expected_sections = {
+        "schema_version",
+        "publication_phase",
+        "remote_settings_status",
+        "identity",
+        "visibility_strategy",
+        "publication_transition",
+        "log_access_diagnostic",
+        "credential_handling",
+        "public_verification_model",
+        "api_evidence_handling",
+        "publication_retry",
+        "prepublication_audit",
+        "packages_audit",
+        "metadata",
+        "features",
+        "merge_policy",
+        "actions_policy",
+        "remote_governance",
+        "community_profile",
+        "release_state",
+        "recovery_closure",
+    }
+    if set(plan) != expected_sections:
+        findings.append(_finding(relative, "PUBLICATION_PLAN", "schema 6 sections are incomplete or ambiguous"))
+
+    if (
+        plan.get("publication_phase") != "PUBLICATION_RETRY_PREPARATION"
+        or plan.get("remote_settings_status") != "CURRENTLY_PRIVATE_RETRY_NOT_APPLIED"
+        or plan.get("identity")
+        != {
+            "owner": "ElGrandeXu",
+            "repository": "EGX_Terminal",
+            "repository_id": 1308085094,
+            "default_branch": "main",
+        }
+    ):
+        findings.append(_finding(relative, "PUBLICATION_PLAN", "identity or retry-preparation state is inconsistent"))
+
+    visibility = plan.get("visibility_strategy", {})
+    if not isinstance(visibility, dict) or visibility.get("target_visibility") != "public":
+        findings.append(_finding(relative, "FINAL_TARGET", "final repository visibility target must remain public"))
+    if (
+        not isinstance(visibility, dict)
+        or visibility.get("first_transition_status") != "PUBLIC_TRANSITION_ROLLED_BACK"
+        or visibility.get("retry_status") != "CONDITIONALLY_AUTHORIZED_NOT_APPLIED"
+        or visibility.get("status") != "PUBLICATION_RETRY_PREPARATION"
+    ):
+        findings.append(
+            _finding(relative, "TRANSITION_STATE", "first rollback and conditional unapplied retry must stay distinct")
+        )
+    current = visibility.get("current_remote_observation", {}) if isinstance(visibility, dict) else {}
+    if (
+        current
+        != {
+            "observed_on": "2026-07-23",
+            "checkpoint": "c887949cbc3c6fe8aade34b2675b39545c365905",
+            "commit_count": 42,
+            "visibility": "private",
+            "source": "GITHUB_API",
+        }
+        or visibility.get("current_remote_state_source") != "GITHUB_API"
+    ):
+        findings.append(
+            _finding(relative, "DESIRED_OBSERVED", "current private state and final public target must remain distinct")
+        )
+
+    transition = plan.get("publication_transition", {})
+    if not isinstance(transition, dict):
+        transition = {}
+    if transition.get("status") != "PUBLIC_TRANSITION_ROLLED_BACK":
+        findings.append(
+            _finding(relative, "FIRST_TRANSITION_STATE", "first public transition must be recorded as rolled back")
+        )
+    if transition.get("status") in {
+        "AUTHORIZED_NOT_APPLIED",
+        "NOT_APPLIED",
+        "APPLIED",
+        "COMPLETE",
+        "SUCCESS",
+        "PUBLIC_TRANSITION_SUCCEEDED",
+    }:
+        findings.append(
+            _finding(relative, "FIRST_TRANSITION_STATE", "first transition cannot be erased or presented as successful")
+        )
+    if (
+        transition.get("authorized_by") != "docs/decisions/0015-authorize-guarded-public-transition.md"
+        or transition.get("recorded_by") != "docs/decisions/0016-record-public-transition-rollback.md"
+    ):
+        findings.append(_finding(relative, "FIRST_TRANSITION_RECORD", "transition decisions are not linked correctly"))
+
+    initial = transition.get("initial_state", {})
+    if (
+        not isinstance(initial, dict)
+        or initial.get("checkpoint") != "c887949cbc3c6fe8aade34b2675b39545c365905"
+        or initial.get("commit_count") != 42
+        or initial.get("linear_history") is not True
+        or any(
+            initial.get(key) != 0
+            for key in (
+                "open_pull_request_count",
+                "git_tag_count",
+                "github_release_count",
+                "package_count",
+                "fork_count",
+            )
+        )
+        or initial.get("private_audit_verdict") != "PUBLICATION_READY_FOR_ATOMIC_MISSION_ONLY"
+    ):
+        findings.append(_finding(relative, "FIRST_TRANSITION_RECORD", "initial transition state is incomplete"))
+
+    exposure = transition.get("public_exposure", {})
+    if (
+        not isinstance(exposure, dict)
+        or exposure.get("started_at") != "2026-07-23T08:02:57.4503878Z"
+        or exposure.get("rollback_completed_at") != "2026-07-23T08:34:32.3856142Z"
+        or exposure.get("duration_seconds_approx") != 1895
+        or exposure.get("duration_human") != "approximately 31 minutes 35 seconds"
+    ):
+        findings.append(
+            _finding(relative, "EXPOSURE_TIMELINE", "public exposure timestamps and approximate duration are required")
+        )
+    if (
+        not isinstance(exposure, dict)
+        or exposure.get("material_leak_detected") is not False
+        or exposure.get("third_party_access_or_copying_excluded") is not False
+    ):
+        findings.append(
+            _finding(relative, "EXPOSURE_UNCERTAINTY", "absence of detected leak cannot retract possible third-party access")
+        )
+    if not all(
+        exposure.get(key) is True
+        for key in (
+            "repository_id_unchanged",
+            "default_branch_unchanged",
+            "checkpoint_unchanged",
+            "content_unchanged",
+        )
+    ):
+        findings.append(_finding(relative, "FIRST_TRANSITION_RECORD", "unchanged repository identity must be recorded"))
+
+    public_controls = transition.get("public_window_controls", {})
+    expected_public_controls = {
+        "private_vulnerability_reporting": "ACTIVE_VERIFIED",
+        "secret_scanning": "ACTIVE",
+        "push_protection": "ACTIVE",
+        "vulnerability_alerts": "ACTIVE",
+        "actions_policy": "MINIMAL",
+        "external_contributor_approval": "ALL_EXTERNAL_CONTRIBUTORS",
+    }
+    if not isinstance(public_controls, dict) or any(
+        public_controls.get(key) != value for key, value in expected_public_controls.items()
+    ):
+        findings.append(_finding(relative, "PUBLIC_WINDOW_CONTROLS", "verified public controls are incomplete"))
+    public_ruleset = public_controls.get("main_ruleset", {}) if isinstance(public_controls, dict) else {}
+    if (
+        not isinstance(public_ruleset, dict)
+        or public_ruleset.get("name") != "main-protection"
+        or public_ruleset.get("status") != "ACTIVE_VERIFIED"
+        or public_ruleset.get("bypass_actors") != []
+    ):
+        findings.append(_finding(relative, "BYPASS", "public main-protection record must contain no bypass"))
+    if public_controls.get("successful_checks") != list(EXPECTED_CHECKS):
+        findings.append(_finding(relative, "RULESET_CHECKS", "public transition must retain all three checks"))
+    if any(
+        public_controls.get(key) != 0
+        for key in (
+            "secret_scanning_open_alert_count",
+            "package_count",
+            "git_tag_count",
+            "github_release_count",
+            "fork_count",
+        )
+    ):
+        findings.append(_finding(relative, "PUBLIC_WINDOW_CONTROLS", "public zero-count observations are incomplete"))
+
+    historical_run = transition.get("workflow_run", {})
+    if (
+        not isinstance(historical_run, dict)
+        or historical_run.get("run_id") != 29951087998
+        or historical_run.get("attempt") != 2
+        or historical_run.get("status") != "COMPLETED_SUCCESS"
+        or historical_run.get("historical_evidence_retained") is not True
+        or historical_run.get("deletion_allowed") is not False
+        or historical_run.get("reuse_for_retry_allowed") is not False
+    ):
+        findings.append(_finding(relative, "HISTORICAL_RUN", "run 29951087998 must remain retained and non-reusable"))
+    rollback = transition.get("rollback", {})
+    if (
+        not isinstance(rollback, dict)
+        or rollback.get("required_by_protocol_then_in_force") is not True
+        or rollback.get("reason") != "ANONYMOUS_REST_ACTIONS_LOG_DOWNLOADS_RETURNED_HTTP_403"
+        or rollback.get("completed") is not True
+        or rollback.get("repository_returned_to_private") is not True
+        or rollback.get("public_exposure_retraction_guaranteed") is not False
+    ):
+        findings.append(_finding(relative, "FIRST_TRANSITION_RECORD", "rollback cause or irreversible exposure is absent"))
+
+    diagnostic = plan.get("log_access_diagnostic", {})
+    if (
+        not isinstance(diagnostic, dict)
+        or diagnostic.get("classification") != "GENERAL_GITHUB_ANONYMOUS_LOG_RESTRICTION"
+        or diagnostic.get("documentation_status") != "PLATFORM_AMBIGUITY"
+        or diagnostic.get("control_repositories") != ["actions/checkout", "cli/cli", "astral-sh/ruff"]
+        or diagnostic.get("private_origin_run_restriction_supported") is not False
+        or diagnostic.get("egx_vulnerability_claimed") is not False
+    ):
+        findings.append(_finding(relative, "LOG_ACCESS_DIAGNOSTIC", "general platform diagnostic is incomplete"))
+    if (
+        not isinstance(diagnostic, dict)
+        or diagnostic.get("anonymous_rest_failure_absolute_blocker") is not False
+        or diagnostic.get("non_blocking_only_if_levels_b_and_c_pass") is not True
+        or diagnostic.get("accepted_classifications") != ["INFO", "PLATFORM_AMBIGUITY"]
+    ):
+        findings.append(
+            _finding(relative, "LOG_ACCESS_CLASSIFICATION", "generalized anonymous 403 must depend on levels B and C")
+        )
+
+    credential = plan.get("credential_handling", {})
+    if (
+        not isinstance(credential, dict)
+        or credential.get("field_name") != "temp_clone_token"
+        or credential.get("historical_display") != "LOCAL_PRIVATE_DISPLAY_ONLY"
+        or credential.get("public_exposure") != "NO_PUBLIC_EXPOSURE_DETECTED"
+        or credential.get("historical_value_retained") is not False
+        or credential.get("future_collection") != "EXCLUDED_AT_COLLECTION_FOR_FUTURE_CAPTURES"
+    ):
+        findings.append(
+            _finding(relative, "CREDENTIAL_COLLECTION", "temporary clone credential must be excluded before capture")
+        )
+    if (
+        not isinstance(credential, dict)
+        or credential.get("historical_value_status") != "UNKNOWN_NOT_RETAINED"
+        or credential.get("historical_value_active_claim") is not False
+        or credential.get("historical_value_expired_claim") is not False
+        or credential.get("credential_rotation_required_claimed") is not False
+    ):
+        findings.append(
+            _finding(relative, "CREDENTIAL_CLAIM", "retained evidence proves neither activity nor expiration")
+        )
+    if isinstance(credential, dict) and any("value" in key.lower() and key != "historical_value_status"
+                                            and key != "historical_value_retained"
+                                            and key != "historical_value_active_claim"
+                                            and key != "historical_value_expired_claim"
+                                            for key in credential):
+        findings.append(_finding(relative, "CREDENTIAL_COLLECTION", "credential values must not be serialized"))
+
+    verification = plan.get("public_verification_model", {})
+    if not isinstance(verification, dict) or set(verification) != {"level_a", "level_b", "level_c"}:
+        findings.append(_finding(relative, "VERIFICATION_MODEL", "levels A, B, and C are mandatory"))
+        verification = {}
+    level_a = verification.get("level_a", {})
+    if (
+        not isinstance(level_a, dict)
+        or level_a.get("anonymous_rest_log_downloads_tested") is not True
+        or level_a.get("comparison_repositories_required") != 3
+        or level_a.get("generalized_http_403_classification") != ["INFO", "PLATFORM_AMBIGUITY"]
+    ):
+        findings.append(_finding(relative, "LOG_ACCESS_CLASSIFICATION", "level A control comparison is incomplete"))
+    level_b = verification.get("level_b", {})
+    if (
+        not isinstance(level_b, dict)
+        or level_b.get("required") is not True
+        or level_b.get("must_be_distinct_from") != "ElGrandeXu"
+        or any(
+            level_b.get(key) is not False
+            for key in (
+                "collaboration_allowed",
+                "invitation_allowed",
+                "team_membership_allowed",
+                "private_permission_allowed",
+                "token_storage_allowed",
+            )
+        )
+        or level_b.get("failure_policy") != "CRITICAL_ROLLBACK"
+    ):
+        findings.append(_finding(relative, "LEVEL_B", "external non-collaborator verification is mandatory"))
+    level_c = verification.get("level_c", {})
+    if not isinstance(level_c, dict) or "NO_SIGNED_URL_RETAINED" not in level_c.get("required", []):
+        findings.append(_finding(relative, "LEVEL_C", "owner verification must exclude signed URLs"))
+
+    handling = plan.get("api_evidence_handling", {})
+    required_exclusions = {
+        "temp_clone_token",
+        "authorization",
+        "cookie",
+        "tokens",
+        "credentials",
+        "temporary_signed_urls",
+    }
+    if (
+        not isinstance(handling, dict)
+        or handling.get("serialization_policy") != "ALLOWLIST_REQUIRED"
+        or set(handling.get("exclude_before_write_or_display", [])) != required_exclusions
+        or handling.get("signed_url_replacement") != "[SIGNED_URL_REDACTED]"
+        or handling.get("hash_timing") != "AFTER_SANITIZATION"
+        or handling.get("sanitized_evidence_immutable") is not True
+        or handling.get("active_credential_raw_retention_allowed") is not False
+        or handling.get("sealed_evidence_silent_sanitization_allowed") is not False
+    ):
+        findings.append(_finding(relative, "EVIDENCE_HANDLING", "safe API response handling is incomplete"))
+
+    retry = plan.get("publication_retry", {})
+    if not isinstance(retry, dict) or retry.get("maximum_attempts") != 1:
+        findings.append(_finding(relative, "RETRY_LIMIT", "at most one additional public attempt is authorized"))
+    if not isinstance(retry, dict) or retry.get("status") != "CONDITIONALLY_AUTHORIZED_NOT_APPLIED":
+        findings.append(_finding(relative, "RETRY_STATE", "retry must remain conditional and unapplied"))
+    if (
+        not isinstance(retry, dict)
+        or retry.get("workflow_dispatch_required") is not True
+        or retry.get("workflow") != ".github/workflows/validate.yml"
+        or retry.get("ref") != "main"
+        or retry.get("new_run_id_required") is not True
+    ):
+        findings.append(_finding(relative, "WORKFLOW_DISPATCH", "retry requires a new workflow_dispatch run on main"))
+    if not isinstance(retry, dict) or 29951087998 not in retry.get("prohibited_run_ids", []):
+        findings.append(_finding(relative, "RUN_REUSE", "historical run 29951087998 cannot be reused"))
+    if (
+        not isinstance(retry, dict)
+        or retry.get("required_checks") != list(EXPECTED_CHECKS)
+        or retry.get("third_attempt_requires_new_adr") is not True
+    ):
+        findings.append(_finding(relative, "RETRY_LIMIT", "retry checks or third-attempt ADR gate are incomplete"))
+    if (
+        not isinstance(retry, dict)
+        or retry.get("git_tag_creation_allowed") is not False
+        or retry.get("github_release_creation_allowed") is not False
+        or retry.get("v1.0.1_mission") != "SEPARATE_LATER_MISSION"
+    ):
+        findings.append(_finding(relative, "RELEASE_PROHIBITION", "retry cannot create tags, releases, or v1.0.1"))
+
+    prepublication_audit = plan.get("prepublication_audit", {})
+    if (
+        not isinstance(prepublication_audit, dict)
+        or prepublication_audit.get("status") != "COMPLETED_PUBLICATION_BLOCKED"
+        or prepublication_audit.get("executive_verdict") != "PUBLICATION_BLOCKED"
+    ):
+        findings.append(
+            _finding(relative, "PREAUDIT_VERDICT", "schema 4 and 5 preaudit verdict must remain historical")
+        )
+    if not isinstance(prepublication_audit, dict) or prepublication_audit.get("merged_head_reaudit_required") is not True:
+        findings.append(_finding(relative, "PREAUDIT_FOLLOWUP", "merged-HEAD re-audit remains mandatory"))
+
+    packages = plan.get("packages_audit", {})
+    if (
+        not isinstance(packages, dict)
+        or packages.get("authorized_surface_count") != 12
+        or packages.get("http_200_surface_count") != 12
+        or packages.get("package_count") != 0
+        or packages.get("status") != "CLOSED"
+        or tuple((item.get("api_scope"), item.get("package_type")) for item in packages.get("surfaces", []))
+        != EXPECTED_PACKAGE_SURFACES
+        or any(item.get("http_status") != 200 or item.get("package_count") != 0
+               for item in packages.get("surfaces", []))
+    ):
+        findings.append(_finding(relative, "PACKAGES_AUDIT", "historical packages closure is inconsistent"))
+
+    actions = plan.get("actions_policy", {})
+    if (
+        not isinstance(actions, dict)
+        or actions.get("github_token_default") != "read"
+        or actions.get("allowed_actions") != list(EXPECTED_ACTIONS)
+        or actions.get("full_sha_pinning_required") is not True
+        or actions.get("external_contributor_approval") != "ALL_EXTERNAL_CONTRIBUTORS"
+    ):
+        findings.append(_finding(relative, "ACTIONS_POLICY", "minimal Actions policy must be preserved"))
+
+    remote_governance = plan.get("remote_governance", {})
+    if (
+        not isinstance(remote_governance, dict)
+        or remote_governance.get("current_state_source") != "VERIFY_DIRECTLY_WITH_GITHUB_API"
+        or remote_governance.get("public_window_record") != "publication_transition.public_window_controls"
+    ):
+        findings.append(_finding(relative, "DESIRED_OBSERVED", "current and public-window controls must stay distinct"))
+    controls = remote_governance.get("controls", {}) if isinstance(remote_governance, dict) else {}
+    if not isinstance(controls, dict) or set(controls) != set(EXPECTED_REMOTE_CONTROLS):
+        findings.append(_finding(relative, "STATE_MODEL", "remote controls must use the complete schema 6 state model"))
+        controls = {}
+    for name, expected in EXPECTED_REMOTE_CONTROLS.items():
+        control = controls.get(name, {})
+        if not isinstance(control, dict):
+            findings.append(_finding(relative, "STATE_MODEL", f"{name} control is absent"))
+            continue
+        for key in ("desired_state", "observed_state", "limitation", "application_status"):
+            if control.get(key) != expected[key]:
+                findings.append(_finding(relative, key.upper(), f"{name} {key} is incorrect"))
+        if control.get("evidence") != {"endpoint": expected["endpoint"], "http_status": expected["http_status"]}:
+            findings.append(_finding(relative, "OBSERVATION_EVIDENCE", f"{name} GET evidence is incorrect"))
+
+    ruleset = controls.get("main_ruleset", {}).get("desired_configuration", {})
+    if not isinstance(ruleset, dict):
+        ruleset = {}
+    bypass_keys = [(key, value) for key, value in ruleset.items() if "bypass" in key.lower()]
+    if bypass_keys != [("bypass_actors", [])]:
+        findings.append(_finding(relative, "BYPASS", "retry ruleset must contain no bypass actor or role"))
+    rules = ruleset.get("rules", {}) if isinstance(ruleset.get("rules", {}), dict) else {}
+    if rules.get("required_status_checks") != list(EXPECTED_CHECKS):
+        findings.append(_finding(relative, "RULESET_CHECKS", "retry ruleset must retain all three checks"))
+    if rules.get("prevent_force_push") is not True or rules.get("prevent_deletion") is not True:
+        findings.append(_finding(relative, "BRANCH_MUTATION", "retry ruleset must prevent force-push and deletion"))
+
+    release = plan.get("release_state", {})
+    current_release = release.get("current_observation", {}) if isinstance(release, dict) else {}
+    if (
+        not isinstance(release, dict)
+        or current_release.get("canonical_git_tag_count") != 0
+        or current_release.get("canonical_github_release_count") != 0
+        or release.get("retry_creation_allowed") is not False
+        or release.get("next_candidate") != "v1.0.1"
+        or release.get("status") != "DEFERRED_TO_SEPARATE_MISSION"
+    ):
+        findings.append(_finding(relative, "RELEASE_PROHIBITION", "current retry must preserve zero tags and releases"))
+
+    community = plan.get("community_profile", {})
+    if not isinstance(community, dict) or community.get("code_of_conduct") != "DEFERRED_UNTIL_ENFORCEABLE":
+        findings.append(_finding(relative, "COMMUNITY_SCOPE", "Code of Conduct remains deliberately deferred"))
+
+
 def _check_plan(root: Path, findings: list[Finding]) -> None:
     relative = "governance/github-publication-plan.json"
     plan = _load_json(root / relative, relative, findings)
+    if not isinstance(plan, dict):
+        return
+    if plan.get("schema_version") != 6:
+        findings.append(_finding(relative, "SCHEMA_VERSION", "current publication plan must use schema 6"))
+        return
+    _check_plan_v6(relative, plan, findings)
+    return
+
     expected_sections = {
         "schema_version",
         "publication_phase",
