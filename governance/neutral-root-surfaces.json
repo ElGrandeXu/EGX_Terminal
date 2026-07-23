@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "guarantee": "KNOWN_REGISTERED_ACTIVE_PROJECT_SURFACES",
-  "verified_on": "2026-07-21",
+  "verified_on": "2026-07-23",
   "sources": [
     {
       "harness": "Codex",
@@ -12,6 +12,11 @@
       "harness": "Codex",
       "url": "https://developers.openai.com/codex/guides/agents-md",
       "observed_surfaces": ["AGENTS.md", "AGENTS.override.md"]
+    },
+    {
+      "harness": "Codex",
+      "url": "https://learn.chatgpt.com/docs/build-skills",
+      "observed_surfaces": [".agents/skills"]
     },
     {
       "harness": "Claude Code",
@@ -33,6 +38,7 @@
     {"path": "AGENTS.md", "kind": "path", "owners": ["Codex", "OpenCode"]},
     {"path": "AGENTS.override.md", "kind": "path", "owners": ["Codex"]},
     {"path": ".codex", "kind": "path_prefix", "owners": ["Codex"]},
+    {"path": ".agents", "kind": "path_prefix", "owners": ["Codex"]},
     {"path": "CLAUDE.md", "kind": "path", "owners": ["Claude Code", "OpenCode"]},
     {"path": "CLAUDE.local.md", "kind": "path", "owners": ["Claude Code"]},
     {"path": ".claude", "kind": "path_prefix", "owners": ["Claude Code"]},
