@@ -41,6 +41,9 @@ class NeutralRootTests(unittest.TestCase):
                     "AGENTS.md",
                     "AGENTS.override.md",
                 },
+                "https://learn.chatgpt.com/docs/build-skills": {
+                    ".agents/skills",
+                },
             },
             codex,
         )
@@ -83,6 +86,22 @@ class NeutralRootTests(unittest.TestCase):
                         (surface.path,),
                         CHECK.find_forbidden_paths(root, (surface,)),
                     )
+
+    def test_detects_codex_repository_skill(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            skill = root / ".agents" / "skills" / "fixture" / "SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("---\nname: fixture\ndescription: fixture\n---\n", encoding="utf-8")
+            self.assertEqual((Path(".agents"),), CHECK.find_forbidden_paths(root))
+
+    def test_ignores_similarly_named_non_surface(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            skill = root / ".agents-fixture" / "skills" / "fixture" / "SKILL.md"
+            skill.parent.mkdir(parents=True)
+            skill.write_text("---\nname: fixture\ndescription: fixture\n---\n", encoding="utf-8")
+            self.assertEqual((), CHECK.find_forbidden_paths(root))
 
     def test_detects_symlink_when_supported(self) -> None:
         surface = CHECK.registered_surfaces()[0]
