@@ -40,8 +40,9 @@ valid because no experimental evidence was changed.
 ## Next candidate
 
 `next_candidate` is `v1.0.1`. This field is a planning constraint, not a tag or
-release declaration. `v1.0.1` does not currently exist. PR 2 is the next
-repository step and must occur separately before release preparation.
+release declaration. `v1.0.1` does not currently exist. The verified public
+repository state does not authorize its preparation; that requires a separate
+later mission.
 
 The checker requires the candidate to be a valid version, absent from both the
 current and historical sets, and later than every recorded release. A tag named
