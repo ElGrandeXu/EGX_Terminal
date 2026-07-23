@@ -232,7 +232,7 @@ def is_exempt(root: Path, path: str) -> bool:
 
 
 def expected_license(path: str) -> str | None:
-    if path in {"README.md", "GOVERNANCE.md", "CONTRIBUTING.md", "SECURITY.md", ".github/pull_request_template.md"} or path.startswith(
+    if path in {"README.md", "README.fr.md", "GOVERNANCE.md", "CONTRIBUTING.md", "SECURITY.md", ".github/pull_request_template.md"} or path.startswith(
         ("docs/", ".github/ISSUE_TEMPLATE/")
     ):
         return "CC-BY-4.0"

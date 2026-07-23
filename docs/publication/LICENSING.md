@@ -14,7 +14,7 @@ licence applicable à chaque chemin.
 
 ## Frontière
 
-- `README.md`, les politiques communautaires racine, les templates Markdown
+- `README.md`, `README.fr.md`, les politiques communautaires racine, les templates Markdown
   GitHub et `docs/**` relèvent de CC-BY-4.0.
 - `.gitattributes`, `.gitignore`, le workflow GitHub Actions, `scripts/**`,
   `tests/**`, `governance/**`, `licensing/**` et les autres artefacts techniques couverts relèvent

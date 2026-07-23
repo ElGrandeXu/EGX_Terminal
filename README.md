@@ -1,3 +1,5 @@
+[English](README.md) · [Français](README.fr.md)
+
 # EGX_Terminal
 
 EGX_Terminal is a research and governance workspace for designing
